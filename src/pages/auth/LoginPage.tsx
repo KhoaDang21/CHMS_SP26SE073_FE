@@ -1,17 +1,60 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Waves } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { authService } from '../../services/authService';
+import { authConfig } from '../../config/authConfig';
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Đăng nhập với:', { email, password, rememberMe });
-    // TODO: Call login service
+    setError('');
+    setIsLoading(true);
+
+    try {
+      console.log('Đăng nhập với:', { email, password, rememberMe });
+      
+      const response = await authService.login({
+        email,
+        password,
+        rememberMe,
+      });
+      
+      console.log('Login response:', response);
+
+      if (response.success) {
+        // Login thành công
+        const userRole = response.user?.role || 'customer';
+        const redirectPath = authConfig.redirectPaths[userRole];
+        
+        console.log('Chuyển hướng đến:', redirectPath);
+        
+        // Hiển thị thông báo thành công (optional)
+        // toast.success(response.message || 'Đăng nhập thành công!');
+        
+        // Redirect sau 500ms
+        setTimeout(() => {
+          navigate(redirectPath, { replace: true });
+        }, 500);
+        
+      } else {
+        // Login thất bại
+        setError(response.message || 'Email hoặc mật khẩu không đúng');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -35,6 +78,20 @@ export default function LoginPage() {
               <p className="text-sm text-gray-600">Chào mừng bạn trở lại!</p>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            {/* Test Account Info */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs font-semibold text-blue-900 mb-1">🧪 Tài khoản test:</p>
+              <p className="text-xs text-blue-700">Email: <code className="bg-blue-100 px-1 rounded">customer@test.com</code></p>
+              <p className="text-xs text-blue-700">Password: <code className="bg-blue-100 px-1 rounded">Customer123!</code></p>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email Input */}
               <div>
@@ -50,9 +107,10 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@example.com"
+                    placeholder="customer@test.com"
                     className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -71,14 +129,16 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="Customer123!"
                     className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm"
                     required
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -97,6 +157,7 @@ export default function LoginPage() {
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500 cursor-pointer"
+                    disabled={isLoading}
                   />
                   <span className="ml-2 text-sm text-gray-700">Ghi nhớ đăng nhập</span>
                 </label>
@@ -108,9 +169,20 @@ export default function LoginPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl font-medium text-sm"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Đăng Nhập
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang đăng nhập...
+                  </span>
+                ) : (
+                  'Đăng Nhập'
+                )}
               </button>
             </form>
 
