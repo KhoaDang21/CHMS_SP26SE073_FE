@@ -4,9 +4,10 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 interface LoginFormProps {
   onSubmit: (email: string, password: string, rememberMe: boolean) => void;
   isLoading?: boolean;
+  error?: string;
 }
 
-export default function LoginForm({ onSubmit, isLoading = false }: LoginFormProps) {
+export default function LoginForm({ onSubmit, isLoading = false, error }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,6 +20,20 @@ export default function LoginForm({ onSubmit, isLoading = false }: LoginFormProp
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Error Message */}
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      {/* Test Account Info */}
+      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p className="text-xs font-semibold text-blue-900 mb-1">🧪 Tài khoản test:</p>
+        <p className="text-xs text-blue-700">Email: customer@test.com</p>
+        <p className="text-xs text-blue-700">Password: Customer123!</p>
+      </div>
+
       {/* Email Input */}
       <div>
         <label htmlFor="email" className="block text-gray-700 mb-2">
