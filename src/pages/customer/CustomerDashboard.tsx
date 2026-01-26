@@ -17,7 +17,6 @@ import {
   Compass,
   MessageCircle,
   ChevronRight,
-  Filter,
   SlidersHorizontal,
   Waves
 } from 'lucide-react';
@@ -95,7 +94,7 @@ export default function CustomerDashboard() {
   const currentUser = authService.getUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  //const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
