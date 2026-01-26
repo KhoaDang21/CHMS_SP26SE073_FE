@@ -5,6 +5,7 @@ import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import CustomerDashboard from '../pages/customer/CustomerDashboard';
 import { authService } from '../services/authService';
+import ProfilePage from '../pages/customer/ProfilePage';
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -52,6 +53,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <CustomerDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/profile" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <ProfilePage />
           </ProtectedRoute>
         } 
       />
