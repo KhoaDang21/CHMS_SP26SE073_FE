@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  MapPin, 
-  Calendar, 
-  Users, 
-  Star, 
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Search,
+  MapPin,
+  Calendar,
+  Users,
+  Star,
   Heart,
   Menu,
   Bell,
@@ -17,60 +17,63 @@ import {
   Compass,
   MessageCircle,
   ChevronRight,
-  Filter,
   SlidersHorizontal,
-  Waves
-} from 'lucide-react';
-import { authService } from '../../services/authService';
-import { toast } from 'sonner';
-import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+  Waves,
+} from "lucide-react";
+import { authService } from "../../services/authService";
+import { toast } from "sonner";
+import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
 // Mock data for homestays
 const featuredHomestays = [
   {
     id: 1,
-    name: 'Sunset Beach Villa',
-    location: 'Nha Trang, Khánh Hòa',
+    name: "Sunset Beach Villa",
+    location: "Nha Trang, Khánh Hòa",
     price: 2500000,
     rating: 4.9,
     reviews: 128,
-    image: 'https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWFjaCUyMGhvdXNlJTIwdmlsbGF8ZW58MXx8fHwxNzY3ODIzMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+    image:
+      "https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWFjaCUyMGhvdXNlJTIwdmlsbGF8ZW58MXx8fHwxNzY3ODIzMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     guests: 6,
     bedrooms: 3,
     isFavorite: true,
   },
   {
     id: 2,
-    name: 'Ocean View Paradise',
-    location: 'Đà Nẵng, Việt Nam',
+    name: "Ocean View Paradise",
+    location: "Đà Nẵng, Việt Nam",
     price: 1800000,
     rating: 4.8,
     reviews: 95,
-    image: 'https://images.unsplash.com/photo-1761920555057-54bbc392135c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2FzdGFsJTIwaG9tZXN0YXl8ZW58MXx8fHwxNzY3ODUxOTYzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+    image:
+      "https://images.unsplash.com/photo-1761920555057-54bbc392135c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2FzdGFsJTIwaG9tZXN0YXl8ZW58MXx8fHwxNzY3ODUxOTYzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     guests: 4,
     bedrooms: 2,
     isFavorite: false,
   },
   {
     id: 3,
-    name: 'Tropical Beachfront',
-    location: 'Phú Quốc, Kiên Giang',
+    name: "Tropical Beachfront",
+    location: "Phú Quốc, Kiên Giang",
     price: 3200000,
     rating: 5.0,
     reviews: 156,
-    image: 'https://images.unsplash.com/photo-1583401535382-a0814c295b0b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvY2VhbiUyMHZpZXclMjByZXNvcnR8ZW58MXx8fHwxNzY3ODUxOTYyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+    image:
+      "https://images.unsplash.com/photo-1583401535382-a0814c295b0b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvY2VhbiUyMHZpZXclMjByZXNvcnR8ZW58MXx8fHwxNzY3ODUxOTYyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     guests: 8,
     bedrooms: 4,
     isFavorite: true,
   },
   {
     id: 4,
-    name: 'Coastal Dream House',
-    location: 'Vũng Tàu, Bà Rịa-Vũng Tàu',
+    name: "Coastal Dream House",
+    location: "Vũng Tàu, Bà Rịa-Vũng Tàu",
     price: 1500000,
     rating: 4.7,
     reviews: 73,
-    image: 'https://images.unsplash.com/photo-1709775901932-86f1c3137861?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cm9waWNhbCUyMGJlYWNoJTIwaG91c2V8ZW58MXx8fHwxNzY3ODUxOTYwfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+    image:
+      "https://images.unsplash.com/photo-1709775901932-86f1c3137861?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cm9waWNhbCUyMGJlYWNoJTIwaG91c2V8ZW58MXx8fHwxNzY3ODUxOTYwfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     guests: 5,
     bedrooms: 2,
     isFavorite: false,
@@ -80,13 +83,14 @@ const featuredHomestays = [
 const upcomingBookings = [
   {
     id: 1,
-    homestayName: 'Sunset Beach Villa',
-    location: 'Nha Trang, Khánh Hòa',
-    checkIn: '2026-01-15',
-    checkOut: '2026-01-18',
+    homestayName: "Sunset Beach Villa",
+    location: "Nha Trang, Khánh Hòa",
+    checkIn: "2026-01-15",
+    checkOut: "2026-01-18",
     guests: 4,
-    status: 'confirmed',
-    image: 'https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWFjaCUyMGhvdXNlJTIwdmlsbGF8ZW58MXx8fHwxNzY3ODIzMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+    status: "confirmed",
+    image:
+      "https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWFjaCUyMGhvdXNlJTIwdmlsbGF8ZW58MXx8fHwxNzY3ODIzMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
   },
 ];
 
@@ -95,22 +99,32 @@ export default function CustomerDashboard() {
   const currentUser = authService.getUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const [checkInDate, setCheckInDate] = useState('');
-  const [checkOutDate, setCheckOutDate] = useState('');
+  //const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [checkInDate, setCheckInDate] = useState("");
+  const [checkOutDate, setCheckOutDate] = useState("");
   const [guests, setGuests] = useState(1);
 
   const handleLogout = () => {
     authService.logout();
-    toast.success('Đăng xuất thành công!');
-    navigate('/auth/login');
+    toast.success("Đăng xuất thành công!");
+    navigate("/auth/login");
   };
 
   const stats = [
-    { label: 'Upcoming Trips', value: '1', icon: Calendar, color: 'bg-blue-500' },
-    { label: 'Favorites', value: '2', icon: Heart, color: 'bg-pink-500' },
-    { label: 'Rewards Points', value: '1,250', icon: Star, color: 'bg-yellow-500' },
+    {
+      label: "Upcoming Trips",
+      value: "1",
+      icon: Calendar,
+      color: "bg-blue-500",
+    },
+    { label: "Favorites", value: "2", icon: Heart, color: "bg-pink-500" },
+    {
+      label: "Rewards Points",
+      value: "1,250",
+      icon: Star,
+      color: "bg-yellow-500",
+    },
   ];
 
   return (
@@ -127,7 +141,7 @@ export default function CustomerDashboard() {
               >
                 <Menu className="w-6 h-6 text-gray-700" />
               </button>
-              
+
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
                   <Waves className="w-6 h-6 text-white" />
@@ -156,13 +170,16 @@ export default function CustomerDashboard() {
                     <User className="w-5 h-5 text-white" />
                   </div>
                   <span className="hidden sm:block text-gray-700 font-medium">
-                    {currentUser?.name || 'User'}
+                    {currentUser?.name || "User"}
                   </span>
                 </button>
 
                 {isUserMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                    <button className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700">
+                    <button
+                      onClick={() => navigate("/customer/profile")}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
+                    >
                       <User className="w-4 h-4" />
                       Profile
                     </button>
@@ -171,7 +188,7 @@ export default function CustomerDashboard() {
                       Settings
                     </button>
                     <hr className="my-2" />
-                    <button 
+                    <button
                       onClick={handleLogout}
                       className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-red-600"
                     >
@@ -188,11 +205,13 @@ export default function CustomerDashboard() {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className={`
+        <aside
+          className={`
           fixed lg:sticky top-16 left-0 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 z-30
           transition-transform duration-300 w-64
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
+          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        `}
+        >
           <nav className="p-4 space-y-2">
             <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
               <Home className="w-5 h-5" />
@@ -230,20 +249,29 @@ export default function CustomerDashboard() {
           <div className="max-w-7xl mx-auto space-y-8">
             {/* Welcome Section */}
             <div>
-              <h2 className="text-gray-900 mb-2">Welcome back, {currentUser?.name}! 👋</h2>
+              <h2 className="text-gray-900 mb-2">
+                Welcome back, {currentUser?.name}! 👋
+              </h2>
               <p className="text-gray-600">Find your perfect coastal getaway</p>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {stats.map((stat, index) => (
-                <div key={index} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div
+                  key={index}
+                  className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+                >
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
-                      <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {stat.value}
+                      </p>
                     </div>
-                    <div className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
+                    <div
+                      className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}
+                    >
                       <stat.icon className="w-6 h-6 text-white" />
                     </div>
                   </div>
@@ -263,7 +291,9 @@ export default function CustomerDashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="lg:col-span-2">
-                  <label className="block text-sm text-gray-700 mb-2">Location</label>
+                  <label className="block text-sm text-gray-700 mb-2">
+                    Location
+                  </label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -277,7 +307,9 @@ export default function CustomerDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-700 mb-2">Check-in</label>
+                  <label className="block text-sm text-gray-700 mb-2">
+                    Check-in
+                  </label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -290,7 +322,9 @@ export default function CustomerDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-700 mb-2">Check-out</label>
+                  <label className="block text-sm text-gray-700 mb-2">
+                    Check-out
+                  </label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -303,7 +337,9 @@ export default function CustomerDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-700 mb-2">Guests</label>
+                  <label className="block text-sm text-gray-700 mb-2">
+                    Guests
+                  </label>
                   <div className="relative">
                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <select
@@ -312,7 +348,9 @@ export default function CustomerDashboard() {
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none"
                     >
                       {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-                        <option key={num} value={num}>{num} Guest{num > 1 ? 's' : ''}</option>
+                        <option key={num} value={num}>
+                          {num} Guest{num > 1 ? "s" : ""}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -338,7 +376,10 @@ export default function CustomerDashboard() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {upcomingBookings.map((booking) => (
-                    <div key={booking.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                    <div
+                      key={booking.id}
+                      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                    >
                       <div className="flex flex-col sm:flex-row">
                         <div className="sm:w-40 h-40 sm:h-auto relative">
                           <ImageWithFallback
@@ -350,7 +391,9 @@ export default function CustomerDashboard() {
                         <div className="flex-1 p-4">
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <h4 className="font-semibold text-gray-900">{booking.homestayName}</h4>
+                              <h4 className="font-semibold text-gray-900">
+                                {booking.homestayName}
+                              </h4>
                               <p className="text-sm text-gray-600 flex items-center gap-1">
                                 <MapPin className="w-4 h-4" />
                                 {booking.location}
@@ -363,10 +406,16 @@ export default function CustomerDashboard() {
                           <div className="flex items-center gap-4 text-sm text-gray-600">
                             <span className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
-                              {new Date(booking.checkIn).toLocaleDateString('vi-VN')}
+                              {new Date(booking.checkIn).toLocaleDateString(
+                                "vi-VN",
+                              )}
                             </span>
                             <span>→</span>
-                            <span>{new Date(booking.checkOut).toLocaleDateString('vi-VN')}</span>
+                            <span>
+                              {new Date(booking.checkOut).toLocaleDateString(
+                                "vi-VN",
+                              )}
+                            </span>
                           </div>
                           <div className="mt-2 flex items-center gap-1 text-sm text-gray-600">
                             <Users className="w-4 h-4" />
@@ -392,7 +441,10 @@ export default function CustomerDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {featuredHomestays.map((homestay) => (
-                  <div key={homestay.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                  <div
+                    key={homestay.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
+                  >
                     <div className="relative h-48 overflow-hidden">
                       <ImageWithFallback
                         src={homestay.image}
@@ -400,19 +452,25 @@ export default function CustomerDashboard() {
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                       <button className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform">
-                        <Heart className={`w-5 h-5 ${homestay.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+                        <Heart
+                          className={`w-5 h-5 ${homestay.isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"}`}
+                        />
                       </button>
                     </div>
-                    
+
                     <div className="p-4">
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900">{homestay.name}</h4>
+                        <h4 className="font-semibold text-gray-900">
+                          {homestay.name}
+                        </h4>
                         <div className="flex items-center gap-1">
                           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-medium">{homestay.rating}</span>
+                          <span className="text-sm font-medium">
+                            {homestay.rating}
+                          </span>
                         </div>
                       </div>
-                      
+
                       <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
                         <MapPin className="w-4 h-4" />
                         {homestay.location}
@@ -429,7 +487,7 @@ export default function CustomerDashboard() {
                       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                         <div>
                           <span className="font-bold text-gray-900">
-                            {homestay.price.toLocaleString('vi-VN')}đ
+                            {homestay.price.toLocaleString("vi-VN")}đ
                           </span>
                           <span className="text-sm text-gray-600">/night</span>
                         </div>
