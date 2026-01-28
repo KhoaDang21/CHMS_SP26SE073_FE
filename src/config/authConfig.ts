@@ -30,7 +30,7 @@ export const authConfig = {
   
   // Redirect paths after login based on role
   redirectPaths: {
-    customer: '/customer/dashboard',
+    customer: '/',
     owner: '/owner/dashboard',
     staff: '/staff/dashboard',
     admin: '/admin/dashboard',

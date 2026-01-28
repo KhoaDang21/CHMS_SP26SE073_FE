@@ -3,9 +3,17 @@ import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
+import HomePage from '../pages/HomePage';
+import ExplorePage from '../pages/ExplorePage';
+import AboutPage from '../pages/AboutPage';
+import ContactPage from '../pages/ContactPage';
 import CustomerDashboard from '../pages/customer/CustomerDashboard';
-import { authService } from '../services/authService';
 import ProfilePage from '../pages/customer/ProfilePage';
+import CustomerExplorePage from '../pages/customer/ExplorePage';
+import BookingsPage from '../pages/customer/BookingsPage';
+import FavoritesPage from '../pages/customer/FavoritesPage';
+import MessagesPage from '../pages/customer/MessagesPage';
+import { authService } from '../services/authService';
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -19,8 +27,8 @@ function ProtectedRoute({
   const user = authService.getUser();
 
   if (!isAuthenticated) {
-    // Chưa đăng nhập -> redirect về login
-    return <Navigate to="/auth/login" replace />;
+    // Chưa đăng nhập -> redirect về home
+    return <Navigate to="/" replace />;
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
@@ -31,7 +39,7 @@ function ProtectedRoute({
       staff: '/staff/dashboard',
       admin: '/admin/dashboard',
     };
-    return <Navigate to={redirectPaths[user.role] || '/auth/login'} replace />;
+    return <Navigate to={redirectPaths[user.role] || '/'} replace />;
   }
 
   return <>{children}</>;
@@ -41,7 +49,10 @@ export function AppRoutes() {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<Navigate to="/auth/login" replace />} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/explore" element={<ExplorePage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="/auth/login" element={<LoginPage />} />
       <Route path="/auth/register" element={<RegisterPage />} />
       <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
@@ -61,6 +72,38 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <ProfilePage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/explore" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <CustomerExplorePage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/bookings" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <BookingsPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/favorites" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <FavoritesPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/messages" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <MessagesPage />
           </ProtectedRoute>
         } 
       />
@@ -111,8 +154,8 @@ export function AppRoutes() {
         } 
       />
 
-      {/* Catch all - redirect to login */}
-      <Route path="*" element={<Navigate to="/auth/login" replace />} />
+      {/* Catch all - redirect to home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

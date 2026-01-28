@@ -9,9 +9,8 @@ import {
   ChevronRight,
   SlidersHorizontal,
 } from "lucide-react";
-import { authService } from "../../services/authService";
-import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
-import MainLayout from "../../layouts/MainLayout";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import MainLayout from "../layouts/MainLayout";
 
 // Mock data for homestays
 const featuredHomestays = [
@@ -69,81 +68,27 @@ const featuredHomestays = [
   },
 ];
 
-const upcomingBookings = [
-  {
-    id: 1,
-    homestayName: "Sunset Beach Villa",
-    location: "Nha Trang, Khánh Hòa",
-    checkIn: "2026-01-15",
-    checkOut: "2026-01-18",
-    guests: 4,
-    status: "confirmed",
-    image:
-      "https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWFjaCUyMGhvdXNlJTIwdmlsbGF8ZW58MXx8fHwxNzY3ODIzMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-];
-
-export default function CustomerDashboard() {
-  const currentUser = authService.getUser();
+export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
   const [guests, setGuests] = useState(1);
 
-  const stats = [
-    {
-      label: "Chuyến Đi Sắp Tới",
-      value: "1",
-      icon: Calendar,
-      color: "bg-blue-500",
-    },
-    { 
-      label: "Yêu Thích", 
-      value: "2", 
-      icon: Heart, 
-      color: "bg-pink-500" 
-    },
-    {
-      label: "Điểm Thưởng",
-      value: "1,250",
-      icon: Star,
-      color: "bg-yellow-500",
-    },
-  ];
-
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Welcome Section */}
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Chào mừng trở lại, {currentUser?.name}! 👋
-          </h2>
-          <p className="text-gray-600">Tìm kiếm homestay ven biển hoàn hảo cho bạn</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stat.value}
-                  </p>
-                </div>
-                <div
-                  className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}
-                >
-                  <stat.icon className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* Hero Section */}
+        <div className="text-center py-12">
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+            Khám Phá Homestay
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">
+              Ven Biển Tuyệt Đẹp
+            </span>
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Tìm kiếm và đặt những homestay ven biển tuyệt vời nhất Việt Nam. 
+            Trải nghiệm kỳ nghỉ hoàn hảo với view biển tuyệt đẹp.
+          </p>
         </div>
 
         {/* Search Section */}
@@ -230,68 +175,6 @@ export default function CustomerDashboard() {
           </button>
         </div>
 
-        {/* Upcoming Bookings */}
-        {upcomingBookings.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">Chuyến Đi Sắp Tới</h3>
-              <button className="text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium">
-                Xem Tất Cả
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {upcomingBookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="flex flex-col sm:flex-row">
-                    <div className="sm:w-40 h-40 sm:h-auto relative">
-                      <ImageWithFallback
-                        src={booking.image}
-                        alt={booking.homestayName}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            {booking.homestayName}
-                          </h4>
-                          <p className="text-sm text-gray-600 flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            {booking.location}
-                          </p>
-                        </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                          Đã Xác Nhận
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(booking.checkIn).toLocaleDateString("vi-VN")}
-                        </span>
-                        <span>→</span>
-                        <span>
-                          {new Date(booking.checkOut).toLocaleDateString("vi-VN")}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Users className="w-4 h-4" />
-                        {booking.guests} Khách
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Featured Homestays */}
         <div>
           <div className="flex items-center justify-between mb-6">
@@ -366,6 +249,17 @@ export default function CustomerDashboard() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Call to Action */}
+        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-8 text-center text-white">
+          <h3 className="text-2xl font-bold mb-4">Bạn có homestay muốn cho thuê?</h3>
+          <p className="text-blue-100 mb-6">
+            Tham gia cùng chúng tôi và bắt đầu kiếm thu nhập từ homestay của bạn ngay hôm nay!
+          </p>
+          <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+            Đăng Ký Làm Chủ Nhà
+          </button>
         </div>
       </div>
     </MainLayout>
