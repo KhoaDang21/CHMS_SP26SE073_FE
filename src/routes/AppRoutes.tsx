@@ -4,8 +4,12 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import CustomerDashboard from '../pages/customer/CustomerDashboard';
-import { authService } from '../services/authService';
 import ProfilePage from '../pages/customer/ProfilePage';
+import ExplorePage from '../pages/customer/ExplorePage';
+import BookingsPage from '../pages/customer/BookingsPage';
+import FavoritesPage from '../pages/customer/FavoritesPage';
+import MessagesPage from '../pages/customer/MessagesPage';
+import { authService } from '../services/authService';
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -61,6 +65,38 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <ProfilePage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/explore" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <ExplorePage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/bookings" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <BookingsPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/favorites" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <FavoritesPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/customer/messages" 
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <MessagesPage />
           </ProtectedRoute>
         } 
       />
