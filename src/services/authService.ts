@@ -96,18 +96,19 @@ export const authService = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          fullName: data.name,        
+          phoneNumber: data.phone
+        }),
       });
 
       const result = await response.json();
 
       if (response.ok && result.success) {
-        if (result.token) {
-          localStorage.setItem('authToken', result.token);
-        }
-        if (result.user) {
-          localStorage.setItem('userData', JSON.stringify(result.user));
-        }
+        // Không lưu token ở đây vì cần verify OTP trước
+        // Token sẽ được lưu sau khi verify OTP thành công
       }
 
       return result;
@@ -191,6 +192,62 @@ export const authService = {
       return await response.json();
     } catch (error) {
       console.error('Reset password error:', error);
+      return {
+        success: false,
+        message: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+      };
+    }
+  },
+
+  /**
+   * Verify OTP after registration
+   */
+  async verifyOtp(email: string, otpCode: string): Promise<LoginResponse> {
+    try {
+      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.verifyOtp}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          otpCode: otpCode
+        }),
+      });
+
+      const apiResponse = await response.json();
+
+      if (response.ok && apiResponse.success) {
+        // OTP verified successfully, save token and user data
+        const token = apiResponse.data?.accessToken || apiResponse.data?.token || apiResponse.token;
+        const userData = apiResponse.data ? {
+          id: apiResponse.data.id || apiResponse.data.email,
+          email: apiResponse.data.email,
+          name: apiResponse.data.fullName || apiResponse.data.name,
+          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'owner' | 'staff' | 'admin'
+        } : undefined;
+
+        if (token) {
+          localStorage.setItem('authToken', token);
+        }
+        if (userData) {
+          localStorage.setItem('userData', JSON.stringify(userData));
+        }
+
+        return {
+          success: true,
+          token: token,
+          user: userData,
+          message: apiResponse.message
+        };
+      }
+
+      return {
+        success: false,
+        message: apiResponse.message || 'Mã OTP không hợp lệ'
+      };
+    } catch (error) {
+      console.error('Verify OTP error:', error);
       return {
         success: false,
         message: 'Đã xảy ra lỗi. Vui lòng thử lại.',

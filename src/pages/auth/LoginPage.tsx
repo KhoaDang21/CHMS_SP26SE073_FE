@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, Waves } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { authService } from '../../services/authService';
 import { authConfig } from '../../config/authConfig';
+import toast from 'react-hot-toast'; // 👈 THÊM IMPORT
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -27,22 +28,24 @@ export default function LoginPage() {
       });
 
       if (response.success) {
-        // Login thành công
+        // 👇 THÊM TOAST
+        toast.success(`Chào mừng ${response.user?.name || 'bạn'}!`);
+        
         const userRole = response.user?.role || 'customer';
         const redirectPath = authConfig.redirectPaths[userRole];
         
-        // Redirect sau 500ms
         setTimeout(() => {
           navigate(redirectPath, { replace: true });
         }, 500);
         
       } else {
-        // Login thất bại
         setError(response.message || 'Email hoặc mật khẩu không đúng');
+        toast.error(response.message || 'Email hoặc mật khẩu không đúng'); // 👈 THÊM TOAST
       }
     } catch (err) {
       console.error('Login error:', err);
       setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      toast.error('Đã xảy ra lỗi. Vui lòng thử lại.'); // 👈 THÊM TOAST
     } finally {
       setIsLoading(false);
     }
