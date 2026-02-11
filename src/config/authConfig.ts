@@ -1,6 +1,20 @@
 // Authentication configuration
 
 export const authConfig = {
+  // API Configuration
+  api: {
+    baseUrl: 'https://localhost:7206/api',
+    endpoints: {
+      login: '/Auth/login',
+      register: '/Auth/register',
+      verifyOtp: '/Auth/verify-otp',
+      logout: '/Auth/logout',
+      forgotPassword: '/Auth/forgot-password',
+      resetPassword: '/Auth/reset-password',
+      refreshToken: '/Auth/refresh-token',
+    },
+  },
+
   // Token storage key
   tokenKey: 'authToken',
   

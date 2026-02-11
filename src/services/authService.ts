@@ -1,5 +1,7 @@
 // Auth Service - Handle authentication API calls
 
+import { authConfig } from '../config/authConfig';
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -26,122 +28,55 @@ export interface RegisterData {
   role: 'customer' | 'owner';
 }
 
-// TODO: Replace with actual API endpoint when backend is ready
-const API_BASE_URL = 'http://localhost:3000/api';
-
-// MOCK USERS for development (remove when backend is ready)
-const MOCK_USERS = [
-  {
-    id: '1',
-    email: 'customer@test.com',
-    password: 'Customer123!',
-    name: 'Nguyễn Văn A',
-    role: 'customer' as const,
-  },
-  {
-    id: '2',
-    email: 'owner@test.com',
-    password: 'Owner123!',
-    name: 'Trần Thị B',
-    role: 'owner' as const,
-  },
-  {
-    id: '3',
-    email: 'staff@test.com',
-    password: 'Staff123!',
-    name: 'Lê Văn C',
-    role: 'staff' as const,
-  },
-  {
-    id: '4',
-    email: 'admin@test.com',
-    password: 'Admin123!',
-    name: 'Phạm Thị D',
-    role: 'admin' as const,
-  },
-];
-
-// ⚠️ Flag to enable/disable mock authentication
-// Set to FALSE when backend is ready
-const USE_MOCK_AUTH = true;
-
 export const authService = {
   /**
    * Login user
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    console.log('=== AUTH SERVICE ===');
-    console.log('USE_MOCK_AUTH:', USE_MOCK_AUTH);
-    console.log('Credentials:', credentials);
-
-    // MOCK AUTHENTICATION - Remove when backend is ready
-    if (USE_MOCK_AUTH) {
-      console.log('✅ Using MOCK authentication');
-      
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const user = MOCK_USERS.find(
-            (u) => u.email === credentials.email && u.password === credentials.password
-          );
-
-          if (user) {
-            const mockToken = `mock_token_${user.id}_${Date.now()}`;
-            const userData = {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              role: user.role,
-            };
-
-            // Store token and user data
-            const storage = credentials.rememberMe ? localStorage : sessionStorage;
-            storage.setItem('authToken', mockToken);
-            storage.setItem('userData', JSON.stringify(userData));
-
-            console.log('✅ Login successful:', userData);
-
-            resolve({
-              success: true,
-              token: mockToken,
-              user: userData,
-              message: `Đăng nhập thành công! (Mock - ${user.role})`,
-            });
-          } else {
-            console.log('❌ Login failed: Invalid credentials');
-            resolve({
-              success: false,
-              message: 'Email hoặc mật khẩu không chính xác.',
-            });
-          }
-        }, 500); // Simulate network delay
-      });
-    }
-
-    // REAL API CALL - Uncomment when backend is ready
-    console.log('⚠️ Using REAL API authentication');
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.login}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password
+        }),
       });
 
-      const data = await response.json();
+      const apiResponse = await response.json();
 
-      if (response.ok && data.success) {
-        // Store token if remember me is checked
+      if (response.ok && apiResponse.success) {
         const storage = credentials.rememberMe ? localStorage : sessionStorage;
-        if (data.token) {
-          storage.setItem('authToken', data.token);
+
+        const token = apiResponse.data?.accessToken || apiResponse.data?.token || apiResponse.token;
+        const userData = apiResponse.data ? {
+          id: apiResponse.data.id || apiResponse.data.email,
+          email: apiResponse.data.email,
+          name: apiResponse.data.fullName || apiResponse.data.name,
+          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'owner' | 'staff' | 'admin'
+        } : undefined;
+
+        if (token) {
+          storage.setItem('authToken', token);
         }
-        if (data.user) {
-          storage.setItem('userData', JSON.stringify(data.user));
+        if (userData) {
+          storage.setItem('userData', JSON.stringify(userData));
         }
+
+        return {
+          success: true,
+          token: token,
+          user: userData,
+          message: apiResponse.message
+        };
       }
 
-      return data;
+      return {
+        success: false,
+        message: apiResponse.message || 'Đăng nhập thất bại'
+      };
     } catch (error) {
       console.error('Login error:', error);
       return {
@@ -155,54 +90,28 @@ export const authService = {
    * Register new user
    */
   async register(data: RegisterData): Promise<LoginResponse> {
-    // MOCK REGISTRATION
-    if (USE_MOCK_AUTH) {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          // Check if email already exists
-          const existingUser = MOCK_USERS.find((u) => u.email === data.email);
-          
-          if (existingUser) {
-            resolve({
-              success: false,
-              message: 'Email đã được sử dụng.',
-            });
-            return;
-          }
-
-          const newUser = {
-            id: `${MOCK_USERS.length + 1}`,
-            email: data.email,
-            name: data.name,
-            role: data.role,
-          };
-
-          const mockToken = `mock_token_${newUser.id}_${Date.now()}`;
-
-          // Store token and user data
-          localStorage.setItem('authToken', mockToken);
-          localStorage.setItem('userData', JSON.stringify(newUser));
-
-          resolve({
-            success: true,
-            token: mockToken,
-            user: newUser,
-            message: 'Đăng ký thành công!',
-          });
-        }, 500);
-      });
-    }
-
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.register}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          fullName: data.name,        
+          phoneNumber: data.phone
+        }),
       });
 
-      return await response.json();
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Không lưu token ở đây vì cần verify OTP trước
+        // Token sẽ được lưu sau khi verify OTP thành công
+      }
+
+      return result;
     } catch (error) {
       console.error('Register error:', error);
       return {
@@ -248,29 +157,8 @@ export const authService = {
    * Request password reset
    */
   async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
-    // MOCK FORGOT PASSWORD
-    if (USE_MOCK_AUTH) {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const user = MOCK_USERS.find((u) => u.email === email);
-          
-          if (user) {
-            resolve({
-              success: true,
-              message: 'Email khôi phục mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư.',
-            });
-          } else {
-            resolve({
-              success: false,
-              message: 'Email không tồn tại trong hệ thống.',
-            });
-          }
-        }, 500);
-      });
-    }
-
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.forgotPassword}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -292,20 +180,8 @@ export const authService = {
    * Reset password with token
    */
   async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    // MOCK RESET PASSWORD
-    if (USE_MOCK_AUTH) {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            success: true,
-            message: 'Mật khẩu đã được đặt lại thành công!',
-          });
-        }, 500);
-      });
-    }
-
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.resetPassword}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -316,6 +192,62 @@ export const authService = {
       return await response.json();
     } catch (error) {
       console.error('Reset password error:', error);
+      return {
+        success: false,
+        message: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+      };
+    }
+  },
+
+  /**
+   * Verify OTP after registration
+   */
+  async verifyOtp(email: string, otpCode: string): Promise<LoginResponse> {
+    try {
+      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.verifyOtp}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          otpCode: otpCode
+        }),
+      });
+
+      const apiResponse = await response.json();
+
+      if (response.ok && apiResponse.success) {
+        // OTP verified successfully, save token and user data
+        const token = apiResponse.data?.accessToken || apiResponse.data?.token || apiResponse.token;
+        const userData = apiResponse.data ? {
+          id: apiResponse.data.id || apiResponse.data.email,
+          email: apiResponse.data.email,
+          name: apiResponse.data.fullName || apiResponse.data.name,
+          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'owner' | 'staff' | 'admin'
+        } : undefined;
+
+        if (token) {
+          localStorage.setItem('authToken', token);
+        }
+        if (userData) {
+          localStorage.setItem('userData', JSON.stringify(userData));
+        }
+
+        return {
+          success: true,
+          token: token,
+          user: userData,
+          message: apiResponse.message
+        };
+      }
+
+      return {
+        success: false,
+        message: apiResponse.message || 'Mã OTP không hợp lệ'
+      };
+    } catch (error) {
+      console.error('Verify OTP error:', error);
       return {
         success: false,
         message: 'Đã xảy ra lỗi. Vui lòng thử lại.',

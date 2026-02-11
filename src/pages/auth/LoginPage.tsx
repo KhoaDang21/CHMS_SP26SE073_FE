@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, Waves } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { authService } from '../../services/authService';
 import { authConfig } from '../../config/authConfig';
+import toast from 'react-hot-toast'; // 👈 THÊM IMPORT
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -20,38 +21,31 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      console.log('Đăng nhập với:', { email, password, rememberMe });
-      
       const response = await authService.login({
         email,
         password,
         rememberMe,
       });
-      
-      console.log('Login response:', response);
 
       if (response.success) {
-        // Login thành công
+        // 👇 THÊM TOAST
+        toast.success(`Chào mừng ${response.user?.name || 'bạn'}!`);
+        
         const userRole = response.user?.role || 'customer';
         const redirectPath = authConfig.redirectPaths[userRole];
         
-        console.log('Chuyển hướng đến:', redirectPath);
-        
-        // Hiển thị thông báo thành công (optional)
-        // toast.success(response.message || 'Đăng nhập thành công!');
-        
-        // Redirect sau 500ms
         setTimeout(() => {
           navigate(redirectPath, { replace: true });
         }, 500);
         
       } else {
-        // Login thất bại
         setError(response.message || 'Email hoặc mật khẩu không đúng');
+        toast.error(response.message || 'Email hoặc mật khẩu không đúng'); // 👈 THÊM TOAST
       }
     } catch (err) {
       console.error('Login error:', err);
       setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      toast.error('Đã xảy ra lỗi. Vui lòng thử lại.'); // 👈 THÊM TOAST
     } finally {
       setIsLoading(false);
     }
@@ -85,13 +79,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Test Account Info */}
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs font-semibold text-blue-900 mb-1">🧪 Tài khoản test:</p>
-              <p className="text-xs text-blue-700">Email: <code className="bg-blue-100 px-1 rounded">customer@test.com</code></p>
-              <p className="text-xs text-blue-700">Password: <code className="bg-blue-100 px-1 rounded">Customer123!</code></p>
-            </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email Input */}
               <div>
@@ -107,7 +94,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="customer@test.com"
+                    placeholder="Nhập email của bạn"
                     className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm"
                     required
                     disabled={isLoading}
@@ -129,7 +116,7 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Customer123!"
+                    placeholder="Nhập mật khẩu"
                     className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-sm"
                     required
                     disabled={isLoading}
