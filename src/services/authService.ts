@@ -176,17 +176,44 @@ export const authService = {
     }
   },
 
+  // /**
+  //  * Reset password with token
+  //  */
+  // async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  //   try {
+  //     const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.resetPassword}`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ token, newPassword }),
+  //     });
+
+  //     return await response.json();
+  //   } catch (error) {
+  //     console.error('Reset password error:', error);
+  //     return {
+  //       success: false,
+  //       message: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+  //     };
+  //   }
+  // },
+
   /**
-   * Reset password with token
+   * Reset password with OTP
    */
-  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  async resetPassword(email: string, otpCode: string, newPassword: string): Promise<{ success: boolean; message: string }> {
     try {
       const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.resetPassword}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token, newPassword }),
+        body: JSON.stringify({ 
+          email: email,
+          otpCode: otpCode,
+          newPassword: newPassword 
+        }),
       });
 
       return await response.json();
