@@ -3,24 +3,24 @@
 export const authConfig = {
   // API Configuration
   api: {
-    baseUrl: 'https://localhost:7206/api',
+    baseUrl: "http://157.245.153.83:5000/api",
     endpoints: {
-      login: '/Auth/login',
-      register: '/Auth/register',
-      verifyOtp: '/Auth/verify-otp',
-      logout: '/Auth/logout',
-      forgotPassword: '/Auth/forgot-password',
-      resetPassword: '/Auth/reset-password',
-      refreshToken: '/Auth/refresh-token',
+      login: "/Auth/login",
+      register: "/Auth/register",
+      verifyOtp: "/Auth/verify-otp",
+      logout: "/Auth/logout",
+      forgotPassword: "/Auth/forgot-password",
+      resetPassword: "/Auth/reset-password",
+      refreshToken: "/Auth/refresh-token",
     },
   },
 
   // Token storage key
-  tokenKey: 'authToken',
-  
+  tokenKey: "authToken",
+
   // Session timeout (in milliseconds)
   sessionTimeout: 24 * 60 * 60 * 1000, // 24 hours
-  
+
   // Password requirements
   passwordRequirements: {
     minLength: 8,
@@ -29,7 +29,7 @@ export const authConfig = {
     requireNumbers: true,
     requireSpecialChars: true,
   },
-  
+
   // OAuth providers (for future implementation)
   oauthProviders: {
     google: {
@@ -41,23 +41,23 @@ export const authConfig = {
       clientId: import.meta.env.VITE_FACEBOOK_CLIENT_ID,
     },
   },
-  
+
   // Redirect paths after login based on role
   redirectPaths: {
-    customer: '/',
-    owner: '/owner/dashboard',
-    staff: '/staff/dashboard',
-    admin: '/admin/dashboard',
+    customer: "/customer/dashboard",
+    owner: "/owner/dashboard",
+    staff: "/staff/dashboard",
+    admin: "/admin/dashboard",
   },
-  
+
   // Public routes that don't require authentication
   publicRoutes: [
-    '/',
-    '/auth/login',
-    '/auth/register',
-    '/auth/forgot-password',
-    '/auth/reset-password',
-    '/search',
-    '/homestay/:id',
+    "/",
+    "/auth/login",
+    "/auth/register",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+    "/search",
+    "/homestay/:id",
   ],
 };
