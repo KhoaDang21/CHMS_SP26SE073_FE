@@ -195,13 +195,13 @@ export default function Header() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate('/auth/login')}
-                  className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 font-medium transition-colors rounded-lg"
                 >
                   Đăng Nhập
                 </button>
                 <button
                   onClick={() => navigate('/auth/register')}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all font-medium"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-400 hover:to-cyan-400 transition-all font-medium"
                 >
                   Đăng Ký
                 </button>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   MapPin,
@@ -10,10 +10,12 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { authService } from "../../services/authService";
+import { bookingService, type Booking } from "../../services/bookingService";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import MainLayout from "../../layouts/MainLayout";
+import toast from "react-hot-toast";
 
-// Mock data for homestays
+// Mock data cho homestays (BE chưa có API)
 const featuredHomestays = [
   {
     id: 1,
@@ -22,8 +24,7 @@ const featuredHomestays = [
     price: 2500000,
     rating: 4.9,
     reviews: 128,
-    image:
-      "https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWFjaCUyMGhvdXNlJTIwdmlsbGF8ZW58MXx8fHwxNzY3ODIzMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    image: "https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?w=400",
     guests: 6,
     bedrooms: 3,
     isFavorite: true,
@@ -35,8 +36,7 @@ const featuredHomestays = [
     price: 1800000,
     rating: 4.8,
     reviews: 95,
-    image:
-      "https://images.unsplash.com/photo-1761920555057-54bbc392135c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2FzdGFsJTIwaG9tZXN0YXl8ZW58MXx8fHwxNzY3ODUxOTYzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    image: "https://images.unsplash.com/photo-1761920555057-54bbc392135c?w=400",
     guests: 4,
     bedrooms: 2,
     isFavorite: false,
@@ -48,8 +48,7 @@ const featuredHomestays = [
     price: 3200000,
     rating: 5.0,
     reviews: 156,
-    image:
-      "https://images.unsplash.com/photo-1583401535382-a0814c295b0b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvY2VhbiUyMHZpZXclMjByZXNvcnR8ZW58MXx8fHwxNzY3ODUxOTYyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    image: "https://images.unsplash.com/photo-1583401535382-a0814c295b0b?w=400",
     guests: 8,
     bedrooms: 4,
     isFavorite: true,
@@ -61,25 +60,10 @@ const featuredHomestays = [
     price: 1500000,
     rating: 4.7,
     reviews: 73,
-    image:
-      "https://images.unsplash.com/photo-1709775901932-86f1c3137861?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cm9waWNhbCUyMGJlYWNoJTIwaG91c2V8ZW58MXx8fHwxNzY3ODUxOTYwfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    image: "https://images.unsplash.com/photo-1709775901932-86f1c3137861?w=400",
     guests: 5,
     bedrooms: 2,
     isFavorite: false,
-  },
-];
-
-const upcomingBookings = [
-  {
-    id: 1,
-    homestayName: "Sunset Beach Villa",
-    location: "Nha Trang, Khánh Hòa",
-    checkIn: "2026-01-15",
-    checkOut: "2026-01-18",
-    guests: 4,
-    status: "confirmed",
-    image:
-      "https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWFjaCUyMGhvdXNlJTIwdmlsbGF8ZW58MXx8fHwxNzY3ODIzMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
   },
 ];
 
@@ -89,11 +73,37 @@ export default function CustomerDashboard() {
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
   const [guests, setGuests] = useState(1);
+  
+  // State cho bookings từ API
+  const [myBookings, setMyBookings] = useState<Booking[]>([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+
+  // Load bookings khi component mount
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  const loadBookings = async () => {
+    setIsLoadingBookings(true);
+    try {
+      const bookings = await bookingService.getMyBookings();
+      setMyBookings(bookings);
+    } catch (error) {
+      console.error('Load bookings error:', error);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  };
+
+  // Lọc booking sắp tới (confirmed và chưa qua ngày checkIn)
+  const upcomingBookings = myBookings.filter(
+    b => b.status === 'confirmed' && new Date(b.checkIn) >= new Date()
+  );
 
   const stats = [
     {
       label: "Chuyến Đi Sắp Tới",
-      value: "1",
+      value: upcomingBookings.length.toString(),
       icon: Calendar,
       color: "bg-blue-500",
     },
@@ -224,14 +234,22 @@ export default function CustomerDashboard() {
             </div>
           </div>
 
-          <button className="w-full mt-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium">
+          <button 
+            onClick={() => toast('Tính năng tìm kiếm đang phát triển', { icon: 'ℹ️' })}
+            className="w-full mt-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium"
+          >
             <Search className="w-5 h-5" />
             Tìm Kiếm Homestay
           </button>
         </div>
 
         {/* Upcoming Bookings */}
-        {upcomingBookings.length > 0 && (
+        {isLoadingBookings ? (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <p className="mt-2 text-gray-600">Đang tải booking...</p>
+          </div>
+        ) : upcomingBookings.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">Chuyến Đi Sắp Tới</h3>
@@ -259,15 +277,22 @@ export default function CustomerDashboard() {
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h4 className="font-semibold text-gray-900">
-                            {booking.homestayName}
+                            {booking.homestayName || 'Homestay'}
                           </h4>
                           <p className="text-sm text-gray-600 flex items-center gap-1">
                             <MapPin className="w-4 h-4" />
-                            {booking.location}
+                            {booking.location || 'Đang cập nhật'}
                           </p>
                         </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                          Đã Xác Nhận
+                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${
+                          booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          booking.status === 'cancelled' ? 'bg-red-100 text-red-700' : 
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {booking.status === 'confirmed' ? 'Đã Xác Nhận' : 
+                           booking.status === 'pending' ? 'Chờ Xác Nhận' :
+                           booking.status === 'cancelled' ? 'Đã Hủy' : 'Hoàn Thành'}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
@@ -282,7 +307,7 @@ export default function CustomerDashboard() {
                       </div>
                       <div className="flex items-center gap-1 text-sm text-gray-600">
                         <Users className="w-4 h-4" />
-                        {booking.guests} Khách
+                        {booking.guestsCount} Khách
                       </div>
                     </div>
                   </div>
@@ -314,7 +339,10 @@ export default function CustomerDashboard() {
                     alt={homestay.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
-                  <button className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform">
+                  <button 
+                    onClick={() => toast('Tính năng yêu thích đang phát triển', { icon: 'ℹ️' })}
+                    className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+                  >
                     <Heart
                       className={`w-5 h-5 ${
                         homestay.isFavorite 
