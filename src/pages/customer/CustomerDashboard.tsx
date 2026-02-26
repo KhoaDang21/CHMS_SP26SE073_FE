@@ -15,7 +15,6 @@ import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import MainLayout from "../../layouts/MainLayout";
 import toast from "react-hot-toast";
 
-// Mock data cho homestays (BE chưa có API)
 const featuredHomestays = [
   {
     id: 1,
@@ -73,7 +72,7 @@ export default function CustomerDashboard() {
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
   const [guests, setGuests] = useState(1);
-  
+
   // State cho bookings từ API
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
@@ -107,11 +106,11 @@ export default function CustomerDashboard() {
       icon: Calendar,
       color: "bg-blue-500",
     },
-    { 
-      label: "Yêu Thích", 
-      value: "2", 
-      icon: Heart, 
-      color: "bg-pink-500" 
+    {
+      label: "Yêu Thích",
+      value: "2",
+      icon: Heart,
+      color: "bg-pink-500"
     },
     {
       label: "Điểm Thưởng",
@@ -234,7 +233,7 @@ export default function CustomerDashboard() {
             </div>
           </div>
 
-          <button 
+          <button
             onClick={() => toast('Tính năng tìm kiếm đang phát triển', { icon: 'ℹ️' })}
             className="w-full mt-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium"
           >
@@ -284,15 +283,14 @@ export default function CustomerDashboard() {
                             {booking.location || 'Đang cập nhật'}
                           </p>
                         </div>
-                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${
-                          booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          booking.status === 'cancelled' ? 'bg-red-100 text-red-700' : 
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {booking.status === 'confirmed' ? 'Đã Xác Nhận' : 
-                           booking.status === 'pending' ? 'Chờ Xác Nhận' :
-                           booking.status === 'cancelled' ? 'Đã Hủy' : 'Hoàn Thành'}
+                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                            booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                'bg-gray-100 text-gray-700'
+                          }`}>
+                          {booking.status === 'confirmed' ? 'Đã Xác Nhận' :
+                            booking.status === 'pending' ? 'Chờ Xác Nhận' :
+                              booking.status === 'cancelled' ? 'Đã Hủy' : 'Hoàn Thành'}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
@@ -339,16 +337,15 @@ export default function CustomerDashboard() {
                     alt={homestay.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
-                  <button 
+                  <button
                     onClick={() => toast('Tính năng yêu thích đang phát triển', { icon: 'ℹ️' })}
                     className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
                   >
                     <Heart
-                      className={`w-5 h-5 ${
-                        homestay.isFavorite 
-                          ? "fill-red-500 text-red-500" 
+                      className={`w-5 h-5 ${homestay.isFavorite
+                          ? "fill-red-500 text-red-500"
                           : "text-gray-600"
-                      }`}
+                        }`}
                     />
                   </button>
                 </div>
