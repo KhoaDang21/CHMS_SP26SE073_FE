@@ -51,6 +51,7 @@ export const authService = {
         const storage = credentials.rememberMe ? localStorage : sessionStorage;
 
         const token = apiResponse.data?.accessToken || apiResponse.data?.token || apiResponse.token;
+        const refreshToken = apiResponse.data?.refreshToken;
         const userData = apiResponse.data ? {
           id: apiResponse.data.id || apiResponse.data.email,
           email: apiResponse.data.email,
@@ -60,6 +61,9 @@ export const authService = {
 
         if (token) {
           storage.setItem('authToken', token);
+        }
+        if (refreshToken) {
+          storage.setItem('refreshToken', refreshToken);
         }
         if (userData) {
           storage.setItem('userData', JSON.stringify(userData));
@@ -124,11 +128,36 @@ export const authService = {
   /**
    * Logout user
    */
-  logout(): void {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    sessionStorage.removeItem('authToken');
-    sessionStorage.removeItem('userData');
+  async logout(): Promise<void> {
+    const token = this.getToken();
+    const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+    
+    try {
+      // Call API logout để invalidate token trên server
+      if (token && refreshToken) {
+        await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.logout}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            accessToken: token,
+            refreshToken: refreshToken,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      // Xóa tất cả token và userData khỏi storage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('userData');
+      sessionStorage.removeItem('refreshToken');
+    }
   },
 
   /**
@@ -247,6 +276,7 @@ export const authService = {
       if (response.ok && apiResponse.success) {
         // OTP verified successfully, save token and user data
         const token = apiResponse.data?.accessToken || apiResponse.data?.token || apiResponse.token;
+        const refreshToken = apiResponse.data?.refreshToken;
         const userData = apiResponse.data ? {
           id: apiResponse.data.id || apiResponse.data.email,
           email: apiResponse.data.email,
@@ -256,6 +286,9 @@ export const authService = {
 
         if (token) {
           localStorage.setItem('authToken', token);
+        }
+        if (refreshToken) {
+          localStorage.setItem('refreshToken', refreshToken);
         }
         if (userData) {
           localStorage.setItem('userData', JSON.stringify(userData));

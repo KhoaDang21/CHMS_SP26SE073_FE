@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 const navigationItems = [
   {
@@ -74,8 +74,8 @@ export default function Header() {
   // Chọn navigation items dựa trên trạng thái đăng nhập
   const currentNavigationItems = isAuthenticated ? authenticatedNavigationItems : navigationItems;
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleLogout = async () => {
+    await authService.logout();
     toast.success('Đăng xuất thành công!');
     navigate('/');
   };
