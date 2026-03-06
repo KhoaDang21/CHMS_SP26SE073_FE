@@ -1,7 +1,7 @@
 export const apiConfig = {
   baseURL:
     import.meta.env.VITE_API_URL ||
-    "http://157.245.153.83:5000/api",
+    "http://163.227.230.54:8088/api",
   timeout: 10000,
 
   endpoints: {
