@@ -13,6 +13,10 @@ import CustomerExplorePage from '../pages/customer/ExplorePage';
 import BookingsPage from '../pages/customer/BookingsPage';
 import FavoritesPage from '../pages/customer/FavoritesPage';
 import MessagesPage from '../pages/customer/MessagesPage';
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import AmenityManagement from '../pages/admin/AmenityManagement';
+import StaffDashboard from '../pages/staff/StaffDashboard';
+import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import { authService } from '../services/authService';
 
 // Protected Route Component
@@ -21,7 +25,7 @@ function ProtectedRoute({
   allowedRoles 
 }: { 
   children: React.ReactNode;
-  allowedRoles?: Array<'customer' | 'owner' | 'staff' | 'admin'>;
+  allowedRoles?: Array<'customer' | 'manager' | 'staff' | 'admin'>;
 }) {
   const isAuthenticated = authService.isAuthenticated();
   const user = authService.getUser();
@@ -35,7 +39,7 @@ function ProtectedRoute({
     // Không có quyền truy cập -> redirect về trang phù hợp với role
     const redirectPaths: Record<string, string> = {
       customer: '/customer/dashboard',
-      owner: '/owner/dashboard',
+      manager: '/manager/dashboard',
       staff: '/staff/dashboard',
       admin: '/admin/dashboard',
     };
@@ -108,35 +112,43 @@ export function AppRoutes() {
         } 
       />
 
-      {/* Protected Routes - Owner (add later) */}
-      {/* <Route 
-        path="/owner/dashboard" 
+      {/* Protected Routes - Manager */}
+      <Route 
+        path="/manager/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['owner']}>
-            <OwnerDashboard />
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerDashboard />
           </ProtectedRoute>
         } 
-      /> */}
+      />
 
-      {/* Protected Routes - Staff (add later) */}
-      {/* <Route 
+      {/* Protected Routes - Staff */}
+      <Route 
         path="/staff/dashboard" 
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <StaffDashboard />
           </ProtectedRoute>
         } 
-      /> */}
+      />
 
-      {/* Protected Routes - Admin (add later) */}
-      {/* <Route 
+      {/* Protected Routes - Admin */}
+      <Route 
         path="/admin/dashboard" 
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
           </ProtectedRoute>
         } 
-      /> */}
+      />
+      <Route 
+        path="/admin/amenities" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AmenityManagement />
+          </ProtectedRoute>
+        } 
+      />
 
       {/* Unauthorized */}
       <Route 

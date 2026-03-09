@@ -23,6 +23,26 @@ export const apiConfig = {
       delete: (id: string) => `/homestays/${id}`,
       reviews: (id: string) => `/homestays/${id}/reviews`,
     },
+    adminHomestays: {
+      list: "/admin/homestays",
+      create: "/admin/homestays",
+      detail: (id: string) => `/admin/homestays/${id}`,
+      update: (id: string) => `/admin/homestays/${id}`,
+      delete: (id: string) => `/admin/homestays/${id}`,
+      updateStatus: (id: string) => `/admin/homestays/${id}/status`,
+      updateAmenities: (id: string) => `/admin/homestays/${id}/amenities`,
+      uploadPhotos: (id: string) => `/admin/homestays/${id}/photos`,
+      reorderPhotos: (id: string) => `/admin/homestays/${id}/photos/reorder`,
+    },
+    amenities: {
+      list: "/amenities",
+      detail: (id: string) => `/amenities/${id}`,
+    },
+    adminAmenities: {
+      create: "/admin/amenities",
+      update: (id: string) => `/admin/amenities/${id}`,
+      delete: (id: string) => `/admin/amenities/${id}`,
+    },
     bookings: {
       list: "/bookings",
       detail: (id: string) => `/bookings/${id}`,
