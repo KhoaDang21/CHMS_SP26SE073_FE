@@ -17,7 +17,7 @@ export interface Amenity {
   description: string;
   descriptionEn: string;
   category: AmenityCategory;
-  icon: string;
+  iconUrl: string;
   isPremium: boolean;
   isActive: boolean;
   createdAt: string;
@@ -26,12 +26,8 @@ export interface Amenity {
 
 export interface CreateAmenityDTO {
   name: string;
-  nameEn: string;
-  description: string;
-  descriptionEn: string;
   category: AmenityCategory;
-  icon: string;
-  isPremium: boolean;
+  iconUrl: string;
 }
 
 export interface UpdateAmenityDTO extends Partial<CreateAmenityDTO> {

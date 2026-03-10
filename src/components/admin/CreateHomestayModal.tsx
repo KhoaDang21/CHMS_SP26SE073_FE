@@ -54,7 +54,8 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   const loadAmenities = async () => {
     try {
       const data = await amenityService.getAllAmenities();
-      setAmenities(data.filter(a => a.isActive));
+      console.log('Loaded amenities:', data);
+      setAmenities(data); // Show all amenities for admin
     } catch (error) {
       console.error('Error loading amenities:', error);
     }
@@ -117,17 +118,6 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     console.log('Submitting homestay payload:', payload);
     onSubmit(payload);
   };
-
-  const toggleAmenity = (amenityId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      amenityIds: prev.amenityIds?.includes(amenityId)
-        ? prev.amenityIds.filter(id => id !== amenityId)
-        : [...(prev.amenityIds || []), amenityId]
-    }));
-  };
-
-
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -390,32 +380,63 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
           {currentStep === 4 && (
             <div className="space-y-4">
               <div>
-                <h3 className="font-medium text-gray-900 mb-3">Chọn tiện ích</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-                  {amenities.map((amenity) => (
-                    <button
-                      key={amenity.id}
-                      type="button"
-                      onClick={() => toggleAmenity(amenity.id)}
-                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                        formData.amenityIds?.includes(amenity.id)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        formData.amenityIds?.includes(amenity.id)
-                          ? 'border-blue-500 bg-blue-500'
-                          : 'border-gray-300'
-                      }`}>
-                        {formData.amenityIds?.includes(amenity.id) && (
-                          <Check className="w-3 h-3 text-white" />
-                        )}
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chọn tiện ích cho homestay
+                </label>
+                {amenities.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <Sparkles className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600 mb-2">Chưa có tiện ích nào</p>
+                    <p className="text-sm text-gray-500">Hãy thêm tiện ích từ trang Quản lý tiện ích</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <select
+                        multiple
+                        value={formData.amenityIds || []}
+                        onChange={(e) => {
+                          const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
+                          setFormData({ ...formData, amenityIds: selected });
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[200px]"
+                        size={Math.min(amenities.length, 8)}
+                      >
+                        {amenities.map((amenity) => (
+                          <option key={amenity.id} value={amenity.id} className="py-2 px-3">
+                            {amenity.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Giữ Ctrl (Windows) hoặc Cmd (Mac) để chọn nhiều tiện ích
+                      </p>
+                    </div>
+
+                    {/* Selected amenities preview */}
+                    {formData.amenityIds && formData.amenityIds.length > 0 && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          Đã chọn {formData.amenityIds.length} tiện ích:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {formData.amenityIds.map((amenityId) => {
+                            const amenity = amenities.find(a => a.id === amenityId);
+                            return amenity ? (
+                              <span
+                                key={amenityId}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-blue-200 rounded-full text-sm"
+                              >
+                                <Check className="w-3 h-3 text-blue-600" />
+                                {amenity.name}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
                       </div>
-                      <span className="text-sm text-gray-700">{amenity.name}</span>
-                    </button>
-                  ))}
-                </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}

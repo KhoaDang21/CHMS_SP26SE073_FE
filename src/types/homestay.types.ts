@@ -35,7 +35,7 @@ export interface Homestay {
   reviewCount: number;
   ownerId: string;
   ownerName: string;
-  status: 'active' | 'inactive' | 'pending';
+  status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'MAINTENANCE';
   createdAt: string;
   updatedAt: string;
 }
@@ -66,7 +66,7 @@ export interface Customer {
   totalBookings: number;
   totalSpent: number;
   joinedDate: string;
-  status: 'active' | 'inactive';
+  status: 'ACTIVE' | 'INACTIVE';
 }
 
 export interface Staff {
@@ -77,6 +77,6 @@ export interface Staff {
   role: 'staff' | 'manager';
   avatar?: string;
   assignedHomestays: number;
-  status: 'active' | 'inactive';
+  status: 'ACTIVE' | 'INACTIVE';
   joinedDate: string;
 }

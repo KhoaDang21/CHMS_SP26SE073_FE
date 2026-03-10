@@ -18,7 +18,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
-import { homestayService } from '../../services/adminHomestayService';
+import { homestayService } from '../../services/homestayService';
 import type { DashboardStats, RevenueData } from '../../types/homestay.types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RoleBadge } from '../../components/common/RoleBadge';
@@ -40,10 +40,21 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [statsData, revenueDataResult] = await Promise.all([
-        homestayService.getDashboardStats(),
-        homestayService.getRevenueData(),
-      ]);
+      // TODO: Implement getDashboardStats and getRevenueData in homestayService
+      // For now, use mock data
+      const statsData: DashboardStats = {
+        totalRevenue: 0,
+        revenueGrowth: 0,
+        totalBookings: 0,
+        bookingGrowth: 0,
+        totalCustomers: 0,
+        occupancyRate: 0,
+        pendingBookings: 0,
+        totalHomestays: 0,
+        averageRating: 0,
+      };
+      const revenueDataResult: RevenueData[] = [];
+      
       setStats(statsData);
       setRevenueData(revenueDataResult);
     } catch (error) {

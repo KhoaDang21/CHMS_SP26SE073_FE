@@ -25,7 +25,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
-import { homestayService } from '../../services/adminHomestayService';
+import { homestayService } from '../../services/homestayService';
 import type { Homestay, CreateHomestayDTO } from '../../types/homestay.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
@@ -57,7 +57,7 @@ export default function HomestayManagement() {
   const loadHomestays = async () => {
     setLoading(true);
     try {
-      const data = await homestayService.getAdminHomestays();
+      const data = await homestayService.getAllAdminHomestays();
       setHomestays(data);
     } catch (error) {
       console.error('Error loading homestays:', error);
@@ -96,7 +96,7 @@ export default function HomestayManagement() {
 
   const handleToggleStatus = async (homestay: Homestay) => {
     const newStatus = homestay.status === 'ACTIVE' ? 'inactive' : 'active';
-    const result = await homestayService.updateHomestayStatus(homestay.id, newStatus);
+    const result = await homestayService.updateAdminHomestayStatus(homestay.id, newStatus);
     
     if (result.success) {
       toast.success(`Đã ${newStatus === 'active' ? 'kích hoạt' : 'vô hiệu hóa'} homestay`);
