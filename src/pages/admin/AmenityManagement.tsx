@@ -49,11 +49,18 @@ const categoryLabels: Record<AmenityCategory, { vi: string; en: string; color: s
   other: { vi: 'Khác', en: 'Other', color: 'bg-gray-100 text-gray-700' },
 };
 
-// Available icons for selection
+// Available icons as URLs (using generic icon URLs or placeholder)
 const availableIcons = [
-  'Wifi', 'Wind', 'Tv', 'Flame', 'Box', 'Airplay', 'Droplet', 
-  'Waves', 'FlameKindling', 'Trees', 'Lock', 'Camera', 
-  'ShieldCheck', 'Shirt', 'Plane', 'Sparkles'
+  { name: 'Wifi', url: 'https://cdn-icons-png.flaticon.com/512/93/93158.png' },
+  { name: 'Air Conditioner', url: 'https://cdn-icons-png.flaticon.com/512/2888/2888794.png' },
+  { name: 'TV', url: 'https://cdn-icons-png.flaticon.com/512/1998/1998089.png' },
+  { name: 'Kitchen', url: 'https://cdn-icons-png.flaticon.com/512/1886/1886715.png' },
+  { name: 'Parking', url: 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png' },
+  { name: 'Washing Machine', url: 'https://cdn-icons-png.flaticon.com/512/2917/2917995.png' },
+  { name: 'Pool', url: 'https://cdn-icons-png.flaticon.com/512/869/869869.png' },
+  { name: 'Security', url: 'https://cdn-icons-png.flaticon.com/512/3064/3064197.png' },
+  { name: 'Pet Friendly', url: 'https://cdn-icons-png.flaticon.com/512/2138/2138440.png' },
+  { name: 'Gym', url: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png' },
 ];
 
 export default function AmenityManagement() {
@@ -70,12 +77,8 @@ export default function AmenityManagement() {
   // Form state
   const [formData, setFormData] = useState<CreateAmenityDTO>({
     name: '',
-    nameEn: '',
-    description: '',
-    descriptionEn: '',
     category: 'basic',
-    icon: 'Sparkles',
-    isPremium: false,
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/93/93158.png',
   });
 
   useEffect(() => {
@@ -100,20 +103,33 @@ export default function AmenityManagement() {
   };
 
   const handleCreate = async () => {
-    if (!formData.name.trim() || !formData.nameEn.trim()) {
-      toast.error('Vui lòng điền đầy đủ tên tiện ích');
+    if (!formData.name.trim()) {
+      toast.error('Vui lòng điền tên tiện ích');
       return;
     }
 
     try {
-      await amenityService.createAmenity(formData);
+      // Try adding optional fields that backend might expect
+      const payload = {
+        ...formData,
+        nameEn: formData.name, // Duplicate as English name
+        description: formData.name,
+        descriptionEn: formData.name,
+        isPremium: false,
+        isActive: true,
+      };
+      
+      console.log('Form data before submit:', formData);
+      console.log('Payload with optional fields:', payload);
+      
+      await amenityService.createAmenity(payload);
       toast.success('Thêm tiện ích thành công');
       setShowModal(false);
       resetForm();
       loadData();
     } catch (error) {
       console.error('Error creating amenity:', error);
-      toast.error('Không thể thêm tiện ích');
+      toast.error('Không thể thêm tiện ích. Vui lòng kiểm tra dữ liệu nhập.');
     }
   };
 
@@ -161,12 +177,8 @@ export default function AmenityManagement() {
     setEditingAmenity(amenity);
     setFormData({
       name: amenity.name,
-      nameEn: amenity.nameEn,
-      description: amenity.description,
-      descriptionEn: amenity.descriptionEn,
       category: amenity.category,
-      icon: amenity.icon,
-      isPremium: amenity.isPremium,
+      iconUrl: amenity.icon,
     });
     setShowModal(true);
   };
@@ -174,12 +186,8 @@ export default function AmenityManagement() {
   const resetForm = () => {
     setFormData({
       name: '',
-      nameEn: '',
-      description: '',
-      descriptionEn: '',
       category: 'basic',
-      icon: 'Sparkles',
-      isPremium: false,
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/93/93158.png',
     });
     setEditingAmenity(null);
   };
@@ -527,10 +535,10 @@ export default function AmenityManagement() {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Vietnamese Name */}
+              {/* Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên tiện ích (Tiếng Việt) <span className="text-red-500">*</span>
+                  Tên tiện ích <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -541,94 +549,36 @@ export default function AmenityManagement() {
                 />
               </div>
 
-              {/* English Name */}
+              {/* Category - Text Input for Testing */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên tiện ích (English) <span className="text-red-500">*</span>
+                  Danh mục <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 ml-2">(Thử: basic, BASIC, Cơ bản, hoặc xem Swagger)</span>
                 </label>
                 <input
                   type="text"
-                  value={formData.nameEn}
-                  onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: High-speed WiFi"
+                  placeholder="basic"
                 />
               </div>
 
-              {/* Vietnamese Description */}
+              {/* Icon URL - Text Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả (Tiếng Việt)
+                  Icon URL <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Mô tả chi tiết về tiện ích"
-                />
-              </div>
-
-              {/* English Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả (English)
-                </label>
-                <textarea
-                  value={formData.descriptionEn}
-                  onChange={(e) => setFormData({ ...formData, descriptionEn: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Detailed description of the amenity"
-                />
-              </div>
-
-              {/* Category & Icon */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Danh mục
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value as AmenityCategory })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {Object.entries(categoryLabels).map(([key, value]) => (
-                      <option key={key} value={key}>{value.vi}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Icon
-                  </label>
-                  <select
-                    value={formData.icon}
-                    onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {availableIcons.map((iconName) => (
-                      <option key={iconName} value={iconName}>{iconName}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Premium Checkbox */}
-              <div className="flex items-center gap-3">
                 <input
-                  type="checkbox"
-                  id="isPremium"
-                  checked={formData.isPremium}
-                  onChange={(e) => setFormData({ ...formData, isPremium: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  type="text"
+                  value={formData.iconUrl}
+                  onChange={(e) => setFormData({ ...formData, iconUrl: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="https://example.com/icon.png"
                 />
-                <label htmlFor="isPremium" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-amber-500" />
-                  Tiện ích cao cấp (có phụ phí)
-                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Mẫu: https://cdn-icons-png.flaticon.com/512/93/93158.png
+                </p>
               </div>
             </div>
 
