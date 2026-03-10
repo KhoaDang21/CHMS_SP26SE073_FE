@@ -1,7 +1,5 @@
 export const apiConfig = {
-  baseURL:
-    import.meta.env.VITE_API_URL ||
-    "http://163.227.230.54:8088/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://163.227.230.54:8088/api",
   timeout: 10000,
 
   endpoints: {
@@ -48,7 +46,11 @@ export const apiConfig = {
       detail: (id: string) => `/bookings/${id}`,
       create: "/bookings",
       cancel: (id: string) => `/bookings/${id}/cancel`,
-      confirm: (id: string) => `/bookings/${id}/confirm`,
+      // Extra endpoints present on BE
+      calculate: "/bookings/calculate",
+      modify: (id: string) => `/bookings/${id}/modify`,
+      cancellationPolicy: (id: string) => `/bookings/${id}/cancellation-policy`,
+      specialRequests: (id: string) => `/bookings/${id}/special-requests`,
     },
     users: {
       list: "/users",

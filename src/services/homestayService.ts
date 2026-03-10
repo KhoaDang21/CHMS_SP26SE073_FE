@@ -1,188 +1,157 @@
-// Homestay Service - Handle homestay-related API calls
-
-import { authConfig } from '../config/authConfig';
-import type { DashboardStats, RevenueData, Homestay, Booking, Customer, Staff } from '../types/homestay.types';
-
-const API_BASE_URL = authConfig.api.baseUrl;
-
-// Helper function to get auth token
-const getAuthToken = (): string | null => {
-  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-};
-
-// Helper function for authenticated API calls
-async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const token = getAuthToken();
-  
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data;
-}
+import { apiService } from "./apiService";
+import { apiConfig } from "../config/apiConfig";
+import type { Homestay } from "../types/homestay.types";
 
 export const homestayService = {
   /**
-   * Get dashboard statistics
+   * GET /api/admin/homestays
    */
-  async getDashboardStats(): Promise<DashboardStats> {
+  async getAllAdminHomestays(): Promise<Homestay[]> {
     try {
-      const data = await apiCall<{ success: boolean; data: DashboardStats }>('/Dashboard/stats');
-      return data.data;
+      const res = await apiService.get<any>(
+        apiConfig.endpoints.adminHomestays.list,
+      );
+      const payload = res?.data ?? res;
+      return Array.isArray(payload)
+        ? payload
+        : (payload?.items ?? payload?.Items ?? []);
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get revenue data for charts
-   */
-  async getRevenueData(): Promise<RevenueData[]> {
-    try {
-      const data = await apiCall<{ success: boolean; data: RevenueData[] }>('/Dashboard/revenue');
-      return data.data || [];
-    } catch (error) {
-      console.error('Error fetching revenue data:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get all homestays
-   */
-  async getHomestays(): Promise<Homestay[]> {
-    try {
-      const data = await apiCall<{ success: boolean; data: Homestay[] }>('/Homestay/list');
-      return data.data || [];
-    } catch (error) {
-      console.error('Error fetching homestays:', error);
-      // Return empty array on error
+      console.error("Error fetching admin homestays:", error);
       return [];
     }
   },
 
   /**
-   * Get homestay by ID
+   * GET /api/admin/homestays/{id}
    */
-  async getHomestayById(id: string): Promise<Homestay> {
+  async getAdminHomestayById(id: string): Promise<Homestay | null> {
     try {
-      const data = await apiCall<{ success: boolean; data: Homestay }>(`/Homestay/${id}`);
-      return data.data;
+      const res = await apiService.get<any>(
+        apiConfig.endpoints.adminHomestays.detail(id),
+      );
+      return res?.data ?? res ?? null;
     } catch (error) {
-      console.error('Error fetching homestay:', error);
-      throw error;
+      console.error("Error fetching admin homestay by id:", error);
+      return null;
     }
   },
 
   /**
-   * Get all bookings
+   * POST /api/admin/homestays
    */
-  async getBookings(): Promise<Booking[]> {
+  async createAdminHomestay(data: any): Promise<any> {
     try {
-      const data = await apiCall<{ success: boolean; data: Booking[] }>('/Booking/list');
-      return data.data || [];
+      const res = await apiService.post<any>(
+        apiConfig.endpoints.adminHomestays.create,
+        data,
+      );
+      return res;
     } catch (error) {
-      console.error('Error fetching bookings:', error);
-      return [];
+      console.error("Error creating homestay:", error);
+      return null;
     }
   },
 
   /**
-   * Get all customers
+   * PUT /api/admin/homestays/{id}
    */
-  async getCustomers(): Promise<Customer[]> {
+  async updateAdminHomestay(id: string, data: any): Promise<any> {
     try {
-      const data = await apiCall<{ success: boolean; data: Customer[] }>('/Customer/list');
-      return data.data || [];
+      const res = await apiService.put<any>(
+        apiConfig.endpoints.adminHomestays.update(id),
+        data,
+      );
+      return res;
     } catch (error) {
-      console.error('Error fetching customers:', error);
-      return [];
+      console.error("Error updating homestay:", error);
+      return null;
     }
   },
 
   /**
-   * Get all staff
+   * PATCH /api/admin/homestays/{id}/status
    */
-  async getStaff(): Promise<Staff[]> {
+  async updateAdminHomestayStatus(id: string, status: string): Promise<any> {
     try {
-      const data = await apiCall<{ success: boolean; data: Staff[] }>('/Staff/list');
-      return data.data || [];
+      const res = await apiService.patch<any>(
+        apiConfig.endpoints.adminHomestays.updateStatus(id),
+        status,
+      );
+      return res;
     } catch (error) {
-      console.error('Error fetching staff:', error);
-      return [];
+      console.error("Error updating homestay status:", error);
+      return null;
     }
   },
 
   /**
-   * Create new homestay
+   * DELETE /api/admin/homestays/{id}
    */
-  async createHomestay(homestayData: Partial<Homestay>): Promise<Homestay> {
+  async deleteAdminHomestay(id: string): Promise<any> {
     try {
-      const data = await apiCall<{ success: boolean; data: Homestay }>('/Homestay/create', {
-        method: 'POST',
-        body: JSON.stringify(homestayData),
-      });
-      return data.data;
+      const res = await apiService.delete<any>(
+        apiConfig.endpoints.adminHomestays.delete(id),
+      );
+      return res;
     } catch (error) {
-      console.error('Error creating homestay:', error);
-      throw error;
+      console.error("Error deleting homestay:", error);
+      return null;
     }
   },
 
   /**
-   * Update homestay
+   * PUT /api/admin/homestays/{id}/amenities
    */
-  async updateHomestay(id: string, homestayData: Partial<Homestay>): Promise<Homestay> {
+  async updateAdminHomestayAmenities(
+    id: string,
+    amenityIds: string[],
+  ): Promise<any> {
     try {
-      const data = await apiCall<{ success: boolean; data: Homestay }>(`/Homestay/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(homestayData),
-      });
-      return data.data;
+      const res = await apiService.put<any>(
+        apiConfig.endpoints.adminHomestays.updateAmenities(id),
+        amenityIds,
+      );
+      return res;
     } catch (error) {
-      console.error('Error updating homestay:', error);
-      throw error;
+      console.error("Error updating homestay amenities:", error);
+      return null;
     }
   },
 
   /**
-   * Delete homestay
+   * POST /api/admin/homestays/{id}/photos - upload file
    */
-  async deleteHomestay(id: string): Promise<void> {
+  async uploadAdminHomestayPhoto(id: string, file: File): Promise<any> {
     try {
-      await apiCall<{ success: boolean }>(`/Homestay/${id}`, {
-        method: 'DELETE',
-      });
+      const form = new FormData();
+      form.append("file", file);
+      const res = await apiService.postForm<any>(
+        apiConfig.endpoints.adminHomestays.uploadPhotos(id),
+        form,
+      );
+      return res;
     } catch (error) {
-      console.error('Error deleting homestay:', error);
-      throw error;
+      console.error("Error uploading homestay photo:", error);
+      return null;
     }
   },
 
   /**
-   * Update booking status
+   * PUT /api/admin/homestays/{id}/photos/reorder
    */
-  async updateBookingStatus(id: string, status: string): Promise<Booking> {
+  async reorderAdminHomestayPhotos(
+    id: string,
+    sortedImageIds: string[],
+  ): Promise<any> {
     try {
-      const data = await apiCall<{ success: boolean; data: Booking }>(`/Booking/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      });
-      return data.data;
+      const res = await apiService.put<any>(
+        apiConfig.endpoints.adminHomestays.reorderPhotos(id),
+        sortedImageIds,
+      );
+      return res;
     } catch (error) {
-      console.error('Error updating booking status:', error);
-      throw error;
+      console.error("Error reordering homestay photos:", error);
+      return null;
     }
   },
 };
