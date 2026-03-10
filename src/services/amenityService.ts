@@ -1,134 +1,81 @@
-// Amenity Service - Handle amenity-related API calls
-
-import { authConfig } from '../config/authConfig';
-import type { Amenity, CreateAmenityDTO, UpdateAmenityDTO, AmenityStats } from '../types/amenity.types';
-
-const API_BASE_URL = authConfig.api.baseUrl;
-
-// Helper function to get auth token
-const getAuthToken = (): string | null => {
-  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-};
-
-// Helper function for authenticated API calls
-async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const token = getAuthToken();
-  
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data;
-}
+// Amenity Service - uses apiService and apiConfig to call BE endpoints
+import { apiService } from "./apiService";
+import { apiConfig } from "../config/apiConfig";
+import type {
+  Amenity,
+  CreateAmenityDTO,
+  UpdateAmenityDTO,
+} from "../types/amenity.types";
 
 export const amenityService = {
   /**
-   * Get all amenities
+   * GET /api/amenities (public)
    */
   async getAllAmenities(): Promise<Amenity[]> {
     try {
-      const data = await apiCall<{ success: boolean; data: Amenity[] }>('/Amenity/list');
-      return data.data || [];
+      const res = await apiService.get<any>(apiConfig.endpoints.amenities.list);
+      // normalize ApiResponse -> { data: [...] } or direct array
+      if (res?.data)
+        return Array.isArray(res.data) ? res.data : (res.data.Items ?? []);
+      if (Array.isArray(res)) return res;
+      return [];
     } catch (error) {
-      console.error('Error fetching amenities:', error);
+      console.error("Error fetching amenities:", error);
       return [];
     }
   },
 
   /**
-   * Get amenity statistics
+   * POST /api/admin/amenities (admin)
    */
-  async getAmenityStats(): Promise<AmenityStats> {
+  async createAmenity(
+    amenityData: CreateAmenityDTO,
+  ): Promise<{ success: boolean; message?: string } | null> {
     try {
-      const data = await apiCall<{ success: boolean; data: AmenityStats }>('/Amenity/stats');
-      return data.data;
+      const res = await apiService.post<any>(
+        apiConfig.endpoints.adminAmenities.create,
+        amenityData,
+      );
+      return res;
     } catch (error) {
-      console.error('Error fetching amenity stats:', error);
-      throw error;
+      console.error("Error creating amenity:", error);
+      return null;
     }
   },
 
   /**
-   * Get amenity by ID
+   * PUT /api/admin/amenities/{id} (admin)
    */
-  async getAmenityById(id: string): Promise<Amenity> {
+  async updateAmenity(
+    id: string,
+    amenityData: UpdateAmenityDTO,
+  ): Promise<{ success: boolean; message?: string } | null> {
     try {
-      const data = await apiCall<{ success: boolean; data: Amenity }>(`/Amenity/${id}`);
-      return data.data;
+      const res = await apiService.put<any>(
+        apiConfig.endpoints.adminAmenities.update(id),
+        amenityData,
+      );
+      return res;
     } catch (error) {
-      console.error('Error fetching amenity:', error);
-      throw error;
+      console.error("Error updating amenity:", error);
+      return null;
     }
   },
 
   /**
-   * Create new amenity
+   * DELETE /api/admin/amenities/{id} (admin)
    */
-  async createAmenity(amenityData: CreateAmenityDTO): Promise<Amenity> {
+  async deleteAmenity(
+    id: string,
+  ): Promise<{ success: boolean; message?: string } | null> {
     try {
-      const data = await apiCall<{ success: boolean; data: Amenity }>('/Amenity/create', {
-        method: 'POST',
-        body: JSON.stringify(amenityData),
-      });
-      return data.data;
+      const res = await apiService.delete<any>(
+        apiConfig.endpoints.adminAmenities.delete(id),
+      );
+      return res;
     } catch (error) {
-      console.error('Error creating amenity:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Update amenity
-   */
-  async updateAmenity(id: string, amenityData: UpdateAmenityDTO): Promise<Amenity> {
-    try {
-      const data = await apiCall<{ success: boolean; data: Amenity }>(`/Amenity/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(amenityData),
-      });
-      return data.data;
-    } catch (error) {
-      console.error('Error updating amenity:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Delete amenity
-   */
-  async deleteAmenity(id: string): Promise<void> {
-    try {
-      await apiCall<{ success: boolean }>(`/Amenity/${id}`, {
-        method: 'DELETE',
-      });
-    } catch (error) {
-      console.error('Error deleting amenity:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Toggle amenity status (active/inactive)
-   */
-  async toggleAmenityStatus(id: string): Promise<Amenity> {
-    try {
-      const data = await apiCall<{ success: boolean; data: Amenity }>(`/Amenity/${id}/toggle-status`, {
-        method: 'PATCH',
-      });
-      return data.data;
-    } catch (error) {
-      console.error('Error toggling amenity status:', error);
-      throw error;
+      console.error("Error deleting amenity:", error);
+      return null;
     }
   },
 };
