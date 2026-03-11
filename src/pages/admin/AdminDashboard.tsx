@@ -18,7 +18,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
-import { homestayService } from '../../services/homestayService';
 import type { DashboardStats, RevenueData } from '../../types/homestay.types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RoleBadge } from '../../components/common/RoleBadge';
@@ -54,7 +53,7 @@ export default function AdminDashboard() {
         averageRating: 0,
       };
       const revenueDataResult: RevenueData[] = [];
-      
+
       setStats(statsData);
       setRevenueData(revenueDataResult);
     } catch (error) {
@@ -98,9 +97,8 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } bg-white shadow-lg w-64`}
+        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } bg-white shadow-lg w-64`}
       >
         {/* Logo */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -132,11 +130,10 @@ export default function AdminDashboard() {
                     handleNavigation(item.path);
                   }
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeTab === item.id
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === item.id
                     ? 'bg-blue-50 text-blue-600'
                     : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
@@ -186,11 +183,11 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="text-sm text-gray-500">
-              {new Date().toLocaleDateString('vi-VN', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              {new Date().toLocaleDateString('vi-VN', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })}
             </div>
           </div>
@@ -266,15 +263,15 @@ export default function AdminDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="month" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number | undefined) => value ? value.toLocaleString('vi-VN') + ' ₫' : '0 ₫'}
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                   />
                   <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#3b82f6" 
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Doanh thu"
                     dot={{ fill: '#3b82f6', r: 4 }}
@@ -294,13 +291,13 @@ export default function AdminDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="month" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                   />
                   <Legend />
-                  <Bar 
-                    dataKey="bookings" 
-                    fill="#10b981" 
+                  <Bar
+                    dataKey="bookings"
+                    fill="#10b981"
                     name="Số lượng đặt phòng"
                     radius={[8, 8, 0, 0]}
                   />
