@@ -1,82 +1,59 @@
-import { useState } from "react";
-import {
-  Search,
-  MapPin,
-  Calendar,
-  Users,
-  Star,
-  Heart,
-  ChevronRight,
-  SlidersHorizontal,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link } from 'react-router-dom';
+import { MapPin, Calendar, Users, Star } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { publicHomestayService } from "../services/publicHomestayService";
+import type { Homestay } from "../types/homestay.types";
 import MainLayout from "../layouts/MainLayout";
-
-// Mock data for homestays
-const featuredHomestays = [
-  {
-    id: 1,
-    name: "Sunset Beach Villa",
-    location: "Nha Trang, Khánh Hòa",
-    price: 2500000,
-    rating: 4.9,
-    reviews: 128,
-    image:
-      "https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWFjaCUyMGhvdXNlJTIwdmlsbGF8ZW58MXx8fHwxNzY3ODIzMjY3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    guests: 6,
-    bedrooms: 3,
-    isFavorite: true,
-  },
-  {
-    id: 2,
-    name: "Ocean View Paradise",
-    location: "Đà Nẵng, Việt Nam",
-    price: 1800000,
-    rating: 4.8,
-    reviews: 95,
-    image:
-      "https://images.unsplash.com/photo-1761920555057-54bbc392135c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2FzdGFsJTIwaG9tZXN0YXl8ZW58MXx8fHwxNzY3ODUxOTYzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    guests: 4,
-    bedrooms: 2,
-    isFavorite: false,
-  },
-  {
-    id: 3,
-    name: "Tropical Beachfront",
-    location: "Phú Quốc, Kiên Giang",
-    price: 3200000,
-    rating: 5.0,
-    reviews: 156,
-    image:
-      "https://images.unsplash.com/photo-1583401535382-a0814c295b0b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvY2VhbiUyMHZpZXclMjByZXNvcnR8ZW58MXx8fHwxNzY3ODUxOTYyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    guests: 8,
-    bedrooms: 4,
-    isFavorite: true,
-  },
-  {
-    id: 4,
-    name: "Coastal Dream House",
-    location: "Vũng Tàu, Bà Rịa-Vũng Tàu",
-    price: 1500000,
-    rating: 4.7,
-    reviews: 73,
-    image:
-      "https://images.unsplash.com/photo-1709775901932-86f1c3137861?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cm9waWNhbCUyMGJlYWNoJTIwaG91c2V8ZW58MXx8fHwxNzY3ODUxOTYwfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    guests: 5,
-    bedrooms: 2,
-    isFavorite: false,
-  },
-];
 
 export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
-  const [guests, setGuests] = useState(1);
+
+  const [allHomestays, setAllHomestays] = useState<Homestay[]>([]);
+  const [homestays, setHomestays] = useState<Homestay[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load all homestays initially
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
+        if (!mounted) return;
+        setAllHomestays(res.Items || []);
+        setHomestays((res.Items || []).slice(0, 8));
+      } catch (err) {
+        console.error('Load homestays error', err);
+        if (!mounted) return;
+        setError('Không thể tải danh sách homestay.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  // Auto search when selectedLocation changes
+  useEffect(() => {
+    if (!selectedLocation || selectedLocation.trim() === '') {
+      setHomestays(allHomestays.slice(0, 8));
+    } else {
+      const query = selectedLocation.trim().toLowerCase();
+      const filtered = allHomestays.filter(h => (h.name || '').toLowerCase().includes(query));
+      setHomestays(filtered);
+    }
+  }, [selectedLocation, allHomestays]);
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Hero Section */}
         <div className="text-center py-12">
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
@@ -86,7 +63,7 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Tìm kiếm và đặt những homestay ven biển tuyệt vời nhất Việt Nam. 
+            Tìm kiếm và đặt những homestay ven biển tuyệt vời nhất Việt Nam.
             Trải nghiệm kỳ nghỉ hoàn hảo với view biển tuyệt đẹp.
           </p>
         </div>
@@ -95,22 +72,19 @@ export default function HomePage() {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-gray-900">Tìm Kiếm Homestay</h3>
-            <button className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
-              <SlidersHorizontal className="w-5 h-5" />
-              <span className="hidden sm:inline">Bộ Lọc Nâng Cao</span>
-            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Tên Homestay - chiếm 2 cột */}
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Địa Điểm
+                Tên Homestay
               </label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Bạn muốn đi đâu?"
+                  placeholder="Nhập tên homestay..."
                   value={selectedLocation}
                   onChange={(e) => setSelectedLocation(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
@@ -118,10 +92,9 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Ngày Nhận Phòng */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày Nhận Phòng
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày Nhận Phòng</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -133,6 +106,7 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Ngày Trả Phòng */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Ngày Trả Phòng
@@ -147,100 +121,84 @@ export default function HomePage() {
                 />
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Số Khách
-              </label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <select
-                  value={guests}
-                  onChange={(e) => setGuests(Number(e.target.value))}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-                    <option key={num} value={num}>
-                      {num} Khách
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
           </div>
-
-          <button className="w-full mt-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium">
-            <Search className="w-5 h-5" />
-            Tìm Kiếm Homestay
-          </button>
         </div>
 
-        {/* Featured Homestays */}
+        {/* Featured Homestays (fetched from API) */}
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900">Homestay Nổi Bật</h3>
-            <button className="text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium">
-              Xem Tất Cả
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <h3 className="text-xl font-semibold text-gray-900">
+              {selectedLocation ? `Kết Quả Tìm Kiếm (${homestays.length})` : 'Homestay Nổi Bật'}
+            </h3>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredHomestays.map((homestay) => (
+            {loading && (
+              <div className="col-span-full text-center py-8">Đang tải homestay...</div>
+            )}
+
+            {error && (
+              <div className="col-span-full text-center text-red-600">{error}</div>
+            )}
+
+            {!loading && !error && homestays.length === 0 && (
+              <div className="col-span-full text-center py-8">Không có homestay nào.</div>
+            )}
+
+            {!loading && homestays.map((homestay) => (
               <div
                 key={homestay.id}
                 className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
               >
-                <div className="relative h-48 overflow-hidden">
-                  <ImageWithFallback
-                    src={homestay.image}
-                    alt={homestay.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                  <button className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform">
-                    <Heart
-                      className={`w-5 h-5 ${
-                        homestay.isFavorite 
-                          ? "fill-red-500 text-red-500" 
-                          : "text-gray-600"
-                      }`}
+                <Link to={`/homestays/${homestay.id}`} className="block">
+                  <div className="relative h-48 overflow-hidden">
+                    <ImageWithFallback
+                      src={homestay.images?.[0] || ''}
+                      alt={homestay.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
-                  </button>
-                </div>
-
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-gray-900 line-clamp-1">
-                      {homestay.name}
-                    </h4>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">
-                        {homestay.rating}
-                      </span>
+                    <div className="absolute left-3 top-3 bg-white/80 rounded-full p-1 shadow">
+                      <Star className="w-4 h-4 text-yellow-400" />
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
-                    <MapPin className="w-4 h-4" />
-                    {homestay.location}
-                  </p>
-
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      {homestay.guests}
-                    </span>
-                    <span>{homestay.bedrooms} Phòng Ngủ</span>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div>
-                      <span className="font-bold text-gray-900">
-                        {homestay.price.toLocaleString("vi-VN")}đ
-                      </span>
-                      <span className="text-sm text-gray-600">/đêm</span>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-gray-900 line-clamp-1">
+                        {homestay.name}
+                      </h4>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">
+                          {homestay.rating ?? '-'}
+                        </span>
+                      </div>
                     </div>
+
+                    <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
+                      <MapPin className="w-4 h-4" />
+                      {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                    </p>
+
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                      <span className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        {homestay.maxGuests ?? '-'}
+                      </span>
+                      <span>{homestay.bedrooms ?? '-'} Phòng Ngủ</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                      <div>
+                        <span className="font-bold text-gray-900">
+                          {homestay.pricePerNight ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ' : '-'}
+                        </span>
+                        <span className="text-sm text-gray-600">/đêm</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+
+                <div className="p-4 pt-0">
+                  <div className="flex justify-end">
                     <button className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium">
                       Đặt Ngay
                     </button>
@@ -251,15 +209,32 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Call to Action */}
-        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-8 text-center text-white">
-          <h3 className="text-2xl font-bold mb-4">Bạn có homestay muốn cho thuê?</h3>
-          <p className="text-blue-100 mb-6">
-            Tham gia cùng chúng tôi và bắt đầu kiếm thu nhập từ homestay của bạn ngay hôm nay!
-          </p>
-          <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors">
-            Đăng Ký Làm Chủ Nhà
-          </button>
+        {/* Promotional Banner */}
+        <div className="bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 rounded-2xl p-8 md:p-12 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
+          <div className="relative z-10 max-w-3xl mx-auto text-center">
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">
+              🏖️ Trải Nghiệm Kỳ Nghỉ Tuyệt Vời
+            </h3>
+            <p className="text-lg text-blue-50 mb-6">
+              Khám phá những homestay ven biển đẹp nhất Việt Nam. Đặt phòng dễ dàng, giá cả hợp lý, dịch vụ tận tâm.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-sm">
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                <span>✓</span>
+                <span>Đặt phòng nhanh chóng</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                <span>✓</span>
+                <span>Giá tốt nhất</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                <span>✓</span>
+                <span>Hỗ trợ 24/7</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </MainLayout>

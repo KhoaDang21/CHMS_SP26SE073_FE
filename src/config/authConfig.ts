@@ -3,7 +3,7 @@
 export const authConfig = {
   // API Configuration
   api: {
-    baseUrl: "http://157.245.153.83:5000/api",
+    baseUrl: "http://163.227.230.54:8088/api",
     endpoints: {
       login: "/Auth/login",
       register: "/Auth/register",
@@ -45,7 +45,7 @@ export const authConfig = {
   // Redirect paths after login based on role
   redirectPaths: {
     customer: "/customer/dashboard",
-    owner: "/owner/dashboard",
+    manager: "/manager/dashboard",
     staff: "/staff/dashboard",
     admin: "/admin/dashboard",
   },

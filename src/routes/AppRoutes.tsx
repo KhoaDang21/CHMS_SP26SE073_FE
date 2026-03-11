@@ -4,6 +4,7 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import HomePage from '../pages/HomePage';
+import HomestayDetail from '../pages/HomestayDetail';
 import ExplorePage from '../pages/ExplorePage';
 import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
@@ -13,15 +14,20 @@ import CustomerExplorePage from '../pages/customer/ExplorePage';
 import BookingsPage from '../pages/customer/BookingsPage';
 import FavoritesPage from '../pages/customer/FavoritesPage';
 import MessagesPage from '../pages/customer/MessagesPage';
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import AmenityManagement from '../pages/admin/AmenityManagement';
+import HomestayManagement from '../pages/admin/HomestayManagement';
+import StaffDashboard from '../pages/staff/StaffDashboard';
+import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import { authService } from '../services/authService';
 
 // Protected Route Component
-function ProtectedRoute({ 
-  children, 
-  allowedRoles 
-}: { 
+function ProtectedRoute({
+  children,
+  allowedRoles
+}: {
   children: React.ReactNode;
-  allowedRoles?: Array<'customer' | 'owner' | 'staff' | 'admin'>;
+  allowedRoles?: Array<'customer' | 'manager' | 'staff' | 'admin'>;
 }) {
   const isAuthenticated = authService.isAuthenticated();
   const user = authService.getUser();
@@ -35,7 +41,7 @@ function ProtectedRoute({
     // Không có quyền truy cập -> redirect về trang phù hợp với role
     const redirectPaths: Record<string, string> = {
       customer: '/customer/dashboard',
-      owner: '/owner/dashboard',
+      manager: '/manager/dashboard',
       staff: '/staff/dashboard',
       admin: '/admin/dashboard',
     };
@@ -51,6 +57,7 @@ export function AppRoutes() {
       {/* Public Routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/explore" element={<ExplorePage />} />
+      <Route path="/homestays/:id" element={<HomestayDetail />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/auth/login" element={<LoginPage />} />
@@ -59,88 +66,104 @@ export function AppRoutes() {
       <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
       {/* Protected Routes - Customer */}
-      <Route 
-        path="/customer/dashboard" 
+      <Route
+        path="/customer/dashboard"
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <CustomerDashboard />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/customer/profile" 
+      <Route
+        path="/customer/profile"
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <ProfilePage />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/customer/explore" 
+      <Route
+        path="/customer/explore"
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <CustomerExplorePage />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/customer/bookings" 
+      <Route
+        path="/customer/bookings"
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <BookingsPage />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/customer/favorites" 
+      <Route
+        path="/customer/favorites"
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <FavoritesPage />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/customer/messages" 
+      <Route
+        path="/customer/messages"
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <MessagesPage />
           </ProtectedRoute>
-        } 
+        }
       />
 
-      {/* Protected Routes - Owner (add later) */}
-      {/* <Route 
-        path="/owner/dashboard" 
+      {/* Protected Routes - Manager */}
+      <Route
+        path="/manager/dashboard"
         element={
-          <ProtectedRoute allowedRoles={['owner']}>
-            <OwnerDashboard />
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerDashboard />
           </ProtectedRoute>
-        } 
-      /> */}
+        }
+      />
 
-      {/* Protected Routes - Staff (add later) */}
-      {/* <Route 
-        path="/staff/dashboard" 
+      {/* Protected Routes - Staff */}
+      <Route
+        path="/staff/dashboard"
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <StaffDashboard />
           </ProtectedRoute>
-        } 
-      /> */}
+        }
+      />
 
-      {/* Protected Routes - Admin (add later) */}
-      {/* <Route 
-        path="/admin/dashboard" 
+      {/* Protected Routes - Admin */}
+      <Route
+        path="/admin/dashboard"
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
           </ProtectedRoute>
-        } 
-      /> */}
+        }
+      />
+      <Route
+        path="/admin/homestays"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <HomestayManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/amenities"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AmenityManagement />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Unauthorized */}
-      <Route 
-        path="/unauthorized" 
+      <Route
+        path="/unauthorized"
         element={
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
@@ -151,7 +174,7 @@ export function AppRoutes() {
               </a>
             </div>
           </div>
-        } 
+        }
       />
 
       {/* Catch all - redirect to home */}

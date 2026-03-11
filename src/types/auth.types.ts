@@ -1,6 +1,6 @@
 // Authentication related types
 
-export type UserRole = 'customer' | 'owner' | 'staff' | 'admin';
+export type UserRole = 'customer' | 'manager' | 'staff' | 'admin';
 
 export interface User {
   id: string;
@@ -33,7 +33,7 @@ export interface RegisterFormData {
   confirmPassword: string;
   name: string;
   phone?: string;
-  role: 'customer' | 'owner';
+  role: 'customer' | 'manager';
   agreeToTerms: boolean;
 }
 

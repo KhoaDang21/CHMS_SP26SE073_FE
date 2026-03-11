@@ -1,7 +1,5 @@
 export const apiConfig = {
-  baseURL:
-    import.meta.env.VITE_API_URL ||
-    "http://157.245.153.83:5000/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://163.227.230.54:8088/api",
   timeout: 10000,
 
   endpoints: {
@@ -23,12 +21,36 @@ export const apiConfig = {
       delete: (id: string) => `/homestays/${id}`,
       reviews: (id: string) => `/homestays/${id}/reviews`,
     },
+    adminHomestays: {
+      list: "/admin/homestays",
+      create: "/admin/homestays",
+      detail: (id: string) => `/admin/homestays/${id}`,
+      update: (id: string) => `/admin/homestays/${id}`,
+      delete: (id: string) => `/admin/homestays/${id}`,
+      updateStatus: (id: string) => `/admin/homestays/${id}/status`,
+      updateAmenities: (id: string) => `/admin/homestays/${id}/amenities`,
+      uploadPhotos: (id: string) => `/admin/homestays/${id}/photos`,
+      reorderPhotos: (id: string) => `/admin/homestays/${id}/photos/reorder`,
+    },
+    amenities: {
+      list: "/amenities",
+      detail: (id: string) => `/amenities/${id}`,
+    },
+    adminAmenities: {
+      create: "/admin/amenities",
+      update: (id: string) => `/admin/amenities/${id}`,
+      delete: (id: string) => `/admin/amenities/${id}`,
+    },
     bookings: {
       list: "/bookings",
       detail: (id: string) => `/bookings/${id}`,
       create: "/bookings",
       cancel: (id: string) => `/bookings/${id}/cancel`,
-      confirm: (id: string) => `/bookings/${id}/confirm`,
+      // Extra endpoints present on BE
+      calculate: "/bookings/calculate",
+      modify: (id: string) => `/bookings/${id}/modify`,
+      cancellationPolicy: (id: string) => `/bookings/${id}/cancellation-policy`,
+      specialRequests: (id: string) => `/bookings/${id}/special-requests`,
     },
     users: {
       list: "/users",

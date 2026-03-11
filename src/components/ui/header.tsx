@@ -19,11 +19,6 @@ const navigationItems = [
     href: '/',
   },
   {
-    name: 'Explore',
-    nameVi: 'Khám Phá',
-    href: '/explore',
-  },
-  {
     name: 'About',
     nameVi: 'Giới Thiệu',
     href: '/about',
@@ -91,12 +86,12 @@ export default function Header() {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => navigate('/')}
+            <button
+              onClick={() => navigate(isAuthenticated ? '/customer/dashboard' : '/')}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
@@ -113,16 +108,15 @@ export default function Header() {
           <nav className="hidden lg:flex items-center space-x-1">
             {currentNavigationItems.map((item) => {
               const isActive = isActivePath(item.href);
-              
+
               return (
                 <button
                   key={item.href}
                   onClick={() => navigate(item.href)}
-                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${isActive
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   {item.nameVi}
                 </button>
@@ -216,7 +210,7 @@ export default function Header() {
             <nav className="space-y-2">
               {currentNavigationItems.map((item) => {
                 const isActive = isActivePath(item.href);
-                
+
                 return (
                   <button
                     key={item.href}
@@ -224,17 +218,16 @@ export default function Header() {
                       navigate(item.href);
                       setIsMobileMenuOpen(false);
                     }}
-                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${
-                      isActive
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     {item.nameVi}
                   </button>
                 );
               })}
-              
+
               {/* Mobile auth buttons for non-authenticated users */}
               {!isAuthenticated && (
                 <div className="pt-4 border-t border-gray-200 space-y-2">

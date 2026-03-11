@@ -15,7 +15,7 @@ export interface LoginResponse {
     id: string;
     email: string;
     name: string;
-    role: 'customer' | 'owner' | 'staff' | 'admin';
+    role: 'customer' | 'manager' | 'staff' | 'admin';
   };
   message?: string;
 }
@@ -25,7 +25,7 @@ export interface RegisterData {
   password: string;
   name: string;
   phone?: string;
-  role: 'customer' | 'owner';
+  role: 'customer' | 'manager';
 }
 
 export const authService = {
@@ -56,7 +56,7 @@ export const authService = {
           id: apiResponse.data.id || apiResponse.data.email,
           email: apiResponse.data.email,
           name: apiResponse.data.fullName || apiResponse.data.name,
-          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'owner' | 'staff' | 'admin'
+          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'manager' | 'staff' | 'admin'
         } : undefined;
 
         if (token) {
@@ -176,6 +176,13 @@ export const authService = {
   },
 
   /**
+   * Get current user data (alias for getUser)
+   */
+  getCurrentUser(): LoginResponse['user'] | null {
+    return this.getUser();
+  },
+
+  /**
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {
@@ -281,7 +288,7 @@ export const authService = {
           id: apiResponse.data.id || apiResponse.data.email,
           email: apiResponse.data.email,
           name: apiResponse.data.fullName || apiResponse.data.name,
-          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'owner' | 'staff' | 'admin'
+          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'manager' | 'staff' | 'admin'
         } : undefined;
 
         if (token) {

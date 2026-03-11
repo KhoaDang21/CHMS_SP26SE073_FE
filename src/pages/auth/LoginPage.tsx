@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Home } from 'lucide-react';
+import { Button } from '../../components/ui/button';
 import { Mail, Lock, Eye, EyeOff, Waves } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { authService } from '../../services/authService';
@@ -52,7 +54,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="relative min-h-screen flex">
+      <div className="absolute top-4 left-4">
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/" aria-label="Trang chủ" className="inline-flex items-center gap-2">
+            <Home className="w-4 h-4 text-cyan-700" />
+            <span className="text-sm text-cyan-700">Trang chủ</span>
+          </Link>
+        </Button>
+      </div>
       {/* Left side - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50">
         <div className="w-full max-w-md">
