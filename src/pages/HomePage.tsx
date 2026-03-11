@@ -1,39 +1,32 @@
 import { useState, useEffect } from "react";
-import {
-  Search,
-  MapPin,
-  Calendar,
-  Users,
-  Star,
-  ChevronRight,
-  SlidersHorizontal,
-} from "lucide-react";
 import { Link } from 'react-router-dom';
+import { MapPin, Calendar, Users, Star } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { publicHomestayService } from "../services/publicHomestayService";
 import type { Homestay } from "../types/homestay.types";
 import MainLayout from "../layouts/MainLayout";
-// Real homestays will be fetched from BE (system mode)
 
 export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
-  const [guests, setGuests] = useState(1);
 
+  const [allHomestays, setAllHomestays] = useState<Homestay[]>([]);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load all homestays initially
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await publicHomestayService.list({ page: 1, pageSize: 8 });
+        const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
         if (!mounted) return;
-        setHomestays(res.Items || []);
+        setAllHomestays(res.Items || []);
+        setHomestays((res.Items || []).slice(0, 8));
       } catch (err) {
         console.error('Load homestays error', err);
         if (!mounted) return;
@@ -47,31 +40,20 @@ export default function HomePage() {
     return () => { mounted = false; };
   }, []);
 
-  const handleSearch = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // fetch more items to search locally (backend search doesn't support name)
-      const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
-      const all = res.Items || [];
-      if (!selectedLocation || selectedLocation.trim() === '') {
-        setHomestays(all.slice(0, 8));
-      } else {
-        const query = selectedLocation.trim().toLowerCase();
-        const filtered = all.filter(h => (h.name || '').toLowerCase().includes(query) || (h.address || '').toLowerCase().includes(query));
-        setHomestays(filtered);
-      }
-    } catch (err) {
-      console.error('Search error', err);
-      setError('Tìm kiếm thất bại. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
+  // Auto search when selectedLocation changes
+  useEffect(() => {
+    if (!selectedLocation || selectedLocation.trim() === '') {
+      setHomestays(allHomestays.slice(0, 8));
+    } else {
+      const query = selectedLocation.trim().toLowerCase();
+      const filtered = allHomestays.filter(h => (h.name || '').toLowerCase().includes(query));
+      setHomestays(filtered);
     }
-  }
+  }, [selectedLocation, allHomestays]);
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Hero Section */}
         <div className="text-center py-12">
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
@@ -90,22 +72,19 @@ export default function HomePage() {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-gray-900">Tìm Kiếm Homestay</h3>
-            <button className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
-              <SlidersHorizontal className="w-5 h-5" />
-              <span className="hidden sm:inline">Bộ Lọc Nâng Cao</span>
-            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Tên Homestay - chiếm 2 cột */}
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Địa Điểm
+                Tên Homestay
               </label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Bạn muốn đi đâu?"
+                  placeholder="Nhập tên homestay..."
                   value={selectedLocation}
                   onChange={(e) => setSelectedLocation(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
@@ -113,6 +92,7 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Ngày Nhận Phòng */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Ngày Nhận Phòng</label>
               <div className="relative">
@@ -126,6 +106,7 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Ngày Trả Phòng */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Ngày Trả Phòng
@@ -140,42 +121,15 @@ export default function HomePage() {
                 />
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Số Khách
-              </label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <select
-                  value={guests}
-                  onChange={(e) => setGuests(Number(e.target.value))}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-                    <option key={num} value={num}>
-                      {num} Khách
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
           </div>
-
-          <button onClick={handleSearch} className="w-full mt-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium">
-            <Search className="w-5 h-5" />
-            Tìm Kiếm Homestay
-          </button>
         </div>
 
         {/* Featured Homestays (fetched from API) */}
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900">Homestay Nổi Bật</h3>
-            <button className="text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium">
-              Xem Tất Cả
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <h3 className="text-xl font-semibold text-gray-900">
+              {selectedLocation ? `Kết Quả Tìm Kiếm (${homestays.length})` : 'Homestay Nổi Bật'}
+            </h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {loading && (
@@ -255,13 +209,32 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Call to Action */}
-        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-8 text-center text-white">
-          <h3 className="text-2xl font-bold mb-4">Hệ thống quản lý (System)</h3>
-          <p className="text-blue-100 mb-6">
-            Đây là chế độ System — chỉ dành cho khách thuê (customers). Mọi quản lý homestay do Admin thực hiện.
-          </p>
-          <p className="text-blue-100 text-sm">Nếu cần thêm homestay, vui lòng liên hệ quản trị viên hệ thống.</p>
+        {/* Promotional Banner */}
+        <div className="bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 rounded-2xl p-8 md:p-12 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
+          <div className="relative z-10 max-w-3xl mx-auto text-center">
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">
+              🏖️ Trải Nghiệm Kỳ Nghỉ Tuyệt Vời
+            </h3>
+            <p className="text-lg text-blue-50 mb-6">
+              Khám phá những homestay ven biển đẹp nhất Việt Nam. Đặt phòng dễ dàng, giá cả hợp lý, dịch vụ tận tâm.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-sm">
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                <span>✓</span>
+                <span>Đặt phòng nhanh chóng</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                <span>✓</span>
+                <span>Giá tốt nhất</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                <span>✓</span>
+                <span>Hỗ trợ 24/7</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </MainLayout>

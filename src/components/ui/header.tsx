@@ -86,12 +86,12 @@ export default function Header() {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(isAuthenticated ? '/customer/dashboard' : '/')}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
@@ -114,8 +114,8 @@ export default function Header() {
                   key={item.href}
                   onClick={() => navigate(item.href)}
                   className={`px-6 py-2 rounded-lg font-medium transition-all ${isActive
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
                     }`}
                 >
                   {item.nameVi}
@@ -219,8 +219,8 @@ export default function Header() {
                       setIsMobileMenuOpen(false);
                     }}
                     className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${isActive
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     {item.nameVi}

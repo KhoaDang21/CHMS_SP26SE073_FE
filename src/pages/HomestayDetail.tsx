@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Star, Heart, ArrowLeft } from 'lucide-react'
 import MainLayout from '../layouts/MainLayout'
 import { publicHomestayService } from '../services/publicHomestayService'
 import { ImageWithFallback } from '../components/figma/ImageWithFallback'
-import { Star, Heart } from 'lucide-react'
 import type { Homestay } from '../types/homestay.types'
 
 export default function HomestayDetail() {
     const { id } = useParams()
+    const navigate = useNavigate()
     const [homestay, setHomestay] = useState<Homestay | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -47,8 +48,15 @@ export default function HomestayDetail() {
 
     return (
         <MainLayout>
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                <Link to="/" className="text-sm text-blue-600 hover:underline">← Quay về</Link>
+            <div className="max-w-[1600px] mx-auto px-4 py-8">
+                {/* Back Button */}
+                <button
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm mb-6"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                    <span className="font-medium">Quay về</span>
+                </button>
 
                 {loading && <div className="py-8 text-center">Đang tải...</div>}
                 {error && <div className="py-8 text-center text-red-600">{error}</div>}
