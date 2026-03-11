@@ -5,10 +5,10 @@ import {
   Calendar,
   Users,
   Star,
-  Heart,
   ChevronRight,
   SlidersHorizontal,
 } from "lucide-react";
+import { Link } from 'react-router-dom';
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { publicHomestayService } from "../services/publicHomestayService";
 import type { Homestay } from "../types/homestay.types";
@@ -46,6 +46,28 @@ export default function HomePage() {
     load();
     return () => { mounted = false; };
   }, []);
+
+  const handleSearch = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // fetch more items to search locally (backend search doesn't support name)
+      const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
+      const all = res.Items || [];
+      if (!selectedLocation || selectedLocation.trim() === '') {
+        setHomestays(all.slice(0, 8));
+      } else {
+        const query = selectedLocation.trim().toLowerCase();
+        const filtered = all.filter(h => (h.name || '').toLowerCase().includes(query) || (h.address || '').toLowerCase().includes(query));
+        setHomestays(filtered);
+      }
+    } catch (err) {
+      console.error('Search error', err);
+      setError('Tìm kiếm thất bại. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <MainLayout>
@@ -140,7 +162,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <button className="w-full mt-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium">
+          <button onClick={handleSearch} className="w-full mt-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium">
             <Search className="w-5 h-5" />
             Tìm Kiếm Homestay
           </button>
@@ -173,47 +195,56 @@ export default function HomePage() {
                 key={homestay.id}
                 className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
               >
-                <div className="relative h-48 overflow-hidden">
-                  <ImageWithFallback
-                    src={homestay.images?.[0] || ''}
-                    alt={homestay.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-gray-900 line-clamp-1">
-                      {homestay.name}
-                    </h4>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">
-                        {homestay.rating ?? '-'}
-                      </span>
+                <Link to={`/homestays/${homestay.id}`} className="block">
+                  <div className="relative h-48 overflow-hidden">
+                    <ImageWithFallback
+                      src={homestay.images?.[0] || ''}
+                      alt={homestay.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                    <div className="absolute left-3 top-3 bg-white/80 rounded-full p-1 shadow">
+                      <Star className="w-4 h-4 text-yellow-400" />
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
-                    <MapPin className="w-4 h-4" />
-                    {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
-                  </p>
-
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      {homestay.maxGuests ?? '-'}
-                    </span>
-                    <span>{homestay.bedrooms ?? '-'} Phòng Ngủ</span>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div>
-                      <span className="font-bold text-gray-900">
-                        {homestay.pricePerNight ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ' : '-'}
-                      </span>
-                      <span className="text-sm text-gray-600">/đêm</span>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-gray-900 line-clamp-1">
+                        {homestay.name}
+                      </h4>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">
+                          {homestay.rating ?? '-'}
+                        </span>
+                      </div>
                     </div>
+
+                    <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
+                      <MapPin className="w-4 h-4" />
+                      {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                    </p>
+
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                      <span className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        {homestay.maxGuests ?? '-'}
+                      </span>
+                      <span>{homestay.bedrooms ?? '-'} Phòng Ngủ</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                      <div>
+                        <span className="font-bold text-gray-900">
+                          {homestay.pricePerNight ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ' : '-'}
+                        </span>
+                        <span className="text-sm text-gray-600">/đêm</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+
+                <div className="p-4 pt-0">
+                  <div className="flex justify-end">
                     <button className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium">
                       Đặt Ngay
                     </button>

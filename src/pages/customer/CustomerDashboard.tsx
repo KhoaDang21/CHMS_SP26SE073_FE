@@ -14,57 +14,26 @@ import { bookingService, type Booking } from "../../services/bookingService";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import MainLayout from "../../layouts/MainLayout";
 import toast from "react-hot-toast";
+import { publicHomestayService } from "../../services/publicHomestayService";
+import { Link } from 'react-router-dom';
 
-const featuredHomestays = [
-  {
-    id: 1,
-    name: "Sunset Beach Villa",
-    location: "Nha Trang, Khánh Hòa",
-    price: 2500000,
-    rating: 4.9,
-    reviews: 128,
-    image: "https://images.unsplash.com/photo-1712311082180-4fd73ded1b1c?w=400",
-    guests: 6,
-    bedrooms: 3,
-    isFavorite: true,
-  },
-  {
-    id: 2,
-    name: "Ocean View Paradise",
-    location: "Đà Nẵng, Việt Nam",
-    price: 1800000,
-    rating: 4.8,
-    reviews: 95,
-    image: "https://images.unsplash.com/photo-1761920555057-54bbc392135c?w=400",
-    guests: 4,
-    bedrooms: 2,
-    isFavorite: false,
-  },
-  {
-    id: 3,
-    name: "Tropical Beachfront",
-    location: "Phú Quốc, Kiên Giang",
-    price: 3200000,
-    rating: 5.0,
-    reviews: 156,
-    image: "https://images.unsplash.com/photo-1583401535382-a0814c295b0b?w=400",
-    guests: 8,
-    bedrooms: 4,
-    isFavorite: true,
-  },
-  {
-    id: 4,
-    name: "Coastal Dream House",
-    location: "Vũng Tàu, Bà Rịa-Vũng Tàu",
-    price: 1500000,
-    rating: 4.7,
-    reviews: 73,
-    image: "https://images.unsplash.com/photo-1709775901932-86f1c3137861?w=400",
-    guests: 5,
-    bedrooms: 2,
-    isFavorite: false,
-  },
-];
+// Featured homestays loaded from API
+const [featuredHomestays, setFeaturedHomestays] = useState<any[]>([]);
+
+useEffect(() => {
+  let mounted = true;
+  const load = async () => {
+    try {
+      const res = await publicHomestayService.list({ page: 1, pageSize: 4 });
+      if (!mounted) return;
+      setFeaturedHomestays(res.Items || []);
+    } catch (err) {
+      console.error('Load featured homestays failed', err);
+    }
+  };
+  load();
+  return () => { mounted = false };
+}, []);
 
 export default function CustomerDashboard() {
   const currentUser = authService.getUser();
@@ -284,9 +253,9 @@ export default function CustomerDashboard() {
                           </p>
                         </div>
                         <span className={`px-3 py-1 text-xs rounded-full font-medium ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                            booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                              booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                'bg-gray-100 text-gray-700'
+                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
                           }`}>
                           {booking.status === 'confirmed' ? 'Đã Xác Nhận' :
                             booking.status === 'pending' ? 'Chờ Xác Nhận' :
@@ -343,8 +312,8 @@ export default function CustomerDashboard() {
                   >
                     <Heart
                       className={`w-5 h-5 ${homestay.isFavorite
-                          ? "fill-red-500 text-red-500"
-                          : "text-gray-600"
+                        ? "fill-red-500 text-red-500"
+                        : "text-gray-600"
                         }`}
                     />
                   </button>
@@ -392,7 +361,73 @@ export default function CustomerDashboard() {
             ))}
           </div>
         </div>
+
+        {/* All Homestays (from API or cache) */}
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-gray-900">Tất cả Homestay</h3>
+          </div>
+          <HomestaysList />
+        </div>
       </div>
     </MainLayout>
   );
+}
+
+function HomestaysList() {
+  const [homestays, setHomestays] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      setLoading(true)
+      try {
+        // try cache first
+        // @ts-ignore access internal cache
+        const cached = publicHomestayService._cache?.lastList ?? []
+        if (cached && cached.length > 0) {
+          if (!mounted) return
+          setHomestays(cached)
+        } else {
+          const res = await publicHomestayService.list({ page: 1, pageSize: 24 })
+          if (!mounted) return
+          setHomestays(res.Items || [])
+        }
+      } catch (err) {
+        console.error('Load homestays for customer dashboard', err)
+        if (!mounted) return
+        setError('Không thể tải homestay')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    load()
+    return () => { mounted = false }
+  }, [])
+
+  if (loading) return <div className="py-8 text-center">Đang tải homestay...</div>
+  if (error) return <div className="py-8 text-center text-red-600">{error}</div>
+  if (!homestays || homestays.length === 0) return <div className="py-8 text-center">Không có homestay nào.</div>
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {homestays.map((h: any) => (
+        <Link key={h.id} to={`/homestays/${h.id}`} className="block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300">
+          <div className="relative h-44 overflow-hidden">
+            <ImageWithFallback src={h.images?.[0] ?? ''} alt={h.name} className="w-full h-full object-cover" />
+          </div>
+          <div className="p-4">
+            <h4 className="font-semibold text-gray-900 line-clamp-1">{h.name}</h4>
+            <p className="text-sm text-gray-600 mt-1">{h.address}</p>
+            <div className="flex items-center justify-between mt-3">
+              <div className="text-sm font-bold">{h.pricePerNight ? h.pricePerNight.toLocaleString('vi-VN') + 'đ' : '-'}</div>
+              <div className="text-sm text-gray-600">{h.rating ?? '-'}</div>
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
+  )
 }

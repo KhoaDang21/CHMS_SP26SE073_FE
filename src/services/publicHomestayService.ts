@@ -10,6 +10,10 @@ export interface PagedHomestays {
 }
 
 export const publicHomestayService = {
+  // simple in-memory cache for last fetched list
+  _cache: {
+    lastList: [] as Homestay[],
+  },
   /**
    * GET /api/homestays - list (paged)
    * params: page, pageSize, etc.
@@ -31,8 +35,37 @@ export const publicHomestayService = {
       const pageSize = paged?.pageSize ?? paged?.PageSize ?? 10;
       const totalCount = paged?.totalCount ?? paged?.TotalCount ?? 0;
 
+      // Normalize backend DTO field names to frontend `Homestay` shape
+      const normalized = (Array.isArray(items) ? items : []).map((it: any) => ({
+        id: (it.id ?? it.Id)?.toString?.() ?? String(it.Id ?? it.id ?? ""),
+        name: it.name ?? it.Name ?? "",
+        description: it.description ?? it.Description ?? "",
+        address: it.address ?? it.Address ?? "",
+        city: it.city ?? it.City ?? it.ProvinceName ?? "",
+        country: it.country ?? it.Country ?? "",
+        pricePerNight:
+          it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
+        maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
+        bedrooms: it.bedrooms ?? it.Bedrooms ?? 0,
+        bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
+        images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
+        amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+        rating: it.rating ?? it.Rating ?? null,
+        reviewCount: it.reviewCount ?? it.ReviewCount ?? 0,
+        ownerId: it.ownerId ?? it.OwnerId ?? "",
+        ownerName: it.ownerName ?? it.OwnerName ?? "",
+        status: it.status ?? it.Status ?? "ACTIVE",
+        createdAt: it.createdAt ?? it.CreatedAt ?? "",
+        updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
+      }));
+
+      // store cache
+      try {
+        this._cache.lastList = normalized;
+      } catch {}
+
       return {
-        Items: Array.isArray(items) ? items : [],
+        Items: normalized,
         CurrentPage: currentPage,
         PageSize: pageSize,
         TotalCount: totalCount,
@@ -52,8 +85,34 @@ export const publicHomestayService = {
         apiConfig.endpoints.homestays.detail(id),
       );
       const payload = res?.data ?? res;
-      if (payload) return payload as Homestay;
-      return null;
+      if (!payload) return null;
+
+      const it = payload?.item ?? payload ?? {};
+      // Normalize fields to frontend Homestay shape
+      const normalized = {
+        id: (it.id ?? it.Id)?.toString?.() ?? String(it.Id ?? it.id ?? ""),
+        name: it.name ?? it.Name ?? "",
+        description: it.description ?? it.Description ?? "",
+        address: it.address ?? it.Address ?? "",
+        city: it.city ?? it.City ?? it.provinceName ?? it.ProvinceName ?? "",
+        country: it.country ?? it.Country ?? "",
+        pricePerNight:
+          it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
+        maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
+        bedrooms: it.bedrooms ?? it.Bedrooms ?? 0,
+        bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
+        images: it.images ?? it.ImageUrls ?? it.imageUrls ?? it.imageUrls ?? [],
+        amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+        rating: it.rating ?? it.Rating ?? null,
+        reviewCount: it.reviewCount ?? it.ReviewCount ?? 0,
+        ownerId: it.ownerId ?? it.OwnerId ?? "",
+        ownerName: it.ownerName ?? it.OwnerName ?? "",
+        status: it.status ?? it.Status ?? "ACTIVE",
+        createdAt: it.createdAt ?? it.CreatedAt ?? "",
+        updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
+      } as Homestay;
+
+      return normalized;
     } catch (error) {
       console.error("Error fetching homestay detail:", error);
       return null;
@@ -76,8 +135,36 @@ export const publicHomestayService = {
       const pageSize = paged?.pageSize ?? paged?.PageSize ?? 10;
       const totalCount = paged?.totalCount ?? paged?.TotalCount ?? 0;
 
+      // do not normalize here because search is used internally for filters; caller can normalize if needed
+      const normalized = (Array.isArray(items) ? items : []).map((it: any) => ({
+        id: (it.id ?? it.Id)?.toString?.() ?? String(it.Id ?? it.id ?? ""),
+        name: it.name ?? it.Name ?? "",
+        description: it.description ?? it.Description ?? "",
+        address: it.address ?? it.Address ?? "",
+        city: it.city ?? it.City ?? it.ProvinceName ?? "",
+        country: it.country ?? it.Country ?? "",
+        pricePerNight:
+          it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
+        maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
+        bedrooms: it.bedrooms ?? it.Bedrooms ?? 0,
+        bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
+        images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
+        amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+        rating: it.rating ?? it.Rating ?? null,
+        reviewCount: it.reviewCount ?? it.ReviewCount ?? 0,
+        ownerId: it.ownerId ?? it.OwnerId ?? "",
+        ownerName: it.ownerName ?? it.OwnerName ?? "",
+        status: it.status ?? it.Status ?? "ACTIVE",
+        createdAt: it.createdAt ?? it.CreatedAt ?? "",
+        updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
+      }));
+
+      try {
+        this._cache.lastList = normalized;
+      } catch {}
+
       return {
-        Items: Array.isArray(items) ? items : [],
+        Items: normalized,
         CurrentPage: currentPage,
         PageSize: pageSize,
         TotalCount: totalCount,
