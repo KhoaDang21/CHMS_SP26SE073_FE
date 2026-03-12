@@ -86,8 +86,8 @@ export default function HomestayManagement() {
       filtered = filtered.filter(h =>
         h.name.toLowerCase().includes(query) ||
         h.address.toLowerCase().includes(query) ||
-        h.districtName.toLowerCase().includes(query) ||
-        h.provinceName.toLowerCase().includes(query)
+        h.districtName?.toLowerCase().includes(query) ||
+        h.provinceName?.toLowerCase().includes(query)
       );
     }
 
@@ -387,7 +387,7 @@ export default function HomestayManagement() {
                     {/* Actions */}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => toast.info('Tính năng đang phát triển')}
+                        onClick={() => navigate(`/admin/homestays/${homestay.id}`)}
                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                       >
                         <Eye className="w-4 h-4" />

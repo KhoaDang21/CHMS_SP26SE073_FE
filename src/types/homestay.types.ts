@@ -23,21 +23,29 @@ export interface Homestay {
   name: string;
   description: string;
   address: string;
-  city: string;
-  country: string;
+  city?: string;
+  country?: string;
+  districtName?: string;
+  provinceName?: string;
   pricePerNight: number;
   maxGuests: number;
-  bedrooms: number;
-  bathrooms: number;
-  images: string[];
-  amenities: string[];
-  rating: number;
-  reviewCount: number;
-  ownerId: string;
-  ownerName: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  area?: number;
+  images?: string[];
+  imageUrls?: string[];
+  amenities?: string[];
+  amenityNames?: string[];
+  rating?: number;
+  reviewCount?: number;
+  ownerId?: string;
+  ownerName?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'MAINTENANCE';
-  createdAt: string;
-  updatedAt: string;
+  featured?: boolean;
+  cancellationPolicy?: string;
+  houseRules?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Booking {

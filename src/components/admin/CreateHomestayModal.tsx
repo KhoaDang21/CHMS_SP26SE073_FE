@@ -102,14 +102,30 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   };
 
   const handleSubmit = () => {
-    const currentUser = authService.getCurrentUser();
-    if (!currentUser?.id) {
-      console.error('No user logged in');
+    // Decode JWT to get userId
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    let userId = '';
+    
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('JWT payload:', payload);
+        
+        // Try common JWT claim names for user ID
+        userId = payload.userId || payload.sub || payload.nameid || payload.id || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+      } catch (error) {
+        console.error('Error decoding JWT:', error);
+      }
+    }
+    
+    if (!userId) {
+      console.error('Cannot get userId from JWT token');
+      alert('Không thể xác định userId. Vui lòng đăng nhập lại.');
       return;
     }
 
     const payload: CreateHomestayDTO = {
-      ownerId: currentUser.id,
+      ownerId: userId,
       name: formData.name!,
       description: formData.description!,
       pricePerNight: formData.pricePerNight!,
