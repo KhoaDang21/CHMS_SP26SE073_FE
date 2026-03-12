@@ -1,6 +1,6 @@
 // Auth Service - Handle authentication API calls
 
-import { authConfig } from '../config/authConfig';
+import { authConfig } from "../config/authConfig";
 
 export interface LoginCredentials {
   email: string;
@@ -15,7 +15,7 @@ export interface LoginResponse {
     id: string;
     email: string;
     name: string;
-    role: 'customer' | 'manager' | 'staff' | 'admin';
+    role: "customer" | "manager" | "staff" | "admin";
   };
   message?: string;
 }
@@ -25,7 +25,7 @@ export interface RegisterData {
   password: string;
   name: string;
   phone?: string;
-  role: 'customer' | 'manager';
+  role: "customer" | "manager";
 }
 
 export const authService = {
@@ -34,62 +34,70 @@ export const authService = {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.login}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${authConfig.api.baseUrl}${authConfig.api.endpoints.login}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: credentials.email,
+            password: credentials.password,
+          }),
         },
-        body: JSON.stringify({
-          email: credentials.email,
-          password: credentials.password
-        }),
-      });
+      );
 
       const apiResponse = await response.json();
 
       if (response.ok && apiResponse.success) {
         const storage = credentials.rememberMe ? localStorage : sessionStorage;
 
-        const token = apiResponse.data?.accessToken || apiResponse.data?.token || apiResponse.token;
+        const token =
+          apiResponse.data?.accessToken ||
+          apiResponse.data?.token ||
+          apiResponse.token;
         const refreshToken = apiResponse.data?.refreshToken;
-        
-        // Debug: Log backend response to check what fields are available
-        console.log('Backend login response data:', apiResponse.data);
-        
-        const userData = apiResponse.data ? {
-          id: apiResponse.data.userId || apiResponse.data.id || apiResponse.data.guid || apiResponse.data.email,
-          email: apiResponse.data.email,
-          name: apiResponse.data.fullName || apiResponse.data.name,
-          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'manager' | 'staff' | 'admin'
-        } : undefined;
+        const userData = apiResponse.data
+          ? {
+              id: apiResponse.data.id || apiResponse.data.email,
+              email: apiResponse.data.email,
+              name: apiResponse.data.fullName || apiResponse.data.name,
+              role: apiResponse.data.role?.toLowerCase() as
+                | "customer"
+                | "manager"
+                | "staff"
+                | "admin",
+            }
+          : undefined;
 
         if (token) {
-          storage.setItem('authToken', token);
+          storage.setItem("authToken", token);
         }
         if (refreshToken) {
-          storage.setItem('refreshToken', refreshToken);
+          storage.setItem("refreshToken", refreshToken);
         }
         if (userData) {
-          storage.setItem('userData', JSON.stringify(userData));
+          storage.setItem("userData", JSON.stringify(userData));
         }
 
         return {
           success: true,
           token: token,
           user: userData,
-          message: apiResponse.message
+          message: apiResponse.message,
         };
       }
 
       return {
         success: false,
-        message: apiResponse.message || 'Đăng nhập thất bại'
+        message: apiResponse.message || "Đăng nhập thất bại",
       };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       return {
         success: false,
-        message: 'Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.',
+        message: "Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.",
       };
     }
   },
@@ -99,18 +107,21 @@ export const authService = {
    */
   async register(data: RegisterData): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.register}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${authConfig.api.baseUrl}${authConfig.api.endpoints.register}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password,
+            fullName: data.name,
+            phoneNumber: data.phone,
+          }),
         },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-          fullName: data.name,        
-          phoneNumber: data.phone
-        }),
-      });
+      );
 
       const result = await response.json();
 
@@ -121,10 +132,10 @@ export const authService = {
 
       return result;
     } catch (error) {
-      console.error('Register error:', error);
+      console.error("Register error:", error);
       return {
         success: false,
-        message: 'Đã xảy ra lỗi khi đăng ký. Vui lòng thử lại.',
+        message: "Đã xảy ra lỗi khi đăng ký. Vui lòng thử lại.",
       };
     }
   },
@@ -134,33 +145,38 @@ export const authService = {
    */
   async logout(): Promise<void> {
     const token = this.getToken();
-    const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
-    
+    const refreshToken =
+      localStorage.getItem("refreshToken") ||
+      sessionStorage.getItem("refreshToken");
+
     try {
       // Call API logout để invalidate token trên server
       if (token && refreshToken) {
-        await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.logout}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+        await fetch(
+          `${authConfig.api.baseUrl}${authConfig.api.endpoints.logout}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              accessToken: token,
+              refreshToken: refreshToken,
+            }),
           },
-          body: JSON.stringify({
-            accessToken: token,
-            refreshToken: refreshToken,
-          }),
-        });
+        );
       }
     } catch (error) {
-      console.error('Logout API error:', error);
+      console.error("Logout API error:", error);
     } finally {
       // Xóa tất cả token và userData khỏi storage
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userData');
-      localStorage.removeItem('refreshToken');
-      sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('userData');
-      sessionStorage.removeItem('refreshToken');
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("userData");
+      localStorage.removeItem("refreshToken");
+      sessionStorage.removeItem("authToken");
+      sessionStorage.removeItem("userData");
+      sessionStorage.removeItem("refreshToken");
     }
   },
 
@@ -168,48 +184,71 @@ export const authService = {
    * Get current auth token
    */
   getToken(): string | null {
-    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    return (
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
+    );
+  },
+
+  /**
+   * Decode JWT payload (naive, no signature check)
+   */
+  _parseJwt(token: string) {
+    try {
+      const parts = token.split(".");
+      if (parts.length < 2) return null;
+      const payload = parts[1];
+      const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+      return JSON.parse(
+        decodeURIComponent(
+          Array.prototype.map
+            .call(
+              decoded,
+              (c: any) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2),
+            )
+            .join(""),
+        ),
+      );
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /**
+   * Check if token is expired by 'exp' claim (seconds since epoch)
+   */
+  isTokenExpired(): boolean {
+    const token = this.getToken();
+    if (!token) return true;
+    const payload = this._parseJwt(token);
+    if (!payload || !payload.exp) return false; // unknown -> assume not expired
+    const exp = Number(payload.exp);
+    if (Number.isNaN(exp)) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return now >= exp;
+  },
+
+  /**
+   * Returns true if a valid (non-expired) token exists
+   */
+  isTokenValid(): boolean {
+    const token = this.getToken();
+    if (!token) return false;
+    return !this.isTokenExpired();
   },
 
   /**
    * Get current user data
    */
-  getUser(): LoginResponse['user'] | null {
-    const userData = localStorage.getItem('userData') || sessionStorage.getItem('userData');
-    if (userData) {
-      return JSON.parse(userData);
-    }
-    
-    // Fallback: Try to get userId from JWT token
-    const token = this.getToken();
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('JWT payload:', payload);
-        
-        // Try common JWT claim names for user ID
-        const userId = payload.userId || payload.sub || payload.nameid || payload.id;
-        
-        if (userId) {
-          return {
-            id: userId,
-            email: payload.email || '',
-            name: payload.name || payload.fullName || '',
-            role: (payload.role?.toLowerCase() || 'customer') as 'customer' | 'manager' | 'staff' | 'admin'
-          };
-        }
-      } catch (error) {
-        console.error('Error decoding JWT:', error);
-      }
-    }
-    
-    return null;
+  getUser(): LoginResponse["user"] | null {
+    const userData =
+      localStorage.getItem("userData") || sessionStorage.getItem("userData");
+    return userData ? JSON.parse(userData) : null;
   },
 
   /**
    * Get current user data (alias for getUser)
    */
-  getCurrentUser(): LoginResponse['user'] | null {
+  getCurrentUser(): LoginResponse["user"] | null {
     return this.getUser();
   },
 
@@ -223,22 +262,27 @@ export const authService = {
   /**
    * Request password reset
    */
-  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+  async forgotPassword(
+    email: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.forgotPassword}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${authConfig.api.baseUrl}${authConfig.api.endpoints.forgotPassword}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
         },
-        body: JSON.stringify({ email }),
-      });
+      );
 
       return await response.json();
     } catch (error) {
-      console.error('Forgot password error:', error);
+      console.error("Forgot password error:", error);
       return {
         success: false,
-        message: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+        message: "Đã xảy ra lỗi. Vui lòng thử lại.",
       };
     }
   },
@@ -269,26 +313,33 @@ export const authService = {
   /**
    * Reset password with OTP
    */
-  async resetPassword(email: string, otpCode: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  async resetPassword(
+    email: string,
+    otpCode: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.resetPassword}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${authConfig.api.baseUrl}${authConfig.api.endpoints.resetPassword}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email,
+            otpCode: otpCode,
+            newPassword: newPassword,
+          }),
         },
-        body: JSON.stringify({ 
-          email: email,
-          otpCode: otpCode,
-          newPassword: newPassword 
-        }),
-      });
+      );
 
       return await response.json();
     } catch (error) {
-      console.error('Reset password error:', error);
+      console.error("Reset password error:", error);
       return {
         success: false,
-        message: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+        message: "Đã xảy ra lỗi. Vui lòng thử lại.",
       };
     }
   },
@@ -298,57 +349,69 @@ export const authService = {
    */
   async verifyOtp(email: string, otpCode: string): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.verifyOtp}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${authConfig.api.baseUrl}${authConfig.api.endpoints.verifyOtp}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email,
+            otpCode: otpCode,
+          }),
         },
-        body: JSON.stringify({
-          email: email,
-          otpCode: otpCode
-        }),
-      });
+      );
 
       const apiResponse = await response.json();
 
       if (response.ok && apiResponse.success) {
         // OTP verified successfully, save token and user data
-        const token = apiResponse.data?.accessToken || apiResponse.data?.token || apiResponse.token;
+        const token =
+          apiResponse.data?.accessToken ||
+          apiResponse.data?.token ||
+          apiResponse.token;
         const refreshToken = apiResponse.data?.refreshToken;
-        const userData = apiResponse.data ? {
-          id: apiResponse.data.id || apiResponse.data.email,
-          email: apiResponse.data.email,
-          name: apiResponse.data.fullName || apiResponse.data.name,
-          role: apiResponse.data.role?.toLowerCase() as 'customer' | 'manager' | 'staff' | 'admin'
-        } : undefined;
+        const userData = apiResponse.data
+          ? {
+              id: apiResponse.data.id || apiResponse.data.email,
+              email: apiResponse.data.email,
+              name: apiResponse.data.fullName || apiResponse.data.name,
+              role: apiResponse.data.role?.toLowerCase() as
+                | "customer"
+                | "manager"
+                | "staff"
+                | "admin",
+            }
+          : undefined;
 
         if (token) {
-          localStorage.setItem('authToken', token);
+          localStorage.setItem("authToken", token);
         }
         if (refreshToken) {
-          localStorage.setItem('refreshToken', refreshToken);
+          localStorage.setItem("refreshToken", refreshToken);
         }
         if (userData) {
-          localStorage.setItem('userData', JSON.stringify(userData));
+          localStorage.setItem("userData", JSON.stringify(userData));
         }
 
         return {
           success: true,
           token: token,
           user: userData,
-          message: apiResponse.message
+          message: apiResponse.message,
         };
       }
 
       return {
         success: false,
-        message: apiResponse.message || 'Mã OTP không hợp lệ'
+        message: apiResponse.message || "Mã OTP không hợp lệ",
       };
     } catch (error) {
-      console.error('Verify OTP error:', error);
+      console.error("Verify OTP error:", error);
       return {
         success: false,
-        message: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+        message: "Đã xảy ra lỗi. Vui lòng thử lại.",
       };
     }
   },
