@@ -1,15 +1,26 @@
 import { useState, useEffect } from "react";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Users, Star } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { publicHomestayService } from "../services/publicHomestayService";
+import { bookingService } from "../services/bookingService";
+import { authService } from "../services/authService";
+import toast from 'react-hot-toast';
 import type { Homestay } from "../types/homestay.types";
 import MainLayout from "../layouts/MainLayout";
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [selectedLocation, setSelectedLocation] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
+
+  const today = new Date().toISOString().split('T')[0];
+  const addDays = (dateStr: string, days: number) => {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  };
 
   const [allHomestays, setAllHomestays] = useState<Homestay[]>([]);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
@@ -100,7 +111,14 @@ export default function HomePage() {
                 <input
                   type="date"
                   value={checkInDate}
-                  onChange={(e) => setCheckInDate(e.target.value)}
+                  min={today}
+                  onChange={(e) => {
+                    const newCheckIn = e.target.value;
+                    setCheckInDate(newCheckIn);
+                    if (checkOutDate && new Date(checkOutDate) <= new Date(newCheckIn)) {
+                      setCheckOutDate(addDays(newCheckIn, 1));
+                    }
+                  }}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 />
               </div>
@@ -116,7 +134,15 @@ export default function HomePage() {
                 <input
                   type="date"
                   value={checkOutDate}
-                  onChange={(e) => setCheckOutDate(e.target.value)}
+                  min={checkInDate ? addDays(checkInDate, 1) : addDays(today, 1)}
+                  onChange={(e) => {
+                    const newCheckOut = e.target.value;
+                    if (checkInDate && new Date(newCheckOut) <= new Date(checkInDate)) {
+                      setCheckOutDate(addDays(checkInDate, 1));
+                    } else {
+                      setCheckOutDate(newCheckOut);
+                    }
+                  }}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 />
               </div>
@@ -198,11 +224,55 @@ export default function HomePage() {
                 </Link>
 
                 <div className="p-4 pt-0">
-                  <div className="flex justify-end">
-                    <button className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium">
-                      Đặt Ngay
-                    </button>
-                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!authService.isAuthenticated() || !authService.isTokenValid()) {
+                        if (authService.isAuthenticated() && !authService.isTokenValid()) {
+                          toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
+                        }
+                        navigate('/auth/login');
+                        return;
+                      }
+
+                      if (!checkInDate || !checkOutDate) {
+                        toast.error('Vui lòng chọn ngày nhận và trả phòng trước khi đặt.');
+                        return;
+                      }
+
+                      if (new Date(checkInDate) < new Date(today)) {
+                        toast.error('Ngày nhận phòng không được nhỏ hơn ngày hiện tại.');
+                        return;
+                      }
+
+                      if (new Date(checkOutDate) <= new Date(checkInDate)) {
+                        toast.error('Ngày trả phòng phải sau ngày nhận phòng.');
+                        return;
+                      }
+
+                      try {
+                        const payload = {
+                          homestayId: homestay.id,
+                          checkIn: checkInDate,
+                          checkOut: checkOutDate,
+                          guestsCount: 1,
+                        };
+
+                        const res = await bookingService.createBooking(payload as any);
+                        if (res && (res as any).success) {
+                          toast.success('Đặt phòng thành công!');
+                          navigate('/customer/bookings');
+                        } else {
+                          toast.error((res as any).message || 'Đặt phòng thất bại');
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        toast.error('Đã xảy ra lỗi khi đặt phòng. Vui lòng thử lại.');
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium"
+                  >
+                    Đặt Ngay
+                  </button>
                 </div>
               </div>
             ))}
