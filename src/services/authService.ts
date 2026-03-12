@@ -52,8 +52,12 @@ export const authService = {
 
         const token = apiResponse.data?.accessToken || apiResponse.data?.token || apiResponse.token;
         const refreshToken = apiResponse.data?.refreshToken;
+        
+        // Debug: Log backend response to check what fields are available
+        console.log('Backend login response data:', apiResponse.data);
+        
         const userData = apiResponse.data ? {
-          id: apiResponse.data.id || apiResponse.data.email,
+          id: apiResponse.data.userId || apiResponse.data.id || apiResponse.data.guid || apiResponse.data.email,
           email: apiResponse.data.email,
           name: apiResponse.data.fullName || apiResponse.data.name,
           role: apiResponse.data.role?.toLowerCase() as 'customer' | 'manager' | 'staff' | 'admin'
@@ -172,7 +176,34 @@ export const authService = {
    */
   getUser(): LoginResponse['user'] | null {
     const userData = localStorage.getItem('userData') || sessionStorage.getItem('userData');
-    return userData ? JSON.parse(userData) : null;
+    if (userData) {
+      return JSON.parse(userData);
+    }
+    
+    // Fallback: Try to get userId from JWT token
+    const token = this.getToken();
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('JWT payload:', payload);
+        
+        // Try common JWT claim names for user ID
+        const userId = payload.userId || payload.sub || payload.nameid || payload.id;
+        
+        if (userId) {
+          return {
+            id: userId,
+            email: payload.email || '',
+            name: payload.name || payload.fullName || '',
+            role: (payload.role?.toLowerCase() || 'customer') as 'customer' | 'manager' | 'staff' | 'admin'
+          };
+        }
+      } catch (error) {
+        console.error('Error decoding JWT:', error);
+      }
+    }
+    
+    return null;
   },
 
   /**
