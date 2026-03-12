@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Users, Star, ChevronRight, Heart } from "lucide-react";
 import { authService } from "../../services/authService";
@@ -62,6 +62,14 @@ export default function CustomerDashboard() {
       setIsLoadingBookings(false);
     }
   };
+
+  const homestayMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    allHomestays.forEach((h: any) => {
+      if (h?.id) map[h.id] = h;
+    });
+    return map;
+  }, [allHomestays]);
 
   // Lọc booking sắp tới (confirmed và chưa qua ngày checkIn)
   const upcomingBookings = myBookings.filter(
@@ -232,32 +240,62 @@ export default function CustomerDashboard() {
                   className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
                 >
                   <div className="flex flex-col sm:flex-row">
-                    <div className="sm:w-40 h-40 sm:h-auto relative">
-                      <ImageWithFallback
-                        src={booking.image}
-                        alt={booking.homestayName}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="sm:w-40 h-40 sm:h-auto relative bg-gray-100">
+                      {(() => {
+                        const hs = homestayMap[booking.homestayId];
+                        const img = hs?.images?.[0] || '';
+                        const alt = hs?.name || 'Homestay';
+                        return (
+                          <ImageWithFallback
+                            src={img}
+                            alt={alt}
+                            className="w-full h-full object-cover"
+                          />
+                        );
+                      })()}
                     </div>
                     <div className="flex-1 p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h4 className="font-semibold text-gray-900">
-                            {booking.homestayName || 'Homestay'}
+                            {(() => {
+                              const hs = homestayMap[booking.homestayId];
+                              const cleaned = booking.homestayName && !/loading/i.test(String(booking.homestayName))
+                                ? booking.homestayName
+                                : undefined;
+                              return hs?.name || cleaned || 'Homestay';
+                            })()}
                           </h4>
                           <p className="text-sm text-gray-600 flex items-center gap-1">
                             <MapPin className="w-4 h-4" />
-                            {booking.location || 'Đang cập nhật'}
+                            {(() => {
+                              const hs = homestayMap[booking.homestayId];
+                              if (hs?.address) return hs.address;
+                              const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
+                              return cityCountry || 'Đang cập nhật';
+                            })()}
                           </p>
                         </div>
-                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                            booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-700'
-                          }`}>
-                          {booking.status === 'confirmed' ? 'Đã Xác Nhận' :
-                            booking.status === 'pending' ? 'Chờ Xác Nhận' :
-                              booking.status === 'cancelled' ? 'Đã Hủy' : 'Hoàn Thành'}
+                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${
+                          booking.status === 'confirmed'
+                            ? 'bg-green-100 text-green-700'
+                            : booking.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : booking.status === 'cancelled'
+                            ? 'bg-red-100 text-red-700'
+                            : booking.status === 'completed'
+                            ? 'bg-cyan-100 text-cyan-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {booking.status === 'confirmed'
+                            ? 'Đã Xác Nhận'
+                            : booking.status === 'pending'
+                            ? 'Chờ Xác Nhận'
+                            : booking.status === 'cancelled'
+                            ? 'Đã Hủy'
+                            : booking.status === 'completed'
+                            ? 'Hoàn Thành'
+                            : 'Trạng Thái'}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
@@ -375,10 +413,10 @@ export default function CustomerDashboard() {
               {filteredHomestays.slice(0, 8).map((homestay) => (
                 <div
                   key={homestay.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
+                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group flex flex-col"
                 >
-                  <Link to={`/homestays/${homestay.id}`} className="block">
-                    <div className="relative h-48 overflow-hidden">
+                  <Link to={`/homestays/${homestay.id}`} className="block flex-1 flex flex-col">
+                    <div className="relative h-48 overflow-hidden flex-shrink-0">
                       <ImageWithFallback
                         src={homestay.images?.[0] || ''}
                         alt={homestay.name}
@@ -389,21 +427,23 @@ export default function CustomerDashboard() {
                       </div>
                     </div>
 
-                    <div className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900 line-clamp-1">
+                    <div className="p-4 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between mb-2 min-h-[3rem]">
+                        <h4 className="font-semibold text-gray-900 line-clamp-2 flex-1">
                           {homestay.name}
                         </h4>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 ml-2 flex-shrink-0">
                           <span className="text-sm font-medium">
                             {homestay.rating ?? '-'}
                           </span>
                         </div>
                       </div>
 
-                      <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
-                        <MapPin className="w-4 h-4" />
-                        {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                      <p className="text-sm text-gray-600 flex items-start gap-1 mb-3 min-h-[2.5rem]">
+                        <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">
+                          {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                        </span>
                       </p>
 
                       <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
@@ -414,7 +454,7 @@ export default function CustomerDashboard() {
                         <span>{homestay.bedrooms ?? '-'} Phòng Ngủ</span>
                       </div>
 
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
                         <div>
                           <span className="font-bold text-gray-900">
                             {homestay.pricePerNight ? homestay.pricePerNight.toLocaleString("vi-VN") + 'đ' : '-'}

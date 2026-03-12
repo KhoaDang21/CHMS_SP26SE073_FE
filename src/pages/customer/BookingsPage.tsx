@@ -8,6 +8,12 @@ import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import type { Homestay } from '../../types/homestay.types';
 
+const cleanLoadingText = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  if (/loading/i.test(value) || /đang cập nhật/i.test(value)) return undefined;
+  return value;
+};
+
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,12 +31,27 @@ export default function BookingsPage() {
   const [editSpecialRequests, setEditSpecialRequests] = useState('');
   const [saving, setSaving] = useState(false);
   const [detailHomestay, setDetailHomestay] = useState<Homestay | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [homestayMap, setHomestayMap] = useState<Record<string, Homestay>>({});
 
   const load = async () => {
     setLoading(true);
     try {
       const res = await bookingService.getMyBookings();
       setBookings(res);
+
+      // Load homestay info để hiển thị đúng name/address/image
+      try {
+        const homestaysRes = await publicHomestayService.list({ page: 1, pageSize: 200 });
+        const map: Record<string, Homestay> = {};
+        (homestaysRes.Items || []).forEach((h) => {
+          map[h.id] = h;
+        });
+        setHomestayMap(map);
+      } catch (e) {
+        console.error(e);
+        setHomestayMap({});
+      }
     } catch (e) {
       console.error(e);
       toast.error('Không thể tải danh sách booking');
@@ -212,11 +233,18 @@ export default function BookingsPage() {
                 <div className="flex flex-col">
                   {/* Image section - full width on mobile, fixed height */}
                   <div className="relative h-48 sm:h-56 bg-gray-100 overflow-hidden">
-                    <ImageWithFallback
-                      src={b.image || ''}
-                      alt={b.homestayName || 'Homestay'}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    {(() => {
+                      const hs = homestayMap[b.homestayId];
+                      const img = hs?.images?.[0] || '';
+                      const alt = hs?.name || cleanLoadingText(b.homestayName) || 'Homestay';
+                      return (
+                        <ImageWithFallback
+                          src={img}
+                          alt={alt}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      );
+                    })()}
                     {/* Status badge on image */}
                     <div className="absolute top-3 right-3">
                       <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
@@ -235,14 +263,22 @@ export default function BookingsPage() {
                     {/* Title and location */}
                     <div className="mb-4">
                       <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">
-                        {(b.homestayName && !/loading/i.test(String(b.homestayName)) && !/đang cập nhật/i.test(String(b.homestayName)))
-                          ? b.homestayName
-                          : 'Homestay'}
+                        {(() => {
+                          const hs = homestayMap[b.homestayId];
+                          const name = hs?.name || cleanLoadingText(b.homestayName);
+                          return name || 'Homestay';
+                        })()}
                       </h3>
                       <div className="flex items-center gap-1 text-sm text-gray-600">
                         <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                         <span className="line-clamp-1">
-                          {b.location && !/đang cập nhật/i.test(String(b.location)) ? b.location : 'Đang cập nhật'}
+                          {(() => {
+                            const hs = homestayMap[b.homestayId];
+                            if (hs?.address) return hs.address;
+                            const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
+                            if (cityCountry) return cityCountry;
+                            return 'Đang cập nhật';
+                          })()}
                         </span>
                       </div>
                     </div>
@@ -340,6 +376,56 @@ export default function BookingsPage() {
                   </div>
                 ) : (
                   <>
+                    {/* Homestay preview: images + basic info (clean, responsive) */}
+                    <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                      <div className="flex flex-col md:flex-row md:items-start gap-4">
+                        <div className="md:flex-1">
+                          <div
+                            onClick={() => setLightboxSrc((detailHomestay?.images && detailHomestay.images[0]) || homestayMap[selected.homestayId]?.images?.[0] || '')}
+                            className="rounded-xl overflow-hidden bg-gray-100 h-56 md:h-48 cursor-pointer shadow-sm"
+                          >
+                            <ImageWithFallback
+                              src={(detailHomestay?.images && detailHomestay.images[0]) || homestayMap[selected.homestayId]?.images?.[0] || ''}
+                              alt={detailHomestay?.name || selected.homestayName || 'Homestay'}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                          <div className="hidden md:flex gap-2 mt-3">
+                            {(detailHomestay?.images || homestayMap[selected.homestayId]?.images || []).slice(1, 5).map((img, i) => (
+                              <div key={i} className="flex-1 h-20 rounded overflow-hidden cursor-pointer" onClick={() => setLightboxSrc(img ?? '')}>
+                                <ImageWithFallback src={img ?? ''} alt={`${detailHomestay?.name || selected.homestayName}-${i}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="md:w-80">
+                          <h2 className="text-lg font-bold truncate">{detailHomestay?.name || selected.homestayName}</h2>
+                          <div className="text-sm text-gray-600 mt-1 mb-3 truncate">{detailHomestay?.address || detailHomestay?.city || homestayMap[selected.homestayId]?.address || 'Đang cập nhật'}</div>
+                          <div className="text-sm text-gray-700 mb-3 line-clamp-4">{detailHomestay?.description || homestayMap[selected.homestayId]?.description || '—'}</div>
+
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div>Giá/đêm: <span className="font-medium text-gray-900">{detailHomestay?.pricePerNight ? `${detailHomestay.pricePerNight.toLocaleString('vi-VN')}đ` : (homestayMap[selected.homestayId]?.pricePerNight ? `${homestayMap[selected.homestayId].pricePerNight.toLocaleString('vi-VN')}đ` : '—')}</span></div>
+                            <div>Số khách: <span className="font-medium text-gray-900">{detailHomestay?.maxGuests ?? homestayMap[selected.homestayId]?.maxGuests ?? '—'}</span></div>
+                            <div className="pt-2">
+                              <div className="text-sm font-semibold mb-2">Tiện nghi</div>
+                              <div className="flex flex-wrap gap-2">
+                                {(detailHomestay?.amenities || homestayMap[selected.homestayId]?.amenities || []).slice(0, 8).map((a, i) => (
+                                  <div key={i} className="text-sm bg-gray-100 px-3 py-1 rounded">{a}</div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Lightbox overlay */}
+                    {lightboxSrc && (
+                      <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxSrc(null)}>
+                        <img src={lightboxSrc} alt="Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
+                        <button className="absolute top-6 right-6 text-white text-2xl" onClick={() => setLightboxSrc(null)}>×</button>
+                      </div>
+                    )}
                     {/* Thông tin cơ bản */}
                     <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-5 border border-blue-100">
                       <div className="grid grid-cols-2 gap-4">
@@ -568,25 +654,13 @@ export default function BookingsPage() {
                             if (!selected) return;
                             setSaving(true);
                             try {
-                              // include concurrency token if present to avoid optimistic concurrency errors
-                              const token = (selected as any).rowVersion || (selected as any).row_version || (selected as any).version || (selected as any).concurrencyStamp || (selected as any).timestamp;
-                              const body = token ? { rowVersion: token } : undefined;
-
-                              const res = await bookingService.cancelBooking(selected.id, body);
+                              const res = await bookingService.cancelBooking(selected.id);
                               if (res?.success) {
                                 toast.success(res.message || 'Đã hủy booking');
                                 await load();
                                 setSelected(null);
                               } else {
-                                const msg = res?.message || '';
-                                // detect optimistic concurrency / row affected = 0 errors and handle gracefully
-                                if (/expected to affect 1 row\(s\)|optimistic concurrency|affect 0 row/i.test(msg)) {
-                                  toast.error('Booking đã thay đổi hoặc đã được xử lý. Tải lại dữ liệu.');
-                                  await load();
-                                  setSelected(null);
-                                } else {
-                                  toast.error(msg || 'Hủy booking thất bại');
-                                }
+                                toast.error(res?.message || 'Hủy booking thất bại');
                               }
                             } catch (e) {
                               console.error(e);

@@ -5,15 +5,18 @@ export interface Booking {
   id: string;
   homestayId: string;
   homestayName?: string;
-  location?: string;
   checkIn: string;
   checkOut: string;
   guestsCount: number;
   status: "pending" | "confirmed" | "cancelled" | "completed";
-  image?: string;
+  totalNights?: number;
+  pricePerNight?: number;
+  subTotal?: number;
+  discountAmount?: number;
   totalPrice?: number;
   specialRequests?: string;
   contactPhone?: string;
+  createdAt?: string;
 }
 
 export interface CreateBookingRequest {
@@ -31,6 +34,8 @@ export interface CalculateBookingRequest {
   checkIn: string;
   checkOut: string;
   guestsCount: number;
+  specialRequests?: string;
+  contactPhone?: string;
   promotionId?: string;
 }
 
@@ -48,6 +53,20 @@ export interface CancellationPolicyResponse {
   [key: string]: any;
 }
 
+const normalizeStatus = (rawStatus: any): Booking["status"] => {
+  const v = String(rawStatus || "").toLowerCase();
+  if (v === "confirmed") return "confirmed";
+  if (v === "cancelled") return "cancelled";
+  if (v === "completed") return "completed";
+  return "pending";
+};
+
+const cleanLoadingText = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  if (/loading/i.test(value) || /đang cập nhật/i.test(value)) return undefined;
+  return value;
+};
+
 export const bookingService = {
   /**
    * Lấy danh sách booking của user
@@ -59,17 +78,34 @@ export const bookingService = {
       );
 
       // Xử lý cả 2 trường hợp: response.data hoặc response trực tiếp là array
-      if (Array.isArray(response)) {
-        return response;
-      }
-      if (response.data && Array.isArray(response.data)) {
-        return response.data;
-      }
-      if (response.success && response.data) {
-        return Array.isArray(response.data) ? response.data : [];
-      }
+      const rawList: any[] = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+          ? response.data
+          : response?.success && Array.isArray(response.data)
+            ? response.data
+            : [];
 
-      return [];
+      return rawList.map((item) => {
+        const normalized: Booking = {
+          id: item.id,
+          homestayId: item.homestayId,
+          homestayName: cleanLoadingText(item.homestayName),
+          checkIn: item.checkIn,
+          checkOut: item.checkOut,
+          guestsCount: item.guestsCount,
+          status: normalizeStatus(item.status),
+          totalNights: item.totalNights,
+          pricePerNight: item.pricePerNight,
+          subTotal: item.subTotal,
+          discountAmount: item.discountAmount,
+          totalPrice: item.totalPrice,
+          specialRequests: item.specialRequests ?? undefined,
+          contactPhone: item.contactPhone ?? undefined,
+          createdAt: item.createdAt,
+        };
+        return normalized;
+      });
     } catch (error) {
       console.error("Get my bookings error:", error);
       return [];
@@ -85,15 +121,28 @@ export const bookingService = {
         apiConfig.endpoints.bookings.detail(id),
       );
 
-      // Xử lý response
-      if (response.data) {
-        return response.data;
-      }
-      if (response.id) {
-        return response;
-      }
+      const raw = response?.data ?? response;
+      if (!raw?.id) return null;
 
-      return null;
+      const normalized: Booking = {
+        id: raw.id,
+        homestayId: raw.homestayId,
+        homestayName: cleanLoadingText(raw.homestayName),
+        checkIn: raw.checkIn,
+        checkOut: raw.checkOut,
+        guestsCount: raw.guestsCount,
+        status: normalizeStatus(raw.status),
+        totalNights: raw.totalNights,
+        pricePerNight: raw.pricePerNight,
+        subTotal: raw.subTotal,
+        discountAmount: raw.discountAmount,
+        totalPrice: raw.totalPrice,
+        specialRequests: raw.specialRequests ?? undefined,
+        contactPhone: raw.contactPhone ?? undefined,
+        createdAt: raw.createdAt,
+      };
+
+      return normalized;
     } catch (error) {
       console.error("Get booking detail error:", error);
       return null;
@@ -127,13 +176,12 @@ export const bookingService = {
    */
   async cancelBooking(
     id: string,
-    body?: any,
   ): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiService.post<{
         success: boolean;
         message: string;
-      }>(apiConfig.endpoints.bookings.cancel(id), body);
+      }>(apiConfig.endpoints.bookings.cancel(id));
       return response;
     } catch (error) {
       console.error("Cancel booking error:", error);

@@ -16,6 +16,7 @@ export default function HomestayDetail() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [selectedIndex, setSelectedIndex] = useState(0)
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
     const [checkIn, setCheckIn] = useState('')
     const [checkOut, setCheckOut] = useState('')
     const [guests, setGuests] = useState(1)
@@ -79,14 +80,8 @@ export default function HomestayDetail() {
             if (!homestay?.id) return
             if (!checkIn || !checkOut) return
             if (nights <= 0) return
-            // BE booking endpoints yêu cầu authenticated → chỉ calculate khi user đã login and token valid
-            if (!authService.isAuthenticated() || !authService.isTokenValid()) {
-                // token missing or expired
-                if (authService.isAuthenticated() && !authService.isTokenValid()) {
-                    toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
-                }
-                return
-            }
+            // BE booking endpoints yêu cầu authenticated → chỉ calculate khi user đã login
+            if (!authService.isAuthenticated()) return
             setIsCalculating(true)
             try {
                 const res = await bookingService.calculate({
@@ -94,6 +89,8 @@ export default function HomestayDetail() {
                     checkIn,
                     checkOut,
                     guestsCount: guests,
+                    ...(specialRequests ? { specialRequests } : {}),
+                    ...(contactPhone ? { contactPhone } : {}),
                 })
                 if (!alive) return
                 setCalcResult(res)
@@ -101,15 +98,13 @@ export default function HomestayDetail() {
                 console.error(e)
                 if (!alive) return
                 setCalcResult(null)
-                // if 401/expired token detected upstream, inform user
-                // errors are already handled in apiService.console
             } finally {
                 if (alive) setIsCalculating(false)
             }
         }
         run()
         return () => { alive = false }
-    }, [homestay?.id, checkIn, checkOut, guests, nights])
+    }, [homestay?.id, checkIn, checkOut, guests, nights, specialRequests, contactPhone])
 
     const formatMoney = (value: any) => {
         const n = typeof value === 'number' ? value : Number(value)
@@ -160,7 +155,7 @@ export default function HomestayDetail() {
                         <div className="lg:col-span-2">
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                                 <div className="lg:col-span-2">
-                                    <div className="rounded-xl overflow-hidden h-96 bg-gray-100">
+                                    <div className="rounded-xl overflow-hidden h-96 bg-gray-100 cursor-pointer" onClick={() => setLightboxSrc(images[selectedIndex] ?? '')}>
                                         <ImageWithFallback
                                             src={images[selectedIndex] ?? ''}
                                             alt={homestay.name}
@@ -169,12 +164,12 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
-                                <div className="hidden lg:block">
-                                    <div className="flex flex-col gap-3">
+                                <div className="hidden lg:block h-96">
+                                    <div className="flex flex-col justify-between h-full">
                                         {Array.from({ length: 4 }).map((_, idx) => {
                                             const img = images[idx + 1] ?? images[(idx + 1) % images.length]
                                             return (
-                                                <div key={idx} onClick={() => setSelectedIndex(idx + 1 < images.length ? idx + 1 : 0)} className="h-28 rounded overflow-hidden cursor-pointer border">
+                                                <div key={idx} onClick={() => setLightboxSrc(img ?? '')} className="h-24 rounded overflow-hidden cursor-pointer border">
                                                     <ImageWithFallback src={img ?? ''} alt={`${homestay.name}-${idx}`} className="w-full h-full object-cover" />
                                                 </div>
                                             )
@@ -382,6 +377,12 @@ export default function HomestayDetail() {
                                 <div className="mt-4 text-xs text-gray-500">Phí dịch vụ và thuế sẽ được tính khi thanh toán.</div>
                             </div>
                         </div>
+                    </div>
+                )}
+                {lightboxSrc && (
+                    <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxSrc(null)}>
+                        <img src={lightboxSrc} alt="Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
+                        <button className="absolute top-6 right-6 text-white text-2xl" onClick={() => setLightboxSrc(null)}>×</button>
                     </div>
                 )}
             </div>
