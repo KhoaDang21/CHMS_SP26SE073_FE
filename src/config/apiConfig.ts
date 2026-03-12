@@ -62,5 +62,8 @@ export const apiConfig = {
       verify: "/payments/verify",
       history: "/payments/history",
     },
+    districts: {
+      list: "/districts",
+    },
   },
 };

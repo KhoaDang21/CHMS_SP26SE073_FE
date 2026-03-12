@@ -80,3 +80,27 @@ export interface Staff {
   status: 'ACTIVE' | 'INACTIVE';
   joinedDate: string;
 }
+
+export interface District {
+  id: string;
+  name: string;
+  provinceId: string;
+  provinceName: string;
+}
+
+export interface CreateHomestayDTO {
+  name: string;
+  description: string;
+  pricePerNight: number;
+  bedrooms: number;
+  bathrooms: number;
+  maxGuests: number;
+  cancellationPolicy: string;
+  houseRules: string;
+  amenityIds: string[];
+  address: string;
+  districtId: string;
+  latitude?: number;
+  longitude?: number;
+  images: string[];
+}

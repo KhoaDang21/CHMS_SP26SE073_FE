@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Check, Home, MapPin, DollarSign, Image, Sparkles, FileText } from 'lucide-react';
-import type { CreateHomestayDTO } from '../../types/homestay.types';
+import type { CreateHomestayDTO, District } from '../../types/homestay.types';
 import type { Amenity } from '../../types/amenity.types';
 import { amenityService } from '../../services/amenityService';
+import { districtService } from '../../services/districtService';
 
 interface CreateHomestayModalProps {
   isOpen: boolean;
@@ -11,20 +12,10 @@ interface CreateHomestayModalProps {
   loading?: boolean;
 }
 
-const CITIES = [
-  'Nha Trang',
-  'Đà Nẵng',
-  'Vũng Tàu',
-  'Phú Quốc',
-  'Hội An',
-  'Quy Nhơn',
-  'Phan Thiết',
-  'Hạ Long',
-];
-
 export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading }: CreateHomestayModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
   
   const [formData, setFormData] = useState<CreateHomestayDTO>({
     name: '',
@@ -37,7 +28,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     houseRules: 'Không hút thuốc. Không thú cưng. Giờ nhận phòng: 14:00. Giờ trả phòng: 12:00.',
     amenityIds: [],
     address: '',
-    city: '',
+    districtId: '',
     latitude: undefined,
     longitude: undefined,
     images: [],
@@ -48,6 +39,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   useEffect(() => {
     if (isOpen) {
       loadAmenities();
+      loadDistricts();
     }
   }, [isOpen]);
 
@@ -58,6 +50,16 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       setAmenities(data); // Show all amenities for admin
     } catch (error) {
       console.error('Error loading amenities:', error);
+    }
+  };
+
+  const loadDistricts = async () => {
+    try {
+      const data = await districtService.getAllDistricts();
+      console.log('Loaded districts:', data);
+      setDistricts(data);
+    } catch (error) {
+      console.error('Error loading districts:', error);
     }
   };
 
@@ -74,7 +76,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       houseRules: 'Không hút thuốc. Không thú cưng. Giờ nhận phòng: 14:00. Giờ trả phòng: 12:00.',
       amenityIds: [],
       address: '',
-      city: '',
+      districtId: '',
       latitude: undefined,
       longitude: undefined,
       images: [],
@@ -107,11 +109,13 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       bedrooms: formData.bedrooms,
       bathrooms: formData.bathrooms,
       address: formData.address,
+      districtId: formData.districtId,
       cancellationPolicy: formData.cancellationPolicy,
       houseRules: formData.houseRules,
       latitude: formData.latitude,
       longitude: formData.longitude,
-      amenityIds: formData.amenityIds && formData.amenityIds.length > 0 ? formData.amenityIds : undefined,
+      amenityIds: formData.amenityIds || [],
+      images: [],
       // Do NOT send images - upload separately after creation to avoid transaction size issues
     };
     
@@ -148,7 +152,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       case 2:
         return formData.pricePerNight > 0 && formData.bedrooms > 0 && formData.bathrooms > 0 && formData.maxGuests > 0;
       case 3:
-        return formData.address.trim() !== '' && (formData.city?.trim() ?? '') !== '';
+        return formData.address.trim() !== '' && formData.districtId.trim() !== '';
       case 4:
         return true; // Amenities are optional
       case 5:
@@ -330,16 +334,18 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Thành phố <span className="text-red-500">*</span>
+                  Quận/Huyện <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  value={formData.districtId}
+                  onChange={(e) => setFormData({ ...formData, districtId: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Chọn thành phố</option>
-                  {CITIES.map(city => (
-                    <option key={city} value={city}>{city}</option>
+                  <option value="">Chọn quận/huyện</option>
+                  {districts.map(district => (
+                    <option key={district.id} value={district.id}>
+                      {district.name} - {district.provinceName}
+                    </option>
                   ))}
                 </select>
               </div>
