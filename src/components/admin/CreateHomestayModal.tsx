@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Check, Home, MapPin, DollarSign, Image, Sparkles, FileText } from 'lucide-react';
-import type { CreateHomestayDTO } from '../../types/homestay.types';
+import type { CreateHomestayDTO, District } from '../../types/homestay.types';
 import type { Amenity } from '../../types/amenity.types';
 import { amenityService } from '../../services/amenityService';
+import { districtService } from '../../services/districtService';
+import { authService } from '../../services/authService';
 
 interface CreateHomestayModalProps {
   isOpen: boolean;
@@ -11,35 +13,26 @@ interface CreateHomestayModalProps {
   loading?: boolean;
 }
 
-const CITIES = [
-  'Nha Trang',
-  'Đà Nẵng',
-  'Vũng Tàu',
-  'Phú Quốc',
-  'Hội An',
-  'Quy Nhơn',
-  'Phan Thiết',
-  'Hạ Long',
-];
-
 export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading }: CreateHomestayModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
   
-  const [formData, setFormData] = useState<CreateHomestayDTO>({
+  const [formData, setFormData] = useState<Partial<CreateHomestayDTO>>({
     name: '',
     description: '',
     pricePerNight: 0,
     bedrooms: 1,
     bathrooms: 1,
     maxGuests: 2,
+    area: 50,
     cancellationPolicy: 'Miễn phí hủy trước 24h. Sau đó phí hủy 50%.',
     houseRules: 'Không hút thuốc. Không thú cưng. Giờ nhận phòng: 14:00. Giờ trả phòng: 12:00.',
     amenityIds: [],
     address: '',
-    city: '',
-    latitude: undefined,
-    longitude: undefined,
+    districtId: '',
+    latitude: 10.0,
+    longitude: 107.0,
     images: [],
   });
   const [_selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -48,6 +41,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   useEffect(() => {
     if (isOpen) {
       loadAmenities();
+      loadDistricts();
     }
   }, [isOpen]);
 
@@ -61,6 +55,16 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     }
   };
 
+  const loadDistricts = async () => {
+    try {
+      const data = await districtService.getAllDistricts();
+      console.log('Loaded districts:', data);
+      setDistricts(data);
+    } catch (error) {
+      console.error('Error loading districts:', error);
+    }
+  };
+
   const handleClose = () => {
     setCurrentStep(1);
     setFormData({
@@ -70,13 +74,14 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       bedrooms: 1,
       bathrooms: 1,
       maxGuests: 2,
+      area: 50,
       cancellationPolicy: 'Miễn phí hủy trước 24h. Sau đó phí hủy 50%.',
       houseRules: 'Không hút thuốc. Không thú cưng. Giờ nhận phòng: 14:00. Giờ trả phòng: 12:00.',
       amenityIds: [],
       address: '',
-      city: '',
-      latitude: undefined,
-      longitude: undefined,
+      districtId: '',
+      latitude: 10.0,
+      longitude: 107.0,
       images: [],
     });
     setSelectedFiles([]);
@@ -97,22 +102,45 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   };
 
   const handleSubmit = () => {
-    // Backend will set ownerId from JWT token automatically
+    // Decode JWT to get userId
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    let userId = '';
+    
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('JWT payload:', payload);
+        
+        // Try common JWT claim names for user ID
+        userId = payload.userId || payload.sub || payload.nameid || payload.id || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+      } catch (error) {
+        console.error('Error decoding JWT:', error);
+      }
+    }
+    
+    if (!userId) {
+      console.error('Cannot get userId from JWT token');
+      alert('Không thể xác định userId. Vui lòng đăng nhập lại.');
+      return;
+    }
+
     const payload: CreateHomestayDTO = {
-      // ownerId: backend extracts from JWT token
-      name: formData.name,
-      description: formData.description,
-      pricePerNight: formData.pricePerNight,
-      maxGuests: formData.maxGuests,
-      bedrooms: formData.bedrooms,
-      bathrooms: formData.bathrooms,
-      address: formData.address,
-      cancellationPolicy: formData.cancellationPolicy,
-      houseRules: formData.houseRules,
-      latitude: formData.latitude,
-      longitude: formData.longitude,
-      amenityIds: formData.amenityIds && formData.amenityIds.length > 0 ? formData.amenityIds : undefined,
-      // Do NOT send images - upload separately after creation to avoid transaction size issues
+      ownerId: userId,
+      name: formData.name!,
+      description: formData.description!,
+      pricePerNight: formData.pricePerNight!,
+      maxGuests: formData.maxGuests!,
+      bedrooms: formData.bedrooms!,
+      bathrooms: formData.bathrooms!,
+      area: formData.area || 50,
+      address: formData.address!,
+      districtId: formData.districtId!,
+      cancellationPolicy: formData.cancellationPolicy!,
+      houseRules: formData.houseRules!,
+      latitude: formData.latitude || 10.0,
+      longitude: formData.longitude || 107.0,
+      amenityIds: formData.amenityIds || [],
+      images: [],
     };
     
     console.log('Submitting homestay payload:', payload);
@@ -144,11 +172,11 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return formData.name.trim() !== '' && formData.description.trim() !== '';
+        return formData.name?.trim() !== '' && formData.description?.trim() !== '';
       case 2:
-        return formData.pricePerNight > 0 && formData.bedrooms > 0 && formData.bathrooms > 0 && formData.maxGuests > 0;
+        return (formData.pricePerNight || 0) > 0 && (formData.bedrooms || 0) > 0 && (formData.bathrooms || 0) > 0 && (formData.maxGuests || 0) > 0 && (formData.area || 0) > 0;
       case 3:
-        return formData.address.trim() !== '' && (formData.city?.trim() ?? '') !== '';
+        return formData.address?.trim() !== '' && formData.districtId?.trim() !== '' && (formData.latitude || 0) !== 0 && (formData.longitude || 0) !== 0;
       case 4:
         return true; // Amenities are optional
       case 5:
@@ -269,6 +297,20 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Diện tích (m²) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.area || ''}
+                  onChange={(e) => setFormData({ ...formData, area: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="50"
+                  min="10"
+                />
+              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -330,16 +372,18 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Thành phố <span className="text-red-500">*</span>
+                  Quận/Huyện <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  value={formData.districtId}
+                  onChange={(e) => setFormData({ ...formData, districtId: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Chọn thành phố</option>
-                  {CITIES.map(city => (
-                    <option key={city} value={city}>{city}</option>
+                  <option value="">Chọn quận/huyện</option>
+                  {districts.map(district => (
+                    <option key={district.id} value={district.id}>
+                      {district.name} - {district.provinceName}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -347,29 +391,31 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vĩ độ (Latitude)
+                    Vĩ độ (Latitude) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
                     step="0.000001"
                     value={formData.latitude || ''}
-                    onChange={(e) => setFormData({ ...formData, latitude: e.target.value ? Number(e.target.value) : undefined })}
+                    onChange={(e) => setFormData({ ...formData, latitude: e.target.value ? Number(e.target.value) : 10.0 })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="12.245678"
+                    required
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Kinh độ (Longitude)
+                    Kinh độ (Longitude) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
                     step="0.000001"
                     value={formData.longitude || ''}
-                    onChange={(e) => setFormData({ ...formData, longitude: e.target.value ? Number(e.target.value) : undefined })}
+                    onChange={(e) => setFormData({ ...formData, longitude: e.target.value ? Number(e.target.value) : 107.0 })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="109.198765"
+                    required
                   />
                 </div>
               </div>
