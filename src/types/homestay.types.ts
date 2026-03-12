@@ -88,19 +88,27 @@ export interface District {
   provinceName: string;
 }
 
+export interface HomestayImage {
+  imageUrl: string;
+  caption?: string;
+  isPrimary?: boolean;
+}
+
 export interface CreateHomestayDTO {
+  ownerId: string;
   name: string;
   description: string;
   pricePerNight: number;
   bedrooms: number;
   bathrooms: number;
   maxGuests: number;
+  area: number;
   cancellationPolicy: string;
   houseRules: string;
   amenityIds: string[];
   address: string;
   districtId: string;
-  latitude?: number;
-  longitude?: number;
-  images: string[];
+  latitude: number;
+  longitude: number;
+  images: HomestayImage[];
 }

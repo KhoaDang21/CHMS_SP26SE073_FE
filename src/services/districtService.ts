@@ -5,11 +5,15 @@ import type { District } from '../types/homestay.types';
 class DistrictService {
   async getAllDistricts(): Promise<District[]> {
     try {
-      const response = await apiService.get<District[]>(apiConfig.endpoints.districts.list);
-      return response;
+      const res = await apiService.get<any>(apiConfig.endpoints.districts.list);
+      // normalize ApiResponse -> { data: [...] } or direct array
+      if (res?.data)
+        return Array.isArray(res.data) ? res.data : (res.data.Items ?? []);
+      if (Array.isArray(res)) return res;
+      return [];
     } catch (error) {
       console.error('Error fetching districts:', error);
-      throw error;
+      return [];
     }
   }
 }
