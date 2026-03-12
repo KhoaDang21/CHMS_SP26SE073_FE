@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import MainLayout from '../layouts/MainLayout';
-import { Search, MapPin, Users, Star, Heart, SlidersHorizontal } from 'lucide-react';
+import { Search, MapPin, Users, Star, Heart } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import toast from 'react-hot-toast';
 
@@ -79,14 +79,14 @@ export default function ExplorePage() {
 
   const filteredHomestays = mockHomestays.filter(homestay => {
     const matchesSearch = homestay.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         homestay.location.toLowerCase().includes(searchQuery.toLowerCase());
+      homestay.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLocation = selectedLocation === 'all' || homestay.location.includes(selectedLocation);
     return matchesSearch && matchesLocation;
   });
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Khám Phá Homestay Ven Biển</h1>
@@ -150,7 +150,7 @@ export default function ExplorePage() {
                   alt={homestay.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
-                <button 
+                <button
                   onClick={() => toast('Vui lòng đăng nhập để lưu yêu thích', { icon: '🔒' })}
                   className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
                 >
@@ -187,7 +187,7 @@ export default function ExplorePage() {
                     </span>
                     <span className="text-sm text-gray-600">/đêm</span>
                   </div>
-                  <button 
+                  <button
                     onClick={() => toast('Vui lòng đăng nhập để đặt phòng', { icon: '🔒' })}
                     className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium"
                   >
