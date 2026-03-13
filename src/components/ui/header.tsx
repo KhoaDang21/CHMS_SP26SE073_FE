@@ -37,11 +37,6 @@ const authenticatedNavigationItems = [
     href: '/customer/dashboard',
   },
   {
-    name: 'Explore',
-    nameVi: 'Khám Phá',
-    href: '/customer/explore',
-  },
-  {
     name: 'My Bookings',
     nameVi: 'Đặt Phòng',
     href: '/customer/bookings',

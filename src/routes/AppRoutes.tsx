@@ -17,6 +17,7 @@ import MessagesPage from '../pages/customer/MessagesPage';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AmenityManagement from '../pages/admin/AmenityManagement';
 import HomestayManagement from '../pages/admin/HomestayManagement';
+import HomestayDetailPage from '../pages/admin/HomestayDetailPage';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import { authService } from '../services/authService';
@@ -149,6 +150,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <HomestayManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/homestays/:id"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <HomestayDetailPage />
           </ProtectedRoute>
         }
       />
