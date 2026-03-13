@@ -4,7 +4,6 @@ import type { CreateHomestayDTO, District } from '../../types/homestay.types';
 import type { Amenity } from '../../types/amenity.types';
 import { amenityService } from '../../services/amenityService';
 import { districtService } from '../../services/districtService';
-import { authService } from '../../services/authService';
 
 interface CreateHomestayModalProps {
   isOpen: boolean;
@@ -17,7 +16,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   const [currentStep, setCurrentStep] = useState(1);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
-  
+
   const [formData, setFormData] = useState<Partial<CreateHomestayDTO>>({
     name: '',
     description: '',
@@ -105,19 +104,19 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     // Decode JWT to get userId
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     let userId = '';
-    
+
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         console.log('JWT payload:', payload);
-        
+
         // Try common JWT claim names for user ID
         userId = payload.userId || payload.sub || payload.nameid || payload.id || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
       } catch (error) {
         console.error('Error decoding JWT:', error);
       }
     }
-    
+
     if (!userId) {
       console.error('Cannot get userId from JWT token');
       alert('Không thể xác định userId. Vui lòng đăng nhập lại.');
@@ -142,7 +141,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       amenityIds: formData.amenityIds || [],
       images: [],
     };
-    
+
     console.log('Submitting homestay payload:', payload);
     onSubmit(payload);
   };
@@ -217,29 +216,26 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
               const Icon = step.icon;
               const isActive = currentStep === step.number;
               const isCompleted = currentStep > step.number;
-              
+
               return (
                 <div key={step.number} className="flex items-center flex-1">
                   <div className="flex flex-col items-center flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                      isCompleted 
-                        ? 'bg-green-500 text-white' 
-                        : isActive 
-                          ? 'bg-blue-600 text-white' 
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isCompleted
+                        ? 'bg-green-500 text-white'
+                        : isActive
+                          ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-500'
-                    }`}>
+                      }`}>
                       {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                     </div>
-                    <span className={`text-xs mt-2 text-center hidden md:block ${
-                      isActive ? 'text-blue-600 font-medium' : 'text-gray-500'
-                    }`}>
+                    <span className={`text-xs mt-2 text-center hidden md:block ${isActive ? 'text-blue-600 font-medium' : 'text-gray-500'
+                      }`}>
                       {step.title}
                     </span>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className={`h-0.5 flex-1 transition-colors ${
-                      isCompleted ? 'bg-green-500' : 'bg-gray-200'
-                    }`} />
+                    <div className={`h-0.5 flex-1 transition-colors ${isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                      }`} />
                   )}
                 </div>
               );
@@ -529,7 +525,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                     />
                   </label>
                 </div>
-                
+
                 {imagePreviews.length > 0 ? (
                   <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto">
                     {imagePreviews.map((preview, index) => (
@@ -561,7 +557,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                     <p className="text-xs text-gray-400 mt-1">Nhấn "Chọn ảnh" để tải lên</p>
                   </div>
                 )}
-                
+
                 {imagePreviews.length > 0 && (
                   <p className="text-xs text-gray-500 mt-2">
                     Đã chọn {imagePreviews.length} ảnh. Ảnh sẽ được tải lên sau khi tạo homestay.
@@ -577,11 +573,10 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
           <button
             onClick={handlePrev}
             disabled={currentStep === 1}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-              currentStep === 1
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${currentStep === 1
                 ? 'text-gray-400 cursor-not-allowed'
                 : 'text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             <ChevronLeft className="w-5 h-5" />
             Quay lại
@@ -594,16 +589,15 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
             >
               Hủy
             </button>
-            
+
             {currentStep < 5 ? (
               <button
                 onClick={handleNext}
                 disabled={!canProceed()}
-                className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                  canProceed()
+                className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-colors ${canProceed()
                     ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 Tiếp tục
                 <ChevronRight className="w-5 h-5" />
@@ -612,11 +606,10 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
               <button
                 onClick={handleSubmit}
                 disabled={loading || !canProceed()}
-                className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                  loading || !canProceed()
+                className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-colors ${loading || !canProceed()
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
-                }`}
+                  }`}
               >
                 {loading ? (
                   <>
