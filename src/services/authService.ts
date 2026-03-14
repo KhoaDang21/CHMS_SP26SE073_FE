@@ -29,6 +29,25 @@ export interface RegisterData {
 }
 
 export const authService = {
+  _extractUserId(apiData: any, token?: string | null): string | undefined {
+    const tokenPayload = token ? this._parseJwt(token) : null;
+
+    return (
+      apiData?.userId ||
+      apiData?.id ||
+      apiData?.guid ||
+      apiData?.user?.id ||
+      tokenPayload?.userId ||
+      tokenPayload?.sub ||
+      tokenPayload?.nameid ||
+      tokenPayload?.id ||
+      tokenPayload?.[
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+      ] ||
+      apiData?.email
+    );
+  },
+
   /**
    * Login user
    */
@@ -58,9 +77,11 @@ export const authService = {
           apiResponse.data?.token ||
           apiResponse.token;
         const refreshToken = apiResponse.data?.refreshToken;
+        const resolvedUserId = this._extractUserId(apiResponse.data, token);
+
         const userData = apiResponse.data
           ? {
-              id: apiResponse.data.id || apiResponse.data.email,
+              id: resolvedUserId || apiResponse.data.email,
               email: apiResponse.data.email,
               name: apiResponse.data.fullName || apiResponse.data.name,
               role: apiResponse.data.role?.toLowerCase() as
@@ -242,7 +263,26 @@ export const authService = {
   getUser(): LoginResponse["user"] | null {
     const userData =
       localStorage.getItem("userData") || sessionStorage.getItem("userData");
-    return userData ? JSON.parse(userData) : null;
+
+    if (!userData) return null;
+
+    const parsedUser = JSON.parse(userData);
+    const token = this.getToken();
+    const resolvedUserId = this._extractUserId(parsedUser, token);
+
+    // Auto-migrate stale userData where id was stored as email.
+    if (resolvedUserId && parsedUser?.id !== resolvedUserId) {
+      const updatedUser = { ...parsedUser, id: resolvedUserId };
+      if (localStorage.getItem("userData")) {
+        localStorage.setItem("userData", JSON.stringify(updatedUser));
+      }
+      if (sessionStorage.getItem("userData")) {
+        sessionStorage.setItem("userData", JSON.stringify(updatedUser));
+      }
+      return updatedUser;
+    }
+
+    return parsedUser;
   },
 
   /**
@@ -286,29 +326,6 @@ export const authService = {
       };
     }
   },
-
-  // /**
-  //  * Reset password with token
-  //  */
-  // async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-  //   try {
-  //     const response = await fetch(`${authConfig.api.baseUrl}${authConfig.api.endpoints.resetPassword}`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({ token, newPassword }),
-  //     });
-
-  //     return await response.json();
-  //   } catch (error) {
-  //     console.error('Reset password error:', error);
-  //     return {
-  //       success: false,
-  //       message: 'Đã xảy ra lỗi. Vui lòng thử lại.',
-  //     };
-  //   }
-  // },
 
   /**
    * Reset password with OTP
@@ -372,9 +389,11 @@ export const authService = {
           apiResponse.data?.token ||
           apiResponse.token;
         const refreshToken = apiResponse.data?.refreshToken;
+        const resolvedUserId = this._extractUserId(apiResponse.data, token);
+
         const userData = apiResponse.data
           ? {
-              id: apiResponse.data.id || apiResponse.data.email,
+              id: resolvedUserId || apiResponse.data.email,
               email: apiResponse.data.email,
               name: apiResponse.data.fullName || apiResponse.data.name,
               role: apiResponse.data.role?.toLowerCase() as

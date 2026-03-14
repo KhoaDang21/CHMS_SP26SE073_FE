@@ -10,7 +10,7 @@ export const apiConfig = {
       forgotPassword: "/api/auth/forgot-password",
       resetPassword: "/api/auth/reset-password",
       refreshToken: "/api/auth/refresh-token",
-      profile: "/api/auth/profile",
+      profile: "/api/users/profile",
     },
     homestays: {
       list: "/api/homestays",

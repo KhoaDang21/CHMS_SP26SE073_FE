@@ -24,11 +24,11 @@ import {
   TrendingUp,
   Settings,
 } from 'lucide-react';
-import { authService } from '../../services/authService';
 import { amenityService } from '../../services/amenityService';
 import type { Amenity, CreateAmenityDTO, UpdateAmenityDTO, AmenityCategory, AmenityStats } from '../../types/amenity.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { authService } from '../../services/authService';
 
 
 // Category labels
