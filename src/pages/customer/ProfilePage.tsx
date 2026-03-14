@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Menu,
-  Bell,
   User as UserIcon,
-  LogOut,
-  Settings,
   Home,
   BookOpen,
   Compass,
   Heart,
   MessageCircle,
-  Waves,
   ChevronLeft,
   Loader2
 } from 'lucide-react';
@@ -21,6 +16,7 @@ import { toast } from 'sonner';
 import PersonalInfoSection from '../../components/profile/PersonalInfoSection';
 import SecuritySection from '../../components/profile/SecuritySection';
 import PreferencesSection from '../../components/profile/PreferencesSection';
+import Header from '../../components/ui/header';
 
 type TabType = 'personal' | 'security' | 'preferences';
 
@@ -47,7 +43,6 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('personal');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,12 +73,6 @@ export default function ProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleLogout = async () => {
-    await authService.logout();
-    toast.success(language === 'vi' ? 'Đăng xuất thành công!' : 'Logged out successfully!');
-    navigate('/auth/login');
   };
 
   const handleProfileUpdate = (updatedProfile: UserProfile) => {
@@ -134,83 +123,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50">
-      {/* Top Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo and Menu */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <Menu className="w-6 h-6 text-gray-700" />
-              </button>
-
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                  <Waves className="w-6 h-6 text-white" />
-                </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-xl font-bold text-gray-900">CHMS</h1>
-                  <p className="text-xs text-gray-500">Coastal Homestay</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right side */}
-            <div className="flex items-center gap-4">
-              <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-                <Bell className="w-6 h-6 text-gray-700" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-
-              {/* User Menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center overflow-hidden">
-                    {profile.avatar ? (
-                      <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <UserIcon className="w-5 h-5 text-white" />
-                    )}
-                  </div>
-                  <span className="hidden sm:block text-gray-700 font-medium">
-                    {currentUser?.name || 'User'}
-                  </span>
-                </button>
-
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                    <button
-                      onClick={() => navigate('/customer/profile')}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
-                    >
-                      <UserIcon className="w-4 h-4" />
-                      {language === 'vi' ? 'Hồ Sơ' : 'Profile'}
-                    </button>
-                    <button className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700">
-                      <Settings className="w-4 h-4" />
-                      {language === 'vi' ? 'Cài Đặt' : 'Settings'}
-                    </button>
-                    <hr className="my-2" />
-                    <button
-                      onClick={handleLogout}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-red-600"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      {language === 'vi' ? 'Đăng Xuất' : 'Logout'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Header showMenuButton onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 
       <div className="flex">
         {/* Sidebar */}

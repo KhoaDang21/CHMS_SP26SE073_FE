@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Users, Star, ChevronRight, Heart } from "lucide-react";
-import { authService } from "../../services/authService";
 import { bookingService, type Booking } from "../../services/bookingService";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import MainLayout from "../../layouts/MainLayout";
 import { publicHomestayService } from "../../services/publicHomestayService";
+import { authService } from "../../services/authService";
 
 export default function CustomerDashboard() {
   const navigate = useNavigate();
