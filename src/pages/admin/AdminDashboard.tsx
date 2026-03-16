@@ -17,10 +17,10 @@ import {
   Star,
   Sparkles,
 } from 'lucide-react';
-import { authService } from '../../services/authService';
 import type { DashboardStats, RevenueData } from '../../types/homestay.types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { authService } from '../../services/authService';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();

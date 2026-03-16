@@ -2,15 +2,24 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Bell,
+  BookOpen,
+  Compass,
+  Heart,
   User,
   LogOut,
+  MessageCircle,
   Settings,
   Waves,
   Menu,
   X,
 } from 'lucide-react';
-import { authService } from '../../services/authService';
 import toast from 'react-hot-toast';
+import { authService } from '../../services/authService';
+
+interface HeaderProps {
+  showMenuButton?: boolean;
+  onMenuClick?: () => void;
+}
 
 const navigationItems = [
   {
@@ -35,25 +44,29 @@ const authenticatedNavigationItems = [
     name: 'Dashboard',
     nameVi: 'Trang Chủ',
     href: '/customer/dashboard',
+    icon: Compass,
   },
   {
-    name: 'My Bookings',
-    nameVi: 'Đặt Phòng',
-    href: '/customer/bookings',
+    name: 'Explore',
+    nameVi: 'Khám Phá',
+    href: '/customer/explore',
+    icon: Compass,
   },
   {
     name: 'Favorites',
     nameVi: 'Yêu Thích',
     href: '/customer/favorites',
+    icon: Heart,
   },
   {
     name: 'Messages',
     nameVi: 'Tin Nhắn',
     href: '/customer/messages',
+    icon: MessageCircle,
   },
 ];
 
-export default function Header() {
+export default function Header({ showMenuButton = false, onMenuClick }: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = authService.isAuthenticated();
@@ -75,6 +88,11 @@ export default function Header() {
     setIsUserMenuOpen(false);
   };
 
+  const handleBookingHistoryClick = () => {
+    navigate('/customer/bookings');
+    setIsUserMenuOpen(false);
+  };
+
   const isActivePath = (path: string) => {
     return location.pathname === path;
   };
@@ -85,6 +103,14 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center gap-2">
+            {showMenuButton && (
+              <button
+                onClick={onMenuClick}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <Menu className="w-6 h-6 text-gray-700" />
+              </button>
+            )}
             <button
               onClick={() => navigate(isAuthenticated ? '/customer/dashboard' : '/')}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -122,16 +148,18 @@ export default function Header() {
           {/* Right side */}
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              {isMobileMenuOpen ? (
-                <X className="w-6 h-6 text-gray-700" />
-              ) : (
-                <Menu className="w-6 h-6 text-gray-700" />
-              )}
-            </button>
+            {!showMenuButton && (
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6 text-gray-700" />
+                ) : (
+                  <Menu className="w-6 h-6 text-gray-700" />
+                )}
+              </button>
+            )}
 
             {isAuthenticated ? (
               // Authenticated user - show notifications and user menu
@@ -156,6 +184,14 @@ export default function Header() {
 
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                      <button
+                        onClick={handleBookingHistoryClick}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        Lịch Sử Đặt Phòng
+                      </button>
+                      <hr className="my-2" />
                       <button
                         onClick={handleProfileClick}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
@@ -200,11 +236,12 @@ export default function Header() {
         </div>
 
         {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
+        {!showMenuButton && isMobileMenuOpen && (
           <div className="lg:hidden border-t border-gray-200 py-4">
             <nav className="space-y-2">
               {currentNavigationItems.map((item) => {
                 const isActive = isActivePath(item.href);
+                const Icon = (item as any).icon;
 
                 return (
                   <button
@@ -218,6 +255,7 @@ export default function Header() {
                       : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
+                    {Icon ? <Icon className="w-4 h-4 mr-2" /> : null}
                     {item.nameVi}
                   </button>
                 );
