@@ -125,6 +125,25 @@ class ApiService {
 
     return await response.json();
   }
+
+  async putForm<T>(endpoint: string, formData: FormData): Promise<T> {
+    const token = this.getToken();
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `HTTP Error: ${response.status}`);
+    }
+
+    return await response.json();
+  }
 }
 
 export const apiService = new ApiService();

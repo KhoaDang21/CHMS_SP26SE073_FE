@@ -16,6 +16,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   const [currentStep, setCurrentStep] = useState(1);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
+  const [districtError, setDistrictError] = useState('');
 
   const [formData, setFormData] = useState<Partial<CreateHomestayDTO>>({
     name: '',
@@ -56,11 +57,17 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
 
   const loadDistricts = async () => {
     try {
-      const data = await districtService.getAllDistricts();
-      console.log('Loaded districts:', data);
-      setDistricts(data);
+      const districtData = await districtService.getAllDistricts();
+      console.log('Loaded districts:', districtData);
+      setDistricts(districtData);
+      if (!districtData.length) {
+        setDistrictError('Khong tai duoc danh sach quan/huyen tu API. Ban co the nhap District ID thu cong ben duoi.');
+      } else {
+        setDistrictError('');
+      }
     } catch (error) {
       console.error('Error loading districts:', error);
+      setDistrictError('Khong ket noi duoc API district. Ban co the nhap District ID thu cong ben duoi.');
     }
   };
 
@@ -85,6 +92,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     });
     setSelectedFiles([]);
     setImagePreviews([]);
+    setDistrictError('');
     onClose();
   };
 
@@ -383,6 +391,22 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                   ))}
                 </select>
               </div>
+
+              {districtError && (
+                <div>
+                  <p className="text-xs text-red-600 mb-2">{districtError}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    District ID (UUID) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.districtId || ''}
+                    onChange={(e) => setFormData({ ...formData, districtId: e.target.value })}
+                    placeholder="Nhap districtId, vi du: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
