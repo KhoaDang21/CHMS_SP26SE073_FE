@@ -65,5 +65,8 @@ export const apiConfig = {
     districts: {
       list: "/api/districts",
     },
+    provinces: {
+      list: "/api/provinces",
+    },
   },
 };

@@ -118,6 +118,7 @@ export default function AmenityManagement() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showModal, setShowModal] = useState(false);
   const [editingAmenity, setEditingAmenity] = useState<Amenity | null>(null);
+  const [iconFile, setIconFile] = useState<File | null>(null);
 
   const user = authService.getCurrentUser();
 
@@ -182,8 +183,16 @@ export default function AmenityManagement() {
   const handleUpdate = async () => {
     if (!editingAmenity) return;
 
+    if (!formData.name.trim()) {
+      toast.error('Vui lòng điền tên tiện ích');
+      return;
+    }
+
     try {
-      const result = await amenityService.updateAmenity(editingAmenity.id, formData);
+      const result = await amenityService.updateAmenity(editingAmenity.id, {
+        ...formData,
+        iconFile,
+      });
       if (result?.success) {
         toast.success('Cập nhật tiện ích thành công');
         setShowModal(false);
@@ -219,6 +228,9 @@ export default function AmenityManagement() {
   const handleToggleStatus = async (amenity: Amenity) => {
     try {
       const updateData: UpdateAmenityDTO = {
+        name: amenity.name,
+        category: amenity.category,
+        iconUrl: amenity.iconUrl,
         isActive: !amenity.isActive
       };
       const result = await amenityService.updateAmenity(amenity.id, updateData);
@@ -236,6 +248,7 @@ export default function AmenityManagement() {
 
   const openEditModal = (amenity: Amenity) => {
     setEditingAmenity(amenity);
+    setIconFile(null);
     setFormData({
       name: amenity.name,
       category: amenity.category,
@@ -250,6 +263,7 @@ export default function AmenityManagement() {
       category: 'basic',
       iconUrl: 'https://cdn-icons-png.flaticon.com/512/93/93158.png',
     });
+    setIconFile(null);
     setEditingAmenity(null);
   };
 
@@ -538,10 +552,8 @@ export default function AmenityManagement() {
                           {amenity.isPremium && (
                             <Crown className="w-5 h-5 text-amber-500" />
                           )}
-                          {amenity.isActive ? (
+                          {amenity.isActive && (
                             <CheckCircle2 className="w-5 h-5 text-green-500" />
-                          ) : (
-                            <XCircle className="w-5 h-5 text-red-500" />
                           )}
                         </div>
                       </div>
@@ -775,6 +787,24 @@ export default function AmenityManagement() {
                     <p className="text-xs text-gray-500 mt-1">
                       Click vào icon để chọn
                     </p>
+
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Hoặc tải file icon mới
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setIconFile(file);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      />
+                      {iconFile && (
+                        <p className="text-xs text-green-600 mt-1">Đã chọn file: {iconFile.name}</p>
+                      )}
+                    </div>
 
                     {/* Icon Preview */}
                     {formData.iconUrl && (

@@ -26,10 +26,11 @@ import {
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
-import type { Homestay, CreateHomestayDTO } from '../../types/homestay.types';
+import type { Homestay, CreateHomestayDTO, UpdateHomestayDTO } from '../../types/homestay.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import CreateHomestayModal from '../../components/admin/CreateHomestayModal';
+import EditHomestayModal from '../../components/admin/EditHomestayModal';
 import { authService } from '../../services/authService';
 
 export default function HomestayManagement() {
@@ -44,6 +45,9 @@ export default function HomestayManagement() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creatingHomestay, setCreatingHomestay] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingHomestay, setEditingHomestay] = useState<Homestay | null>(null);
+  const [updatingHomestay, setUpdatingHomestay] = useState(false);
 
   const user = authService.getCurrentUser();
 
@@ -150,6 +154,48 @@ export default function HomestayManagement() {
       });
     } finally {
       setCreatingHomestay(false);
+    }
+  };
+
+  const handleOpenEditModal = async (homestayId: string) => {
+    setUpdatingHomestay(true);
+    try {
+      const detail = await homestayService.getAdminHomestayById(homestayId);
+      if (!detail) {
+        toast.error('Không thể tải dữ liệu homestay để chỉnh sửa');
+        return;
+      }
+
+      setEditingHomestay(detail);
+      setShowEditModal(true);
+    } catch (error) {
+      console.error('Error loading homestay detail for editing:', error);
+      toast.error('Không thể mở form chỉnh sửa');
+    } finally {
+      setUpdatingHomestay(false);
+    }
+  };
+
+  const handleUpdateHomestay = async (data: UpdateHomestayDTO) => {
+    if (!editingHomestay) return;
+
+    setUpdatingHomestay(true);
+    try {
+      const result = await homestayService.updateAdminHomestay(editingHomestay.id, data);
+      if (result?.success === false) {
+        toast.error(result.message || 'Không thể cập nhật homestay');
+        return;
+      }
+
+      toast.success('Cập nhật homestay thành công');
+      setShowEditModal(false);
+      setEditingHomestay(null);
+      loadHomestays();
+    } catch (error: any) {
+      console.error('Error updating homestay:', error);
+      toast.error(error?.message || 'Đã xảy ra lỗi khi cập nhật homestay');
+    } finally {
+      setUpdatingHomestay(false);
     }
   };
 
@@ -314,7 +360,7 @@ export default function HomestayManagement() {
               {filteredHomestays.map((homestay) => (
                 <div
                   key={homestay.id}
-                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                 >
                   {/* Image */}
                   <div className="relative h-48">
@@ -329,11 +375,11 @@ export default function HomestayManagement() {
                     <div className="absolute top-3 right-3">
                       <button
                         onClick={() => handleToggleStatus(homestay)}
-                        className={`p-2 rounded-lg ${
+                        className={`p-2 rounded-lg border border-white/70 bg-white/85 backdrop-blur-sm ${
                           homestay.status === 'ACTIVE'
-                            ? 'bg-green-500 hover:bg-green-600'
-                            : 'bg-gray-500 hover:bg-gray-600'
-                        } text-white transition-colors`}
+                            ? 'text-green-600 hover:bg-white'
+                            : 'text-gray-600 hover:bg-white'
+                        } transition-colors`}
                       >
                         {homestay.status === 'ACTIVE' ? (
                           <ToggleRight className="w-5 h-5" />
@@ -343,7 +389,7 @@ export default function HomestayManagement() {
                       </button>
                     </div>
                     {homestay.featured && (
-                      <div className="absolute top-3 left-3 bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      <div className="absolute top-3 left-3 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full text-xs font-medium">
                         Nổi bật
                       </div>
                     )}
@@ -369,18 +415,18 @@ export default function HomestayManagement() {
                         <Users className="w-4 h-4" />
                         <span>{homestay.maxGuests} khách</span>
                       </div>
-                      <div className="flex items-center gap-1 text-blue-600 font-semibold">
-                        <DollarSign className="w-4 h-4" />
+                      <div className="flex items-center gap-1 text-gray-900 font-semibold">
+                        <DollarSign className="w-4 h-4 text-gray-500" />
                         <span>{homestay.pricePerNight.toLocaleString('vi-VN')} ₫/đêm</span>
                       </div>
                     </div>
 
                     <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-4 ${
                       homestay.status === 'ACTIVE'
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : homestay.status === 'INACTIVE'
-                        ? 'bg-gray-100 text-gray-700'
-                        : 'bg-orange-100 text-orange-700'
+                        ? 'bg-gray-100 text-gray-700 border border-gray-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
                     }`}>
                       {homestay.status === 'ACTIVE' ? 'Đang hoạt động' : homestay.status === 'INACTIVE' ? 'Tạm ngưng' : 'Bảo trì'}
                     </div>
@@ -389,14 +435,15 @@ export default function HomestayManagement() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => navigate(`/admin/homestays/${homestay.id}`)}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
                       >
                         <Eye className="w-4 h-4" />
                         <span>Xem</span>
                       </button>
                       <button
-                        onClick={() => toast.info('Tính năng đang phát triển')}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                        onClick={() => handleOpenEditModal(homestay.id)}
+                        disabled={updatingHomestay}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 disabled:opacity-60"
                       >
                         <Edit className="w-4 h-4" />
                         <span>Sửa</span>
@@ -406,7 +453,7 @@ export default function HomestayManagement() {
                           setSelectedHomestay(homestay);
                           setShowDeleteModal(true);
                         }}
-                        className="px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                        className="px-3 py-2 bg-gray-50 text-red-600 rounded-lg hover:bg-red-50 transition-colors border border-gray-200"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -455,6 +502,18 @@ export default function HomestayManagement() {
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateHomestay}
         loading={creatingHomestay}
+      />
+
+      {/* Edit Homestay Modal */}
+      <EditHomestayModal
+        isOpen={showEditModal}
+        homestay={editingHomestay}
+        loading={updatingHomestay}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingHomestay(null);
+        }}
+        onSubmit={handleUpdateHomestay}
       />
 
       {/* Sidebar Overlay */}

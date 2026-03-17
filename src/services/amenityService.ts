@@ -51,9 +51,16 @@ export const amenityService = {
     amenityData: UpdateAmenityDTO,
   ): Promise<{ success: boolean; message?: string } | null> {
     try {
-      const res = await apiService.put<any>(
+      const formData = new FormData();
+
+      if (amenityData.name) formData.append('Name', amenityData.name);
+      if (amenityData.category) formData.append('Category', amenityData.category);
+      if (amenityData.iconUrl) formData.append('IconUrl', amenityData.iconUrl);
+      if (amenityData.iconFile) formData.append('IconFile', amenityData.iconFile);
+
+      const res = await apiService.putForm<any>(
         apiConfig.endpoints.adminAmenities.update(id),
-        amenityData,
+        formData,
       );
       return res;
     } catch (error) {

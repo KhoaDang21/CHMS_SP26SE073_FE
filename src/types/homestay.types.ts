@@ -23,6 +23,7 @@ export interface Homestay {
   name: string;
   description: string;
   address: string;
+  districtId?: string;
   city?: string;
   country?: string;
   districtName?: string;
@@ -32,9 +33,12 @@ export interface Homestay {
   bedrooms?: number;
   bathrooms?: number;
   area?: number;
+  latitude?: number;
+  longitude?: number;
   images?: string[];
   imageUrls?: string[];
   amenities?: string[];
+  amenityIds?: string[];
   amenityNames?: string[];
   rating?: number;
   reviewCount?: number;
@@ -96,6 +100,11 @@ export interface District {
   provinceName: string;
 }
 
+export interface Province {
+  id: string;
+  name: string;
+}
+
 export interface HomestayImage {
   imageUrl: string;
   caption?: string;
@@ -118,5 +127,23 @@ export interface CreateHomestayDTO {
   districtId: string;
   latitude: number;
   longitude: number;
+  images: HomestayImage[];
+}
+
+export interface UpdateHomestayDTO {
+  name: string;
+  description: string;
+  pricePerNight: number;
+  maxGuests: number;
+  bedrooms: number;
+  bathrooms: number;
+  area: number;
+  cancellationPolicy: string;
+  houseRules: string;
+  districtId: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  amenityIds: string[];
   images: HomestayImage[];
 }
