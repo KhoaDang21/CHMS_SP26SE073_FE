@@ -5,15 +5,23 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { publicHomestayService } from "../services/publicHomestayService";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
+import { provinceService } from "../services/provinceService";
+import { districtService } from "../services/districtService";
 import toast from 'react-hot-toast';
 import type { Homestay } from "../types/homestay.types";
+import type { Province, District } from "../types/homestay.types";
 import MainLayout from "../layouts/MainLayout";
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
+
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [allDistricts, setAllDistricts] = useState<District[]>([]);
+  const [filteredDistricts, setFilteredDistricts] = useState<District[]>([]);
 
   const today = new Date().toISOString().split('T')[0];
   const addDays = (dateStr: string, days: number) => {
@@ -26,6 +34,12 @@ export default function HomePage() {
   const [homestays, setHomestays] = useState<Homestay[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Load provinces & districts once
+  useEffect(() => {
+    provinceService.getAllProvinces().then(setProvinces);
+    districtService.getAllDistricts().then(setAllDistricts);
+  }, []);
 
   // Load all homestays initially
   useEffect(() => {
@@ -46,21 +60,36 @@ export default function HomePage() {
         if (mounted) setLoading(false);
       }
     };
-
     load();
     return () => { mounted = false; };
   }, []);
 
-  // Auto search when selectedLocation changes
+  // Filter districts when province changes
   useEffect(() => {
-    if (!selectedLocation || selectedLocation.trim() === '') {
-      setHomestays(allHomestays.slice(0, 8));
+    setSelectedDistrict("");
+    if (!selectedProvince) {
+      setFilteredDistricts([]);
     } else {
-      const query = selectedLocation.trim().toLowerCase();
-      const filtered = allHomestays.filter(h => (h.name || '').toLowerCase().includes(query));
-      setHomestays(filtered);
+      setFilteredDistricts(
+        allDistricts.filter(d => d.provinceName === selectedProvince)
+      );
     }
-  }, [selectedLocation, allHomestays]);
+  }, [selectedProvince, allDistricts]);
+
+  // Filter homestays when province/district changes
+  useEffect(() => {
+    if (!selectedProvince && !selectedDistrict) {
+      setHomestays(allHomestays.slice(0, 8));
+      return;
+    }
+    const district = allDistricts.find(d => d.id === selectedDistrict);
+    const filtered = allHomestays.filter(h => {
+      const matchProvince = !selectedProvince || (h.provinceName || '').toLowerCase() === selectedProvince.toLowerCase();
+      const matchDistrict = !district || (h.districtName || '').toLowerCase() === district.name.toLowerCase();
+      return matchProvince && matchDistrict;
+    });
+    setHomestays(filtered);
+  }, [selectedProvince, selectedDistrict, allHomestays, allDistricts]);
 
   return (
     <MainLayout>
@@ -86,20 +115,40 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Tên Homestay - chiếm 2 cột */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tên Homestay
-              </label>
+            {/* Tỉnh/Thành */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành</label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Nhập tên homestay..."
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                <select
+                  value={selectedProvince}
+                  onChange={(e) => setSelectedProvince(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white"
+                >
+                  <option value="">Tất cả tỉnh/thành</option>
+                  {provinces.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Quận/Huyện */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quận/Huyện</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  disabled={!selectedProvince}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  <option value="">Tất cả quận/huyện</option>
+                  {filteredDistricts.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -154,7 +203,7 @@ export default function HomePage() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900">
-              {selectedLocation ? `Kết Quả Tìm Kiếm (${homestays.length})` : 'Homestay Nổi Bật'}
+              {(selectedProvince || selectedDistrict) ? `Kết Quả Tìm Kiếm (${homestays.length})` : 'Homestay Nổi Bật'}
             </h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
