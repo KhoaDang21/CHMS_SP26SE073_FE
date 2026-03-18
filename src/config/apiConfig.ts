@@ -41,6 +41,16 @@ export const apiConfig = {
       update: (id: string) => `/api/admin/amenities/${id}`,
       delete: (id: string) => `/api/admin/amenities/${id}`,
     },
+    adminRoles: {
+      list: "/api/admin/roles",
+      create: "/api/admin/roles",
+      update: (id: string) => `/api/admin/roles/${id}`,
+      delete: (id: string) => `/api/admin/roles/${id}`,
+      updatePermissions: (id: string) => `/api/admin/roles/${id}/permissions`,
+    },
+    adminPermissions: {
+      list: "/api/admin/permissions",
+    },
     bookings: {
       list: "/api/bookings",
       detail: (id: string) => `/api/bookings/${id}`,
@@ -56,6 +66,14 @@ export const apiConfig = {
       list: "/api/users",
       detail: (id: string) => `/api/users/${id}`,
       update: (id: string) => `/api/users/${id}`,
+    },
+    employees: {
+      list: "/api/employees",
+      create: "/api/employees",
+      detail: (id: string) => `/api/employees/${id}`,
+      update: (id: string) => `/api/employees/${id}`,
+      delete: (id: string) => `/api/employees/${id}`,
+      updateStatus: (id: string) => `/api/employees/${id}/status`,
     },
     payments: {
       create: "/api/payments",
