@@ -1,4 +1,4 @@
-export type StaffRole = 'manager' | 'staff';
+export type StaffRole = 'admin' | 'manager' | 'staff';
 export type StaffStatus = 'active' | 'inactive' | 'on_leave';
 
 export interface Staff {
@@ -22,6 +22,7 @@ export interface CreateStaffDTO {
   fullName: string;
   phoneNumber: string;
   avatarUrl?: string;
+  roleId: string;
 }
 
 export interface UpdateStaffDTO {
@@ -31,4 +32,5 @@ export interface UpdateStaffDTO {
   fullName?: string;
   phoneNumber?: string;
   avatarUrl?: string;
+  roleId?: string;
 }
