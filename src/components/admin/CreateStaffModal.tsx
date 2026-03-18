@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { employeeService } from '../../services/employeeService';
 import type { Staff, StaffStatus } from '../../types/staff.types';
+import { roleService } from '../../services/roleService';
+import type { Role } from '../../types/role.types';
 
 interface CreateStaffModalProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ interface StaffFormState {
   password: string;
   avatarUrl: string;
   status: StaffStatus;
+  roleId: string;
 }
 
 const initialState: StaffFormState = {
@@ -29,16 +32,40 @@ const initialState: StaffFormState = {
   password: '',
   avatarUrl: '',
   status: 'active',
+  roleId: '',
 };
 
 export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: CreateStaffModalProps) {
   const [form, setForm] = useState<StaffFormState>(initialState);
   const [submitting, setSubmitting] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadRoles = async () => {
+      const roles = await roleService.getRoles();
+      const filtered = roles.filter((role) => {
+        const name = (role.name || '').toLowerCase();
+        return name === 'manager' || name === 'staff';
+      });
+
+      setAvailableRoles(filtered);
+    };
+
+    loadRoles();
+  }, [isOpen, editingStaff]);
 
   useEffect(() => {
     if (!isOpen) return;
 
     if (editingStaff) {
+      const matchedRole = availableRoles.find(
+        (role) => (role.name || '').toLowerCase() === (editingStaff.role || '').toLowerCase(),
+      );
+
       setForm({
         username: editingStaff.email?.split('@')[0] || '',
         fullName: editingStaff.name || '',
@@ -47,14 +74,43 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
         password: '',
         avatarUrl: editingStaff.avatar || '',
         status: editingStaff.status || 'active',
+        roleId: matchedRole?.id || '',
       });
+      setSelectedAvatarFile(null);
+      setAvatarPreview(editingStaff.avatar || '');
       return;
     }
 
-    setForm(initialState);
-  }, [isOpen, editingStaff]);
+    setForm((prev) => ({ ...initialState, roleId: prev.roleId }));
+    setSelectedAvatarFile(null);
+    setAvatarPreview('');
+  }, [isOpen, editingStaff, availableRoles]);
+
+  useEffect(() => {
+    if (!selectedAvatarFile) return;
+
+    const previewUrl = URL.createObjectURL(selectedAvatarFile);
+    setAvatarPreview(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [selectedAvatarFile]);
 
   if (!isOpen) return null;
+
+  const handleAvatarFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setSelectedAvatarFile(file);
+    setForm((prev) => ({ ...prev, avatarUrl: '' }));
+  };
+
+  const clearAvatarFile = () => {
+    setSelectedAvatarFile(null);
+    setAvatarPreview(form.avatarUrl || '');
+  };
 
   const handleSubmit = async () => {
     if (!form.fullName.trim() || !form.email.trim() || !form.username.trim()) {
@@ -67,20 +123,19 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
       return;
     }
 
+    if (!editingStaff && !form.roleId) {
+      toast.error('Vui lòng chọn vai trò (Manager hoặc Staff)');
+      return;
+    }
+
     setSubmitting(true);
     try {
       if (editingStaff) {
-        const updatePayload: any = {
-          username: form.username,
+        const updatePayload = {
           fullName: form.fullName,
-          email: form.email,
           phoneNumber: form.phoneNumber,
           avatarUrl: form.avatarUrl || undefined,
         };
-
-        if (form.password.trim()) {
-          updatePayload.password = form.password;
-        }
 
         const updateRes = await employeeService.updateEmployee(editingStaff.id, updatePayload);
         if (!updateRes?.success) {
@@ -90,23 +145,27 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
 
         const statusRes = await employeeService.updateEmployeeStatus(editingStaff.id, { status: form.status });
         if (statusRes?.success === false) {
-          toast.error(statusRes.message || 'Không thể cập nhật trạng thái nhân viên');
-          return;
+          toast.warning(statusRes.message || 'Đã cập nhật thông tin, nhưng chưa cập nhật được trạng thái nhân viên');
         }
 
         toast.success('Cập nhật nhân viên thành công');
       } else {
-        const createRes = await employeeService.createEmployee({
+        const createPayload = {
           username: form.username,
           fullName: form.fullName,
           email: form.email,
           phoneNumber: form.phoneNumber,
           password: form.password,
           avatarUrl: form.avatarUrl || undefined,
-        });
+          roleId: form.roleId,
+        };
+
+        const createRes = selectedAvatarFile
+          ? await employeeService.createEmployeeWithAvatarFile(createPayload, selectedAvatarFile)
+          : await employeeService.createEmployee(createPayload);
 
         if (!createRes?.success) {
-          toast.error(createRes?.message || 'Không thể tạo nhân viên');
+          toast.error(createRes?.message || 'Không thể tạo nhân viên. Nếu backend chưa hỗ trợ upload file, hãy nhập Avatar URL.');
           return;
         }
 
@@ -141,8 +200,12 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
               <input
                 value={form.username}
                 onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
+                disabled={!!editingStaff}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              {editingStaff && (
+                <p className="text-xs text-gray-500 mt-1">Username không hỗ trợ cập nhật ở API hiện tại.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm text-gray-700 mb-1">Họ và tên *</label>
@@ -158,8 +221,38 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                disabled={!!editingStaff}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              {editingStaff && (
+                <p className="text-xs text-gray-500 mt-1">Email không hỗ trợ cập nhật ở API hiện tại.</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Vai trò *</label>
+              <select
+                value={form.roleId}
+                onChange={(e) => setForm((prev) => ({ ...prev, roleId: e.target.value }))}
+                disabled={!!editingStaff}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="" disabled>
+                  Chọn vai trò
+                </option>
+                {availableRoles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+              {availableRoles.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Không tải được role Manager/Staff từ API roles. Vui lòng kiểm tra dữ liệu role.
+                </p>
+              )}
+              {editingStaff && (
+                <p className="text-xs text-gray-500 mt-1">Vai trò chỉ đổi được qua API/chức năng phân quyền riêng.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm text-gray-700 mb-1">Số điện thoại</label>
@@ -177,16 +270,55 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                disabled={!!editingStaff}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              {editingStaff && (
+                <p className="text-xs text-gray-500 mt-1">API cập nhật hiện tại chưa hỗ trợ đổi mật khẩu ở form này.</p>
+              )}
             </div>
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Avatar URL</label>
+              <label className="block text-sm text-gray-700 mb-1">Avatar URL (hoặc chọn ảnh từ máy)</label>
               <input
                 value={form.avatarUrl}
-                onChange={(e) => setForm((prev) => ({ ...prev, avatarUrl: e.target.value }))}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, avatarUrl: e.target.value }));
+                  if (e.target.value.trim()) {
+                    setSelectedAvatarFile(null);
+                    setAvatarPreview(e.target.value.trim());
+                  } else if (!selectedAvatarFile) {
+                    setAvatarPreview('');
+                  }
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="https://..."
               />
+              <div className="mt-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarFileChange}
+                  className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+              {(selectedAvatarFile || avatarPreview) && (
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src={avatarPreview || form.avatarUrl}
+                    alt="Avatar preview"
+                    className="h-14 w-14 rounded-full object-cover border border-gray-200"
+                  />
+                  {selectedAvatarFile && (
+                    <button
+                      type="button"
+                      onClick={clearAvatarFile}
+                      className="text-sm text-red-600 hover:text-red-700"
+                    >
+                      Bỏ ảnh đã chọn
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

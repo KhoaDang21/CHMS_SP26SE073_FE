@@ -8,7 +8,7 @@ import { districtService } from '../../services/districtService';
 interface CreateHomestayModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateHomestayDTO) => void;
+  onSubmit: (data: CreateHomestayDTO, imageFiles: File[]) => void;
   loading?: boolean;
 }
 
@@ -35,7 +35,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     longitude: 107.0,
     images: [],
   });
-  const [_selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   useEffect(() => {
@@ -151,7 +151,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     };
 
     console.log('Submitting homestay payload:', payload);
-    onSubmit(payload);
+    onSubmit(payload, selectedFiles);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -537,16 +537,20 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
               <div className="pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-medium text-gray-900">Hình ảnh (tùy chọn)</h3>
-                  <label className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm flex items-center gap-1 cursor-pointer">
+                  <input
+                    id="homestay-image-input"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="homestay-image-input"
+                    className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm flex items-center gap-1 cursor-pointer"
+                  >
                     <Image className="w-4 h-4" />
                     <span>Chọn ảnh</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
                   </label>
                 </div>
 

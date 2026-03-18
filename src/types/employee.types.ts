@@ -19,6 +19,7 @@ export interface CreateEmployeeDTO {
   fullName: string;
   phoneNumber: string;
   avatarUrl?: string;
+  roleId: string;
 }
 
 export interface UpdateEmployeeDTO {
@@ -28,6 +29,7 @@ export interface UpdateEmployeeDTO {
   fullName?: string;
   phoneNumber?: string;
   avatarUrl?: string;
+  roleId?: string;
 }
 
 export interface UpdateEmployeeStatusDTO {

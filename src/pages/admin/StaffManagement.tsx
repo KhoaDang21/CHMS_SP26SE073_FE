@@ -30,6 +30,7 @@ import { employeeService } from '../../services/employeeService';
 import type { Staff, StaffRole, StaffStatus } from '../../types/staff.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { CreateStaffModal } from '../../components/admin/CreateStaffModal';
+import { EditStaffModal } from '../../components/admin/EditStaffModal';
 
 const normalizeStatus = (value?: string): StaffStatus => {
   const raw = (value || '').toLowerCase();
@@ -39,11 +40,14 @@ const normalizeStatus = (value?: string): StaffStatus => {
 };
 
 const normalizeRole = (value?: string): StaffRole => {
-  return (value || '').toLowerCase() === 'manager' ? 'manager' : 'staff';
+  const raw = (value || '').toLowerCase();
+  if (raw === 'admin') return 'admin';
+  if (raw === 'manager') return 'manager';
+  return 'staff';
 };
 
 const mapEmployeeToStaff = (item: any): Staff => {
-  const role = normalizeRole(item.role);
+  const role = normalizeRole(item.role || item.roleName);
   return {
     id: String(item.id || item.userId || ''),
     name: String(item.fullName || item.name || item.username || 'Unknown'),
@@ -71,6 +75,7 @@ export default function StaffManagement() {
   const [roleFilter, setRoleFilter] = useState<StaffRole | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<StaffStatus | 'all'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
   const [stats, setStats] = useState({
@@ -125,7 +130,7 @@ export default function StaffManagement() {
         active: mapped.filter((s) => s.status === 'active').length,
         onLeave: mapped.filter((s) => s.status === 'on_leave').length,
         inactive: mapped.filter((s) => s.status === 'inactive').length,
-        managers: mapped.filter((s) => s.role === 'manager').length,
+        managers: mapped.filter((s) => s.role === 'manager' || s.role === 'admin').length,
         staff: mapped.filter((s) => s.role === 'staff').length,
       });
     } catch (error) {
@@ -155,6 +160,7 @@ export default function StaffManagement() {
   const handleStaffCreated = () => {
     loadStaff();
     setIsCreateModalOpen(false);
+    setIsEditModalOpen(false);
     setEditingStaff(null);
   };
 
@@ -176,11 +182,13 @@ export default function StaffManagement() {
 
   const getRoleBadge = (role: StaffRole) => {
     const styles = {
+      admin: 'bg-red-100 text-red-700',
       manager: 'bg-blue-100 text-blue-700',
       staff: 'bg-purple-100 text-purple-700',
     };
 
     const labels = {
+      admin: 'Quản trị viên',
       manager: 'Quản lý',
       staff: 'Nhân viên',
     };
@@ -351,6 +359,7 @@ export default function StaffManagement() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">Tất cả vai trò</option>
+                  <option value="admin">Quản trị viên</option>
                   <option value="manager">Quản lý</option>
                   <option value="staff">Nhân viên</option>
                 </select>
@@ -419,7 +428,6 @@ export default function StaffManagement() {
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <h3 className="font-bold text-gray-900 text-lg">{staffMember.name}</h3>
-                            <p className="text-blue-600 text-sm">{staffMember.position}</p>
                           </div>
                           <div className="flex flex-col gap-2">
                             {getRoleBadge(staffMember.role)}
@@ -454,7 +462,7 @@ export default function StaffManagement() {
                           <button
                             onClick={() => {
                               setEditingStaff(staffMember);
-                              setIsCreateModalOpen(true);
+                              setIsEditModalOpen(true);
                             }}
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                           >
@@ -488,10 +496,20 @@ export default function StaffManagement() {
           isOpen={isCreateModalOpen}
           onClose={() => {
             setIsCreateModalOpen(false);
+          }}
+          onSuccess={handleStaffCreated}
+        />
+      )}
+
+      {isEditModalOpen && (
+        <EditStaffModal
+          isOpen={isEditModalOpen}
+          staff={editingStaff}
+          onClose={() => {
+            setIsEditModalOpen(false);
             setEditingStaff(null);
           }}
           onSuccess={handleStaffCreated}
-          editingStaff={editingStaff}
         />
       )}
 

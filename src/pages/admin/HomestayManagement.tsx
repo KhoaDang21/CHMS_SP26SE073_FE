@@ -126,7 +126,7 @@ export default function HomestayManagement() {
     }
   };
 
-  const handleCreateHomestay = async (data: CreateHomestayDTO) => {
+  const handleCreateHomestay = async (data: CreateHomestayDTO, imageFiles: File[] = []) => {
     setCreatingHomestay(true);
     try {
       console.log('Sending create homestay request with payload:', data);
@@ -134,6 +134,22 @@ export default function HomestayManagement() {
       console.log('Create homestay result:', result);
       
       if (result.success) {
+        const createdId = result?.data?.id || result?.data?.homestayId || result?.id || null;
+
+        if (createdId && imageFiles.length > 0) {
+          const uploadResults = await Promise.all(
+            imageFiles.map((file) => homestayService.uploadAdminHomestayPhoto(createdId, file)),
+          );
+
+          const failedUploads = uploadResults.filter((uploadResult) => !uploadResult || uploadResult?.success === false).length;
+
+          if (failedUploads > 0) {
+            toast.warning(`Tao homestay thanh cong, nhung ${failedUploads}/${imageFiles.length} anh upload that bai`);
+          }
+        } else if (imageFiles.length > 0) {
+          toast.warning('Da tao homestay nhung khong lay duoc ID de upload anh');
+        }
+
         toast.success('Đã tạo homestay mới thành công!');
         setShowCreateModal(false);
         loadHomestays();

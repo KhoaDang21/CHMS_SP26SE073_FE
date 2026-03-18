@@ -37,6 +37,33 @@ export const employeeService = {
     }
   },
 
+  async createEmployeeWithAvatarFile(
+    payload: CreateEmployeeDTO,
+    avatarFile: File,
+  ): Promise<{ success: boolean; message?: string; data?: Employee } | null> {
+    try {
+      const form = new FormData();
+      form.append('username', payload.username);
+      form.append('email', payload.email);
+      form.append('password', payload.password);
+      form.append('fullName', payload.fullName);
+      form.append('phoneNumber', payload.phoneNumber || '');
+      form.append('roleId', payload.roleId);
+
+      if (payload.avatarUrl) {
+        form.append('avatarUrl', payload.avatarUrl);
+      }
+
+      form.append('avatarFile', avatarFile);
+
+      const res = await apiService.postForm<any>(apiConfig.endpoints.employees.create, form);
+      return res;
+    } catch (error) {
+      console.error('Error creating employee with avatar file:', error);
+      return null;
+    }
+  },
+
   async getEmployeeById(id: string): Promise<Employee | null> {
     try {
       const res = await apiService.get<any>(apiConfig.endpoints.employees.detail(id));
