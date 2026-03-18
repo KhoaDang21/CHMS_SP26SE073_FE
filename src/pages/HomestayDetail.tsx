@@ -182,7 +182,11 @@ export default function HomestayDetail() {
                                 <div className="flex items-start justify-between">
                                     <div>
                                         <h1 className="text-2xl font-bold">{homestay.name}</h1>
-                                        <p className="text-sm text-gray-600 mt-1">{homestay.address} • {homestay.city}</p>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                            {homestay.address}
+                                            {homestay.districtName ? `, ${homestay.districtName}` : ''}
+                                            {homestay.provinceName ? `, ${homestay.provinceName}` : ''}
+                                        </p>
                                     </div>
 
                                     <div className="flex items-center gap-3">

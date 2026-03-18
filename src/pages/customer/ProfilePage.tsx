@@ -47,7 +47,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const language = profile?.language || 'vi';
+  const language = (profile?.language as 'vi' | 'en') || 'vi';
   const t = translations[language];
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export default function ProfilePage() {
 
     setIsLoading(true);
     try {
-      const result = await profileService.getProfile(currentUser.id);
+      const result = await profileService.getProfile();
       if (result.success && result.profile) {
         setProfile(result.profile);
       } else {
@@ -238,7 +238,7 @@ export default function ProfilePage() {
               )}
               {activeTab === 'security' && (
                 <SecuritySection
-                  userId={profile.id}
+                  userId={profile.id ?? ''}
                   language={language}
                 />
               )}

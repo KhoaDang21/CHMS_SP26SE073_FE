@@ -1,40 +1,20 @@
-import { apiService } from './apiService';
-import { apiConfig } from '../config/apiConfig';
+import { districtService } from './districtService';
 import type { Province } from '../types/homestay.types';
-
-const normalizeProvince = (raw: any): Province | null => {
-  if (!raw || typeof raw !== 'object') return null;
-
-  const id = raw.id || raw.provinceId || raw.cityId;
-  const name = raw.name || raw.provinceName || raw.cityName;
-
-  if (!id || !name) return null;
-
-  return {
-    id: String(id),
-    name: String(name),
-  };
-};
-
-const extractProvinceList = (res: any): any[] => {
-  if (Array.isArray(res)) return res;
-
-  const data = res?.data ?? res?.result ?? res;
-  if (Array.isArray(data)) return data;
-
-  return data?.Items || data?.items || data?.provinces || data?.Provinces || [];
-};
 
 class ProvinceService {
   async getAllProvinces(): Promise<Province[]> {
     try {
-      const res = await apiService.get<any>(apiConfig.endpoints.provinces.list);
-      const rawList = extractProvinceList(res);
-      if (!Array.isArray(rawList)) return [];
-
-      return rawList
-        .map((item) => normalizeProvince(item))
-        .filter((item): item is Province => Boolean(item));
+      const districts = await districtService.getAllDistricts();
+      // Extract unique province names from districts
+      const seen = new Set<string>();
+      const provinces: Province[] = [];
+      for (const d of districts) {
+        if (d.provinceName && !seen.has(d.provinceName)) {
+          seen.add(d.provinceName);
+          provinces.push({ id: d.provinceName, name: d.provinceName });
+        }
+      }
+      return provinces.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
     } catch (error) {
       console.error('Error fetching provinces:', error);
       return [];

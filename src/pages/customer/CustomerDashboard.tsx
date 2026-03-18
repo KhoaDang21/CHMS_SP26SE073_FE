@@ -6,13 +6,21 @@ import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import MainLayout from "../../layouts/MainLayout";
 import { publicHomestayService } from "../../services/publicHomestayService";
 import { authService } from "../../services/authService";
+import { provinceService } from "../../services/provinceService";
+import { districtService } from "../../services/districtService";
+import type { Province, District } from "../../types/homestay.types";
 
 export default function CustomerDashboard() {
   const navigate = useNavigate();
   const currentUser = authService.getUser();
-  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
+
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [allDistricts, setAllDistricts] = useState<District[]>([]);
+  const [filteredDistricts, setFilteredDistricts] = useState<District[]>([]);
 
   const today = new Date().toISOString().split('T')[0];
   const addDays = (dateStr: string, days: number) => {
@@ -28,6 +36,12 @@ export default function CustomerDashboard() {
   // State for all homestays
   const [allHomestays, setAllHomestays] = useState<any[]>([]);
   const [filteredHomestays, setFilteredHomestays] = useState<any[]>([]);
+
+  // Load provinces & districts once
+  useEffect(() => {
+    provinceService.getAllProvinces().then(setProvinces);
+    districtService.getAllDistricts().then(setAllDistricts);
+  }, []);
 
   // Load bookings khi component mount
   useEffect(() => {
@@ -70,6 +84,33 @@ export default function CustomerDashboard() {
     });
     return map;
   }, [allHomestays]);
+
+  // Filter districts when province changes
+  useEffect(() => {
+    setSelectedDistrict("");
+    if (!selectedProvince) {
+      setFilteredDistricts([]);
+    } else {
+      setFilteredDistricts(
+        allDistricts.filter(d => d.provinceName === selectedProvince)
+      );
+    }
+  }, [selectedProvince, allDistricts]);
+
+  // Filter homestays when province/district changes
+  useEffect(() => {
+    if (!selectedProvince && !selectedDistrict) {
+      setFilteredHomestays(allHomestays);
+      return;
+    }
+    const district = allDistricts.find(d => d.id === selectedDistrict);
+    const filtered = allHomestays.filter(h => {
+      const matchProvince = !selectedProvince || (h.provinceName || '').toLowerCase() === selectedProvince.toLowerCase();
+      const matchDistrict = !district || (h.districtName || '').toLowerCase() === district.name.toLowerCase();
+      return matchProvince && matchDistrict;
+    });
+    setFilteredHomestays(filtered);
+  }, [selectedProvince, selectedDistrict, allHomestays, allDistricts]);
 
   // Lọc booking sắp tới (confirmed và chưa qua ngày checkIn)
   const upcomingBookings = myBookings.filter(
@@ -139,32 +180,40 @@ export default function CustomerDashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Tên Homestay - chiếm 2 cột */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tên Homestay
-              </label>
+            {/* Tỉnh/Thành */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành</label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Nhập tên homestay..."
-                  value={selectedLocation}
-                  onChange={(e) => {
-                    setSelectedLocation(e.target.value);
-                    // Auto search
-                    const query = e.target.value.trim().toLowerCase();
-                    if (!query) {
-                      setFilteredHomestays(allHomestays);
-                    } else {
-                      const filtered = allHomestays.filter(h =>
-                        (h.name || '').toLowerCase().includes(query)
-                      );
-                      setFilteredHomestays(filtered);
-                    }
-                  }}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                <select
+                  value={selectedProvince}
+                  onChange={(e) => setSelectedProvince(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white"
+                >
+                  <option value="">Tất cả tỉnh/thành</option>
+                  {provinces.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Quận/Huyện */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quận/Huyện</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  disabled={!selectedProvince}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  <option value="">Tất cả quận/huyện</option>
+                  {filteredDistricts.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -321,7 +370,7 @@ export default function CustomerDashboard() {
         )}
 
         {/* Search Results */}
-        {selectedLocation && (
+        {(selectedProvince || selectedDistrict) && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">
@@ -330,7 +379,7 @@ export default function CustomerDashboard() {
             </div>
             {filteredHomestays.length === 0 ? (
               <div className="text-center py-8 text-gray-600">
-                Không tìm thấy homestay phù hợp với "{selectedLocation}"
+                Không tìm thấy homestay phù hợp
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -359,9 +408,11 @@ export default function CustomerDashboard() {
                             </span>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
+                          <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
                           <MapPin className="w-4 h-4" />
-                          {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                          {homestay.address
+                            ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
+                            : `${homestay.districtName || homestay.city || ''} ${homestay.provinceName || homestay.country || ''}`}
                         </p>
                         <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                           <span className="flex items-center gap-1">
@@ -403,7 +454,7 @@ export default function CustomerDashboard() {
         )}
 
         {/* All Homestays */}
-        {!selectedLocation && (
+        {!selectedProvince && !selectedDistrict && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">Homestay Nổi Bật</h3>
@@ -442,7 +493,9 @@ export default function CustomerDashboard() {
                       <p className="text-sm text-gray-600 flex items-start gap-1 mb-3 min-h-[2.5rem]">
                         <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
                         <span className="line-clamp-2">
-                          {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                          {homestay.address
+                            ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
+                            : `${homestay.districtName || homestay.city || ''} ${homestay.provinceName || homestay.country || ''}`}
                         </span>
                       </p>
 
