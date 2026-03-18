@@ -202,7 +202,9 @@ export default function HomePage() {
                     <p className="text-sm text-gray-600 flex items-start gap-1 mb-3 min-h-[2.5rem]">
                       <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
                       <span className="line-clamp-2">
-                        {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                        {homestay.address
+                          ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
+                          : `${homestay.districtName || homestay.city || ''} ${homestay.provinceName || homestay.country || ''}`}
                       </span>
                     </p>
 

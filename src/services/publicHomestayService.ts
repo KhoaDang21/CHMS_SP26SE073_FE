@@ -41,7 +41,9 @@ export const publicHomestayService = {
         name: it.name ?? it.Name ?? "",
         description: it.description ?? it.Description ?? "",
         address: it.address ?? it.Address ?? "",
-        city: it.city ?? it.City ?? it.ProvinceName ?? "",
+        districtName: it.districtName ?? it.DistrictName ?? "",
+        provinceName: it.provinceName ?? it.ProvinceName ?? "",
+        city: it.city ?? it.City ?? "",
         country: it.country ?? it.Country ?? "",
         pricePerNight:
           it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
@@ -94,7 +96,9 @@ export const publicHomestayService = {
         name: it.name ?? it.Name ?? "",
         description: it.description ?? it.Description ?? "",
         address: it.address ?? it.Address ?? "",
-        city: it.city ?? it.City ?? it.provinceName ?? it.ProvinceName ?? "",
+        districtName: it.districtName ?? it.DistrictName ?? "",
+        provinceName: it.provinceName ?? it.ProvinceName ?? "",
+        city: it.city ?? it.City ?? "",
         country: it.country ?? it.Country ?? "",
         pricePerNight:
           it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
@@ -141,7 +145,9 @@ export const publicHomestayService = {
         name: it.name ?? it.Name ?? "",
         description: it.description ?? it.Description ?? "",
         address: it.address ?? it.Address ?? "",
-        city: it.city ?? it.City ?? it.ProvinceName ?? "",
+        districtName: it.districtName ?? it.DistrictName ?? "",
+        provinceName: it.provinceName ?? it.ProvinceName ?? "",
+        city: it.city ?? it.City ?? "",
         country: it.country ?? it.Country ?? "",
         pricePerNight:
           it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),

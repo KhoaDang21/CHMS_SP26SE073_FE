@@ -47,9 +47,9 @@ const authenticatedNavigationItems = [
     icon: Compass,
   },
   {
-    name: 'Explore',
-    nameVi: 'Khám Phá',
-    href: '/customer/explore',
+    name: 'Booking',
+    nameVi: 'Đặt Phòng',
+    href: '/customer/bookings',
     icon: Compass,
   },
   {
