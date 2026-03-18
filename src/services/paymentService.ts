@@ -3,11 +3,17 @@ import { apiConfig } from "../config/apiConfig";
 
 export const paymentService = {
   async create(paymentData: any) {
-    return apiService.post<any>(apiConfig.endpoints.payments.create, paymentData);
+    return apiService.post<any>(
+      apiConfig.endpoints.payments.create,
+      paymentData,
+    );
   },
 
   async createLink(payload: any) {
-    return apiService.post<any>(apiConfig.endpoints.payments.createLink, payload);
+    return apiService.post<any>(
+      apiConfig.endpoints.payments.createLink,
+      payload,
+    );
   },
 
   async verify(payload: any) {

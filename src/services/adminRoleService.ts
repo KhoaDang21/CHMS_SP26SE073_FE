@@ -23,6 +23,9 @@ export const adminRoleService = {
   },
 
   async assignPermissions(id: string, payload: any) {
-    return apiService.put<any>(apiConfig.endpoints.adminRoles.assignPermissions(id), payload);
+    return apiService.put<any>(
+      apiConfig.endpoints.adminRoles.assignPermissions(id),
+      payload,
+    );
   },
 };

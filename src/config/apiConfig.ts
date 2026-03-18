@@ -30,7 +30,8 @@ export const apiConfig = {
       updateStatus: (id: string) => `/api/admin/homestays/${id}/status`,
       updateAmenities: (id: string) => `/api/admin/homestays/${id}/amenities`,
       uploadPhotos: (id: string) => `/api/admin/homestays/${id}/photos`,
-      reorderPhotos: (id: string) => `/api/admin/homestays/${id}/photos/reorder`,
+      reorderPhotos: (id: string) =>
+        `/api/admin/homestays/${id}/photos/reorder`,
     },
     amenities: {
       list: "/api/amenities",
@@ -40,13 +41,6 @@ export const apiConfig = {
       create: "/api/admin/amenities",
       update: (id: string) => `/api/admin/amenities/${id}`,
       delete: (id: string) => `/api/admin/amenities/${id}`,
-    },
-    adminRoles: {
-      list: "/api/admin/roles",
-      create: "/api/admin/roles",
-      update: (id: string) => `/api/admin/roles/${id}`,
-      delete: (id: string) => `/api/admin/roles/${id}`,
-      updatePermissions: (id: string) => `/api/admin/roles/${id}/permissions`,
     },
     adminPermissions: {
       list: "/api/admin/permissions",
@@ -59,7 +53,8 @@ export const apiConfig = {
       // Extra endpoints present on BE
       calculate: "/api/bookings/calculate",
       modify: (id: string) => `/api/bookings/${id}/modify`,
-      cancellationPolicy: (id: string) => `/api/bookings/${id}/cancellation-policy`,
+      cancellationPolicy: (id: string) =>
+        `/api/bookings/${id}/cancellation-policy`,
       specialRequests: (id: string) => `/api/bookings/${id}/special-requests`,
     },
     users: {
@@ -99,6 +94,7 @@ export const apiConfig = {
       delete: (id: string) => `/api/admin/roles/${id}`,
       permissions: "/api/admin/permissions",
       assignPermissions: (id: string) => `/api/admin/roles/${id}/permissions`,
+      updatePermissions: (id: string) => `/api/admin/roles/${id}/permissions`,
     },
     adminBookings: {
       list: "/api/admin/bookings",

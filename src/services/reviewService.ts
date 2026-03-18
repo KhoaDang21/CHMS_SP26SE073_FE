@@ -24,7 +24,10 @@ export const reviewService = {
   },
 
   async managerRespond(id: string, payload: any) {
-    return apiService.post<any>(apiConfig.endpoints.reviews.managerRespond(id), payload);
+    return apiService.post<any>(
+      apiConfig.endpoints.reviews.managerRespond(id),
+      payload,
+    );
   },
 
   // Staff

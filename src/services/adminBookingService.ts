@@ -11,6 +11,9 @@ export const adminBookingService = {
   },
 
   async update(id: string, payload: any) {
-    return apiService.put<any>(apiConfig.endpoints.adminBookings.update(id), payload);
+    return apiService.put<any>(
+      apiConfig.endpoints.adminBookings.update(id),
+      payload,
+    );
   },
 };

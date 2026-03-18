@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, type KeyboardEvent } from 'react';
 import { X } from 'lucide-react';
 
 interface OTPModalProps {
@@ -94,7 +94,7 @@ export default function OTPModal({ isOpen, onClose, onVerify, email, isLoading, 
             {otp.map((digit, index) => (
               <input
                 key={index}
-                ref={(el) => (inputRefs.current[index] = el)}
+                ref={(el) => { inputRefs.current[index] = el; }}
                 type="text"
                 maxLength={1}
                 value={digit}
