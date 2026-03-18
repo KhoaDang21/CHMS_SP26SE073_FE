@@ -359,9 +359,11 @@ export default function CustomerDashboard() {
                             </span>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
+                          <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
                           <MapPin className="w-4 h-4" />
-                          {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                          {homestay.address
+                            ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
+                            : `${homestay.districtName || homestay.city || ''} ${homestay.provinceName || homestay.country || ''}`}
                         </p>
                         <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                           <span className="flex items-center gap-1">
@@ -442,7 +444,9 @@ export default function CustomerDashboard() {
                       <p className="text-sm text-gray-600 flex items-start gap-1 mb-3 min-h-[2.5rem]">
                         <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
                         <span className="line-clamp-2">
-                          {homestay.address || `${homestay.city || ''} ${homestay.country || ''}`}
+                          {homestay.address
+                            ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
+                            : `${homestay.districtName || homestay.city || ''} ${homestay.provinceName || homestay.country || ''}`}
                         </span>
                       </p>
 
