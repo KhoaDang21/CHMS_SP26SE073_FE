@@ -2,6 +2,12 @@ import { apiService } from "./apiService";
 import { apiConfig } from "../config/apiConfig";
 import type { Homestay } from "../types/homestay.types";
 
+const logDevError = (message: string, error: unknown) => {
+  if (import.meta.env.DEV) {
+    console.error(message, error);
+  }
+};
+
 export const homestayService = {
   /**
    * GET /api/admin/homestays
@@ -16,7 +22,7 @@ export const homestayService = {
         ? payload
         : (payload?.items ?? payload?.Items ?? []);
     } catch (error) {
-      console.error("Error fetching admin homestays:", error);
+      logDevError("Error fetching admin homestays:", error);
       return [];
     }
   },
@@ -31,7 +37,7 @@ export const homestayService = {
       );
       return res?.data ?? res ?? null;
     } catch (error) {
-      console.error("Error fetching admin homestay by id:", error);
+      logDevError("Error fetching admin homestay by id:", error);
       return null;
     }
   },
@@ -47,7 +53,7 @@ export const homestayService = {
       );
       return res;
     } catch (error) {
-      console.error("Error creating homestay:", error);
+      logDevError("Error creating homestay:", error);
       return null;
     }
   },
@@ -63,7 +69,7 @@ export const homestayService = {
       );
       return res;
     } catch (error) {
-      console.error("Error updating homestay:", error);
+      logDevError("Error updating homestay:", error);
       return null;
     }
   },
@@ -79,7 +85,7 @@ export const homestayService = {
       );
       return res;
     } catch (error) {
-      console.error("Error updating homestay status:", error);
+      logDevError("Error updating homestay status:", error);
       return null;
     }
   },
@@ -94,7 +100,7 @@ export const homestayService = {
       );
       return res;
     } catch (error) {
-      console.error("Error deleting homestay:", error);
+      logDevError("Error deleting homestay:", error);
       return null;
     }
   },
@@ -113,7 +119,7 @@ export const homestayService = {
       );
       return res;
     } catch (error) {
-      console.error("Error updating homestay amenities:", error);
+      logDevError("Error updating homestay amenities:", error);
       return null;
     }
   },
@@ -131,9 +137,22 @@ export const homestayService = {
       );
       return res;
     } catch (error) {
-      console.error("Error uploading homestay photo:", error);
+      logDevError("Error uploading homestay photo:", error);
       return null;
     }
+  },
+
+  async uploadAdminHomestayPhotos(id: string, files: File[]): Promise<{ total: number; success: number; failed: number }> {
+    const uploads = await Promise.allSettled(files.map((file) => this.uploadAdminHomestayPhoto(id, file)));
+    const success = uploads.filter(
+      (item) => item.status === 'fulfilled' && item.value && item.value?.success !== false,
+    ).length;
+
+    return {
+      total: files.length,
+      success,
+      failed: files.length - success,
+    };
   },
 
   /**
@@ -150,7 +169,7 @@ export const homestayService = {
       );
       return res;
     } catch (error) {
-      console.error("Error reordering homestay photos:", error);
+      logDevError("Error reordering homestay photos:", error);
       return null;
     }
   },

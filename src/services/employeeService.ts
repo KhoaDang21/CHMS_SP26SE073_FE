@@ -7,6 +7,12 @@ import type {
   UpdateEmployeeStatusDTO,
 } from '../types/employee.types';
 
+const logDevError = (message: string, error: unknown) => {
+  if (import.meta.env.DEV) {
+    console.error(message, error);
+  }
+};
+
 const extractList = <T>(res: any): T[] => {
   if (Array.isArray(res)) return res as T[];
 
@@ -22,7 +28,7 @@ export const employeeService = {
       const res = await apiService.get<any>(apiConfig.endpoints.employees.list);
       return extractList<Employee>(res);
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      logDevError('Error fetching employees:', error);
       return [];
     }
   },
@@ -32,7 +38,7 @@ export const employeeService = {
       const res = await apiService.post<any>(apiConfig.endpoints.employees.create, payload);
       return res;
     } catch (error) {
-      console.error('Error creating employee:', error);
+      logDevError('Error creating employee:', error);
       return null;
     }
   },
@@ -59,7 +65,7 @@ export const employeeService = {
       const res = await apiService.postForm<any>(apiConfig.endpoints.employees.create, form);
       return res;
     } catch (error) {
-      console.error('Error creating employee with avatar file:', error);
+      logDevError('Error creating employee with avatar file:', error);
       return null;
     }
   },
@@ -69,7 +75,7 @@ export const employeeService = {
       const res = await apiService.get<any>(apiConfig.endpoints.employees.detail(id));
       return (res?.data ?? res ?? null) as Employee | null;
     } catch (error) {
-      console.error('Error fetching employee by id:', error);
+      logDevError('Error fetching employee by id:', error);
       return null;
     }
   },
@@ -82,7 +88,7 @@ export const employeeService = {
       const res = await apiService.put<any>(apiConfig.endpoints.employees.update(id), payload);
       return res;
     } catch (error) {
-      console.error('Error updating employee:', error);
+      logDevError('Error updating employee:', error);
       return null;
     }
   },
@@ -92,7 +98,7 @@ export const employeeService = {
       const res = await apiService.delete<any>(apiConfig.endpoints.employees.delete(id));
       return res;
     } catch (error) {
-      console.error('Error deleting employee:', error);
+      logDevError('Error deleting employee:', error);
       return null;
     }
   },
@@ -105,7 +111,31 @@ export const employeeService = {
       const res = await apiService.patch<any>(apiConfig.endpoints.employees.updateStatus(id), payload);
       return res;
     } catch (error) {
-      console.error('Error updating employee status:', error);
+      logDevError('Error updating employee status:', error);
+      return null;
+    }
+  },
+
+  /** POST /api/employees/{id}/avatar — upload avatar file */
+  async uploadAvatar(id: string, file: File): Promise<{ success: boolean; message?: string; avatarUrl?: string } | null> {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await apiService.postForm<any>(apiConfig.endpoints.employees.uploadAvatar(id), form);
+      return { success: res?.success ?? true, message: res?.message, avatarUrl: res?.data ?? res?.avatarUrl };
+    } catch (error) {
+      logDevError('Error uploading employee avatar:', error);
+      return null;
+    }
+  },
+
+  /** PUT /api/employees/{id}/role — đổi role nhân viên */
+  async changeRole(id: string, newRoleId: string): Promise<{ success: boolean; message?: string } | null> {
+    try {
+      const res = await apiService.put<any>(apiConfig.endpoints.employees.changeRole(id), { newRoleId });
+      return res;
+    } catch (error) {
+      logDevError('Error changing employee role:', error);
       return null;
     }
   },

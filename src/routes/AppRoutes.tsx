@@ -13,6 +13,7 @@ import CustomerExplorePage from '../pages/customer/ExplorePage';
 import BookingsPage from '../pages/customer/BookingsPage';
 import FavoritesPage from '../pages/customer/FavoritesPage';
 import MessagesPage from '../pages/customer/MessagesPage';
+import PaymentResultPage from '../pages/customer/PaymentResultPage';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AmenityManagement from '../pages/admin/AmenityManagement';
 import HomestayManagement from '../pages/admin/HomestayManagement';
@@ -113,6 +114,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <MessagesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/payment-result"
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <PaymentResultPage />
           </ProtectedRoute>
         }
       />

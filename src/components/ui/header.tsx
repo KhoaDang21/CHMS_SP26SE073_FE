@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
+import { minDelay } from '../../utils/minDelay';
 
 interface HeaderProps {
   showMenuButton?: boolean;
@@ -73,14 +74,23 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
   const currentUser = authService.getUser();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Chọn navigation items dựa trên trạng thái đăng nhập
   const currentNavigationItems = isAuthenticated ? authenticatedNavigationItems : navigationItems;
 
   const handleLogout = async () => {
-    await authService.logout();
-    toast.success('Đăng xuất thành công!');
-    navigate('/');
+    setIsLoggingOut(true);
+    setIsUserMenuOpen(false);
+    try {
+      await minDelay(authService.logout());
+      toast.success('Đăng xuất thành công!');
+      navigate('/');
+    } catch {
+      toast.error('Đăng xuất thất bại, vui lòng thử lại.');
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const handleProfileClick = () => {
@@ -206,10 +216,18 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                       <hr className="my-2" />
                       <button
                         onClick={handleLogout}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-red-600"
+                        disabled={isLoggingOut}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-red-600 disabled:opacity-50"
                       >
-                        <LogOut className="w-4 h-4" />
-                        Đăng Xuất
+                        {isLoggingOut ? (
+                          <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        ) : (
+                          <LogOut className="w-4 h-4" />
+                        )}
+                        {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng Xuất'}
                       </button>
                     </div>
                   )}
@@ -298,6 +316,19 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
             setIsMobileMenuOpen(false);
           }}
         />
+      )}
+
+      {/* Logout overlay */}
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-[9999] bg-white/70 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <svg className="animate-spin w-10 h-10 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <p className="text-gray-700 font-medium">Đang đăng xuất...</p>
+          </div>
+        </div>
       )}
     </header>
   );
