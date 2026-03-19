@@ -18,7 +18,7 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past' | 'cancelled'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'cancelled'>('all');
 
   const [selected, setSelected] = useState<Booking | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -76,8 +76,7 @@ export default function BookingsPage() {
     if (activeTab === 'upcoming') {
       return bookings.filter(b => b.status !== 'CANCELLED' && new Date(b.checkIn) >= now);
     }
-    // past
-    return bookings.filter(b => b.status !== 'CANCELLED' && new Date(b.checkIn) < now);
+    return bookings;
   }, [bookings, activeTab]);
 
   const openDetail = async (b: Booking) => {
@@ -193,11 +192,10 @@ export default function BookingsPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 mb-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {([
               { key: 'all', label: 'Tất cả' },
               { key: 'upcoming', label: 'Sắp tới' },
-              { key: 'past', label: 'Đã qua' },
               { key: 'cancelled', label: 'Đã hủy' },
             ] as const).map(t => (
               <button
@@ -480,9 +478,16 @@ export default function BookingsPage() {
                         <MessageSquareText className="w-4 h-4 text-blue-500" />
                         Yêu cầu đặc biệt
                       </div>
-                      <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-xl border border-gray-100 p-4 min-h-[80px]">
-                        {selected.specialRequests || '—'}
-                      </div>
+                      {selected.specialRequests ? (
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-xl border border-gray-100 p-4">
+                          {selected.specialRequests}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-2 bg-gray-50 rounded-xl border border-dashed border-gray-200 p-5 text-center">
+                          <MessageSquareText className="w-6 h-6 text-gray-300" />
+                          <p className="text-sm text-gray-400 italic">Không có yêu cầu đặc biệt</p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Chính sách hủy */}
