@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Bell,
@@ -12,9 +12,14 @@ import {
   Waves,
   Menu,
   X,
+  Trash2,
+  CheckCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
+import { notificationService } from '../../services/notificationService';
+import type { Notification } from '../../services/notificationService';
+import { signalRService } from '../../services/signalRService';
 import { minDelay } from '../../utils/minDelay';
 
 interface HeaderProps {
@@ -23,61 +28,138 @@ interface HeaderProps {
 }
 
 const navigationItems = [
-  {
-    name: 'Home',
-    nameVi: 'Trang Chủ',
-    href: '/',
-  },
-  {
-    name: 'About',
-    nameVi: 'Giới Thiệu',
-    href: '/about',
-  },
-  {
-    name: 'Contact',
-    nameVi: 'Liên Hệ',
-    href: '/contact',
-  },
+  { name: 'Home', nameVi: 'Trang Chủ', href: '/' },
+  { name: 'About', nameVi: 'Giới Thiệu', href: '/about' },
+  { name: 'Contact', nameVi: 'Liên Hệ', href: '/contact' },
 ];
 
 const authenticatedNavigationItems = [
-  {
-    name: 'Dashboard',
-    nameVi: 'Trang Chủ',
-    href: '/customer/dashboard',
-    icon: Compass,
-  },
-  {
-    name: 'Booking',
-    nameVi: 'Đặt Phòng',
-    href: '/customer/bookings',
-    icon: Compass,
-  },
-  {
-    name: 'Favorites',
-    nameVi: 'Yêu Thích',
-    href: '/customer/favorites',
-    icon: Heart,
-  },
-  {
-    name: 'Messages',
-    nameVi: 'Tin Nhắn',
-    href: '/customer/messages',
-    icon: MessageCircle,
-  },
+  { name: 'Dashboard', nameVi: 'Trang Chủ', href: '/customer/dashboard', icon: Compass },
+  { name: 'Booking', nameVi: 'Đặt Phòng', href: '/customer/bookings', icon: Compass },
+  { name: 'Favorites', nameVi: 'Yêu Thích', href: '/customer/favorites', icon: Heart },
+  { name: 'Messages', nameVi: 'Tin Nhắn', href: '/customer/messages', icon: MessageCircle },
 ];
+
+function formatTime(dateStr: string): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Vừa xong';
+  if (diffMins < 60) return `${diffMins} phút trước`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} ngày trước`;
+  return date.toLocaleDateString('vi-VN');
+}
 
 export default function Header({ showMenuButton = false, onMenuClick }: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = authService.isAuthenticated();
   const currentUser = authService.getUser();
+
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Chọn navigation items dựa trên trạng thái đăng nhập
+  // Notification state
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
   const currentNavigationItems = isAuthenticated ? authenticatedNavigationItems : navigationItems;
+
+  // Fetch unread count + kết nối SignalR khi đã đăng nhập
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Lấy unread count ban đầu
+    notificationService.getUnreadCount().then(setUnreadCount);
+
+    // Kết nối SignalR để nhận notification real-time
+    const token = authService.getToken() ?? '';
+    const userId = authService.getUser()?.id ?? '';
+
+    if (!token) return;
+
+    signalRService.connect(token).then((conn) => {
+      // Join vào group của user để nhận notification riêng
+      if (userId) conn.invoke('JoinUserGroup', userId).catch(() => {});
+
+      // Lắng nghe event BE push xuống (tên event BE sẽ dùng)
+      conn.on('ReceiveNotification', (notif: Notification) => {
+        setNotifications(prev => [notif, ...prev]);
+        setUnreadCount(prev => prev + 1);
+      });
+
+      // Fallback: BE có thể push event tên khác
+      conn.on('NewNotification', (notif: Notification) => {
+        setNotifications(prev => [notif, ...prev]);
+        setUnreadCount(prev => prev + 1);
+      });
+    }).catch(() => {
+      // SignalR không kết nối được — vẫn hoạt động bình thường qua REST
+    });
+
+    return () => {
+      signalRService.disconnect();
+    };
+  }, [isAuthenticated]);
+
+  // Load notifications when dropdown opens
+  const handleNotifOpen = async () => {
+    if (isNotifOpen) {
+      setIsNotifOpen(false);
+      return;
+    }
+    setIsNotifOpen(true);
+    setNotifLoading(true);
+    try {
+      const list = await notificationService.getAll();
+      setNotifications(list);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch {
+      toast.error('Không thể đánh dấu đã đọc');
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch {
+      toast.error('Không thể đánh dấu tất cả đã đọc');
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await notificationService.delete(id);
+      const deleted = notifications.find(n => n.id === id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      if (deleted && !deleted.isRead) setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch {
+      toast.error('Không thể xóa thông báo');
+    }
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -93,19 +175,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
     }
   };
 
-  const handleProfileClick = () => {
-    navigate('/customer/profile');
-    setIsUserMenuOpen(false);
-  };
-
-  const handleBookingHistoryClick = () => {
-    navigate('/customer/bookings');
-    setIsUserMenuOpen(false);
-  };
-
-  const isActivePath = (path: string) => {
-    return location.pathname === path;
-  };
+  const isActivePath = (path: string) => location.pathname === path;
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -114,10 +184,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
           {/* Logo */}
           <div className="flex items-center gap-2">
             {showMenuButton && (
-              <button
-                onClick={onMenuClick}
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
+              <button onClick={onMenuClick} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
                 <Menu className="w-6 h-6 text-gray-700" />
               </button>
             )}
@@ -137,48 +204,124 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-1">
-            {currentNavigationItems.map((item) => {
-              const isActive = isActivePath(item.href);
-
-              return (
-                <button
-                  key={item.href}
-                  onClick={() => navigate(item.href)}
-                  className={`px-6 py-2 rounded-lg font-medium transition-all ${isActive
+            {currentNavigationItems.map((item) => (
+              <button
+                key={item.href}
+                onClick={() => navigate(item.href)}
+                className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                  isActivePath(item.href)
                     ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                     : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                >
-                  {item.nameVi}
-                </button>
-              );
-            })}
+                }`}
+              >
+                {item.nameVi}
+              </button>
+            ))}
           </nav>
 
           {/* Right side */}
           <div className="flex items-center gap-4">
-            {/* Mobile menu button */}
             {!showMenuButton && (
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                {isMobileMenuOpen ? (
-                  <X className="w-6 h-6 text-gray-700" />
-                ) : (
-                  <Menu className="w-6 h-6 text-gray-700" />
-                )}
+                {isMobileMenuOpen ? <X className="w-6 h-6 text-gray-700" /> : <Menu className="w-6 h-6 text-gray-700" />}
               </button>
             )}
 
             {isAuthenticated ? (
-              // Authenticated user - show notifications and user menu
               <>
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-                  <Bell className="w-6 h-6 text-gray-700" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
+                {/* Notification Bell */}
+                <div className="relative" ref={notifRef}>
+                  <button
+                    onClick={handleNotifOpen}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  >
+                    <Bell className="w-6 h-6 text-gray-700" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold px-0.5">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
 
+                  {/* Notification Dropdown */}
+                  {isNotifOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                        <span className="font-semibold text-gray-800">Thông báo</span>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={handleMarkAllAsRead}
+                            className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                          >
+                            <CheckCheck className="w-3.5 h-3.5" />
+                            Đánh dấu tất cả đã đọc
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Body */}
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifLoading ? (
+                          <div className="flex items-center justify-center py-10">
+                            <svg className="animate-spin w-6 h-6 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                          </div>
+                        ) : notifications.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                            <Bell className="w-8 h-8 mb-2 opacity-40" />
+                            <p className="text-sm">Không có thông báo</p>
+                          </div>
+                        ) : (
+                          notifications.map((notif) => (
+                            <div
+                              key={notif.id}
+                              onClick={() => !notif.isRead && handleMarkAsRead(notif.id)}
+                              className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors group ${
+                                !notif.isRead ? 'bg-blue-50/50' : ''
+                              }`}
+                            >
+                              {/* Unread dot */}
+                              <div className="mt-1.5 flex-shrink-0">
+                                {!notif.isRead ? (
+                                  <span className="w-2 h-2 bg-blue-500 rounded-full block" />
+                                ) : (
+                                  <span className="w-2 h-2 rounded-full block" />
+                                )}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                {notif.title && (
+                                  <p className={`text-sm font-medium truncate ${!notif.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
+                                    {notif.title}
+                                  </p>
+                                )}
+                                <p className={`text-sm ${!notif.isRead ? 'text-gray-700' : 'text-gray-500'} line-clamp-2`}>
+                                  {notif.content}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0.5">{formatTime(notif.createdAt)}</p>
+                              </div>
+
+                              <button
+                                onClick={(e) => handleDelete(notif.id, e)}
+                                className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* User Menu */}
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -195,7 +338,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                       <button
-                        onClick={handleBookingHistoryClick}
+                        onClick={() => { navigate('/customer/bookings'); setIsUserMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
                         <BookOpen className="w-4 h-4" />
@@ -203,7 +346,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                       </button>
                       <hr className="my-2" />
                       <button
-                        onClick={handleProfileClick}
+                        onClick={() => { navigate('/customer/profile'); setIsUserMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
                         <User className="w-4 h-4" />
@@ -234,7 +377,6 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                 </div>
               </>
             ) : (
-              // Not authenticated - show login and register buttons
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate('/auth/login')}
@@ -260,18 +402,15 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
               {currentNavigationItems.map((item) => {
                 const isActive = isActivePath(item.href);
                 const Icon = (item as any).icon;
-
                 return (
                   <button
                     key={item.href}
-                    onClick={() => {
-                      navigate(item.href);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${isActive
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                    onClick={() => { navigate(item.href); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                   >
                     {Icon ? <Icon className="w-4 h-4 mr-2" /> : null}
                     {item.nameVi}
@@ -279,23 +418,16 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                 );
               })}
 
-              {/* Mobile auth buttons for non-authenticated users */}
               {!isAuthenticated && (
                 <div className="pt-4 border-t border-gray-200 space-y-2">
                   <button
-                    onClick={() => {
-                      navigate('/auth/login');
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => { navigate('/auth/login'); setIsMobileMenuOpen(false); }}
                     className="w-full px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors"
                   >
                     Đăng Nhập
                   </button>
                   <button
-                    onClick={() => {
-                      navigate('/auth/register');
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => { navigate('/auth/register'); setIsMobileMenuOpen(false); }}
                     className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all font-medium"
                   >
                     Đăng Ký
@@ -307,13 +439,14 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
         )}
       </div>
 
-      {/* Click outside to close menus */}
-      {(isUserMenuOpen || isMobileMenuOpen) && (
+      {/* Click outside to close all menus */}
+      {(isUserMenuOpen || isMobileMenuOpen || isNotifOpen) && (
         <div
           className="fixed inset-0 z-40"
           onClick={() => {
             setIsUserMenuOpen(false);
             setIsMobileMenuOpen(false);
+            setIsNotifOpen(false);
           }}
         />
       )}
