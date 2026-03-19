@@ -24,7 +24,7 @@ import {
   TrendingUp,
   Settings,
 } from 'lucide-react';
-import { amenityService } from '../../services/amenityService';
+import { adminAmenityService } from '../../services/adminAmenityService';
 import type { Amenity, CreateAmenityDTO, UpdateAmenityDTO, AmenityCategory, AmenityStats } from '../../types/amenity.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
@@ -148,7 +148,7 @@ export default function AmenityManagement() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const amenitiesData = await amenityService.getAllAmenities();
+      const amenitiesData = await adminAmenityService.getAllAmenities();
       setAmenities(amenitiesData);
     } catch (error) {
       console.error('Error loading amenities:', error);
@@ -165,7 +165,7 @@ export default function AmenityManagement() {
     }
 
     try {
-      const result = await amenityService.createAmenity(formData);
+      const result = await adminAmenityService.createAmenity(formData);
       if (result?.success) {
         toast.success('Thêm tiện ích thành công');
         setShowModal(false);
@@ -189,7 +189,7 @@ export default function AmenityManagement() {
     }
 
     try {
-      const result = await amenityService.updateAmenity(editingAmenity.id, {
+      const result = await adminAmenityService.updateAmenity(editingAmenity.id, {
         ...formData,
         iconFile,
       });
@@ -212,7 +212,7 @@ export default function AmenityManagement() {
     if (!confirm('Bạn có chắc muốn xóa tiện ích này?')) return;
 
     try {
-      const result = await amenityService.deleteAmenity(id);
+      const result = await adminAmenityService.deleteAmenity(id);
       if (result?.success) {
         toast.success('Xóa tiện ích thành công');
         loadData();
@@ -233,7 +233,7 @@ export default function AmenityManagement() {
         iconUrl: amenity.iconUrl,
         isActive: !amenity.isActive
       };
-      const result = await amenityService.updateAmenity(amenity.id, updateData);
+      const result = await adminAmenityService.updateAmenity(amenity.id, updateData);
       if (result?.success) {
         toast.success('Cập nhật trạng thái thành công');
         loadData();
