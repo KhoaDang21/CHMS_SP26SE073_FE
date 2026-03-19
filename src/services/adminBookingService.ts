@@ -10,10 +10,11 @@ export const adminBookingService = {
     return apiService.get<any>(apiConfig.endpoints.adminBookings.detail(id));
   },
 
-  async update(id: string, payload: any) {
+  /** PUT /api/admin/bookings/{id} — BE expects raw string status [FromBody] */
+  async updateStatus(id: string, status: string) {
     return apiService.put<any>(
       apiConfig.endpoints.adminBookings.update(id),
-      payload,
+      status,
     );
   },
 };

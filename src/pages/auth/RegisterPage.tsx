@@ -91,16 +91,12 @@ export default function RegisterPage() {
       const response = await minDelay(authService.verifyOtp(formData.email, otpCode));
 
       if (response.success) {
-        toast.success('✅ Xác thực thành công! Đang chuyển hướng...', {
+        toast.success('✅ Xác thực thành công! Vui lòng đăng nhập.', {
           duration: 2000,
         });
-        
         setShowOTPModal(false);
-        
         setTimeout(() => {
-          const userRole = response.user?.role || 'customer';
-          const redirectPath = authConfig.redirectPaths[userRole];
-          navigate(redirectPath, { replace: true });
+          navigate('/auth/login', { replace: true });
         }, 1500);
       } else {
         setOtpError(response.message || 'Mã OTP không hợp lệ');
