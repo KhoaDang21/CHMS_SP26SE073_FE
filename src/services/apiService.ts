@@ -14,6 +14,19 @@ class ApiService {
     return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   }
 
+  private async parseResponseBody<T>(response: Response): Promise<T> {
+    const text = await response.text();
+    if (!text) {
+      return {} as T;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return text as T;
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -104,7 +117,7 @@ class ApiService {
       throw new Error(`Upload failed: ${response.status}`);
     }
 
-    return await response.json();
+    return this.parseResponseBody<T>(response);
   }
 
   async postForm<T>(endpoint: string, formData: FormData): Promise<T> {
@@ -123,7 +136,7 @@ class ApiService {
       throw new Error(error.message || `HTTP Error: ${response.status}`);
     }
 
-    return await response.json();
+    return this.parseResponseBody<T>(response);
   }
 
   async putForm<T>(endpoint: string, formData: FormData): Promise<T> {
@@ -142,7 +155,7 @@ class ApiService {
       throw new Error(error.message || `HTTP Error: ${response.status}`);
     }
 
-    return await response.json();
+    return this.parseResponseBody<T>(response);
   }
 }
 

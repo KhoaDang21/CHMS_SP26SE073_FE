@@ -38,6 +38,42 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error('Cannot read file preview'));
+      };
+      reader.onerror = () => reject(reader.error || new Error('FileReader error'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const buildPreview = async (file: File): Promise<string> => {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        bitmap.close();
+        throw new Error('No canvas context');
+      }
+
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      return canvas.toDataURL('image/jpeg', 0.92);
+    } catch {
+      return fileToDataUrl(file);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       loadAmenities();
@@ -48,25 +84,22 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   const loadAmenities = async () => {
     try {
       const data = await amenityService.getAllAmenities();
-      console.log('Loaded amenities:', data);
-      setAmenities(data); // Show all amenities for admin
-    } catch (error) {
-      console.error('Error loading amenities:', error);
+      setAmenities(data);
+    } catch {
+      setAmenities([]);
     }
   };
 
   const loadDistricts = async () => {
     try {
       const districtData = await districtService.getAllDistricts();
-      console.log('Loaded districts:', districtData);
       setDistricts(districtData);
       if (!districtData.length) {
         setDistrictError('Khong tai duoc danh sach quan/huyen tu API. Ban co the nhap District ID thu cong ben duoi.');
       } else {
         setDistrictError('');
       }
-    } catch (error) {
-      console.error('Error loading districts:', error);
+    } catch {
       setDistrictError('Khong ket noi duoc API district. Ban co the nhap District ID thu cong ben duoi.');
     }
   };
@@ -116,17 +149,15 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('JWT payload:', payload);
 
         // Try common JWT claim names for user ID
         userId = payload.userId || payload.sub || payload.nameid || payload.id || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
-      } catch (error) {
-        console.error('Error decoding JWT:', error);
+      } catch {
+        userId = '';
       }
     }
 
     if (!userId) {
-      console.error('Cannot get userId from JWT token');
       alert('Không thể xác định userId. Vui lòng đăng nhập lại.');
       return;
     }
@@ -150,7 +181,6 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       images: [],
     };
 
-    console.log('Submitting homestay payload:', payload);
     onSubmit(payload, selectedFiles);
   };
 
@@ -161,19 +191,27 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     const newFiles = Array.from(files);
     setSelectedFiles(prev => [...prev, ...newFiles]);
 
-    // Create preview URLs
-    newFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviews(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    Promise.all(newFiles.map((file) => buildPreview(file)))
+      .then((previews) => {
+        setImagePreviews((prev) => [...prev, ...previews]);
+      })
+      .catch(() => {
+        // Keep UI responsive even if preview conversion fails for some files.
+      });
   };
 
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleAmenity = (amenityId: string) => {
+    const current = formData.amenityIds || [];
+    const next = current.includes(amenityId)
+      ? current.filter((id) => id !== amenityId)
+      : [...current, amenityId];
+
+    setFormData({ ...formData, amenityIds: next });
   };
 
   const canProceed = () => {
@@ -457,26 +495,26 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                   </div>
                 ) : (
                   <>
-                    <div className="relative">
-                      <select
-                        multiple
-                        value={formData.amenityIds || []}
-                        onChange={(e) => {
-                          const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
-                          setFormData({ ...formData, amenityIds: selected });
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[200px]"
-                        size={Math.min(amenities.length, 8)}
-                      >
-                        {amenities.map((amenity) => (
-                          <option key={amenity.id} value={amenity.id} className="py-2 px-3">
-                            {amenity.name}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Giữ Ctrl (Windows) hoặc Cmd (Mac) để chọn nhiều tiện ích
-                      </p>
+                    <div className="border border-gray-300 rounded-lg p-3 max-h-[280px] overflow-y-auto space-y-2">
+                      {amenities.map((amenity) => {
+                        const checked = (formData.amenityIds || []).includes(amenity.id);
+                        return (
+                          <label
+                            key={amenity.id}
+                            className={`flex items-center gap-3 p-2 rounded-md cursor-pointer border transition-colors ${
+                              checked ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleAmenity(amenity.id)}
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-800">{amenity.name}</span>
+                          </label>
+                        );
+                      })}
                     </div>
 
                     {/* Selected amenities preview */}
@@ -561,7 +599,10 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                         <img
                           src={preview}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 bg-gray-100"
+                          onError={(e) => {
+                            e.currentTarget.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format';
+                          }}
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all rounded-lg flex items-center justify-center">
                           <button
