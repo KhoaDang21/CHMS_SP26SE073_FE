@@ -1,6 +1,7 @@
 import { apiService } from './apiService';
+import { apiConfig } from '../config/apiConfig';
 
-// BE: POST /api/payment/create-link (controller route: api/[controller] = api/payment)
+// BE: POST /api/payment/create-link
 // Request: { BookingId: Guid, CancelUrl: string, ReturnUrl: string }
 // Response: ApiResponse<object> { data: { checkoutUrl: string } }
 
@@ -30,7 +31,7 @@ export interface Payment {
 export const paymentService = {
   /** POST /api/payment/create-link */
   async createLink(payload: CreatePaymentLinkRequest): Promise<CreatePaymentLinkResponse> {
-    const res = await apiService.post<any>('/api/payment/create-link', {
+    const res = await apiService.post<any>(apiConfig.endpoints.payments.createLink, {
       BookingId: payload.bookingId,
       CancelUrl: payload.cancelUrl,
       ReturnUrl: payload.returnUrl,
@@ -41,10 +42,10 @@ export const paymentService = {
     return { checkoutUrl };
   },
 
-  /** GET /api/payment/:id — lấy chi tiết payment */
+  /** GET /api/payment/{id} — lấy chi tiết payment */
   async getPaymentById(paymentId: string): Promise<Payment | null> {
     try {
-      const res = await apiService.get<any>(`/api/payment/${paymentId}`);
+      const res = await apiService.get<any>(apiConfig.endpoints.payments.detail(paymentId));
       const raw = res?.data ?? res;
       if (!raw?.id) return null;
       return {
@@ -67,7 +68,7 @@ export const paymentService = {
   /** GET /api/payment/history — lịch sử thanh toán */
   async getPaymentHistory(): Promise<Payment[]> {
     try {
-      const res = await apiService.get<any>('/api/payment/history');
+      const res = await apiService.get<any>(apiConfig.endpoints.payments.history);
       const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       return list.map(raw => ({
         id: raw.id,

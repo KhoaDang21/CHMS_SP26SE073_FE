@@ -30,6 +30,13 @@ export const reviewService = {
     );
   },
 
+  async managerUpdateRespond(id: string, payload: any) {
+    return apiService.put<any>(
+      apiConfig.endpoints.reviews.managerUpdateRespond(id),
+      payload,
+    );
+  },
+
   // Staff
   async staffList(params?: Record<string, any>) {
     return apiService.get<any>(apiConfig.endpoints.reviews.staffList, params);

@@ -6,6 +6,7 @@ import { Mail, Lock, Eye, EyeOff, Waves } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { authService } from '../../services/authService';
 import { authConfig } from '../../config/authConfig';
+import { minDelay } from '../../utils/minDelay';
 import toast from 'react-hot-toast'; // 👈 THÊM IMPORT
 
 export default function LoginPage() {
@@ -23,11 +24,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await authService.login({
+      const response = await minDelay(authService.login({
         email,
         password,
         rememberMe,
-      });
+      }));
 
       if (response.success) {
         // 👇 THÊM TOAST

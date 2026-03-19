@@ -363,6 +363,9 @@ export const authService = {
 
   /**
    * Verify OTP after registration
+   * BE: POST /api/auth/verify-otp
+   * BE returns: ApiResponse (no data/token) — just success/fail message
+   * After OTP verified, user must login separately to get token.
    */
   async verifyOtp(email: string, otpCode: string): Promise<LoginResponse> {
     try {
@@ -383,42 +386,11 @@ export const authService = {
       const apiResponse = await response.json();
 
       if (response.ok && apiResponse.success) {
-        // OTP verified successfully, save token and user data
-        const token =
-          apiResponse.data?.accessToken ||
-          apiResponse.data?.token ||
-          apiResponse.token;
-        const refreshToken = apiResponse.data?.refreshToken;
-        const resolvedUserId = this._extractUserId(apiResponse.data, token);
-
-        const userData = apiResponse.data
-          ? {
-              id: resolvedUserId || apiResponse.data.email,
-              email: apiResponse.data.email,
-              name: apiResponse.data.fullName || apiResponse.data.name,
-              role: apiResponse.data.role?.toLowerCase() as
-                | "customer"
-                | "manager"
-                | "staff"
-                | "admin",
-            }
-          : undefined;
-
-        if (token) {
-          localStorage.setItem("authToken", token);
-        }
-        if (refreshToken) {
-          localStorage.setItem("refreshToken", refreshToken);
-        }
-        if (userData) {
-          localStorage.setItem("userData", JSON.stringify(userData));
-        }
-
+        // BE does NOT return token on verify-otp — just confirms account activation.
+        // Return success so FE can redirect to login.
         return {
           success: true,
-          token: token,
-          user: userData,
-          message: apiResponse.message,
+          message: apiResponse.message ?? "Kích hoạt tài khoản thành công!",
         };
       }
 

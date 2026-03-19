@@ -115,4 +115,28 @@ export const employeeService = {
       return null;
     }
   },
+
+  /** POST /api/employees/{id}/avatar — upload avatar file */
+  async uploadAvatar(id: string, file: File): Promise<{ success: boolean; message?: string; avatarUrl?: string } | null> {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await apiService.postForm<any>(apiConfig.endpoints.employees.uploadAvatar(id), form);
+      return { success: res?.success ?? true, message: res?.message, avatarUrl: res?.data ?? res?.avatarUrl };
+    } catch (error) {
+      logDevError('Error uploading employee avatar:', error);
+      return null;
+    }
+  },
+
+  /** PUT /api/employees/{id}/role — đổi role nhân viên */
+  async changeRole(id: string, newRoleId: string): Promise<{ success: boolean; message?: string } | null> {
+    try {
+      const res = await apiService.put<any>(apiConfig.endpoints.employees.changeRole(id), { newRoleId });
+      return res;
+    } catch (error) {
+      logDevError('Error changing employee role:', error);
+      return null;
+    }
+  },
 };

@@ -7,6 +7,7 @@ import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { authService } from '../../services/authService';
 import { authConfig } from '../../config/authConfig';
 import OTPModal from '../../components/auth/OTPModal';
+import { minDelay } from '../../utils/minDelay';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -58,13 +59,13 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const response = await authService.register({
+      const response = await minDelay(authService.register({
         email: formData.email,
         password: formData.password,
         name: formData.fullName,
         phone: formData.phone,
         role: 'customer',
-      });
+      }));
 
       if (response.success) {
         toast.success('Mã OTP đã được gửi đến email của bạn!');
@@ -87,19 +88,15 @@ export default function RegisterPage() {
     setIsVerifying(true);
 
     try {
-      const response = await authService.verifyOtp(formData.email, otpCode);
+      const response = await minDelay(authService.verifyOtp(formData.email, otpCode));
 
       if (response.success) {
-        toast.success('✅ Xác thực thành công! Đang chuyển hướng...', {
+        toast.success('✅ Xác thực thành công! Vui lòng đăng nhập.', {
           duration: 2000,
         });
-        
         setShowOTPModal(false);
-        
         setTimeout(() => {
-          const userRole = response.user?.role || 'customer';
-          const redirectPath = authConfig.redirectPaths[userRole];
-          navigate(redirectPath, { replace: true });
+          navigate('/auth/login', { replace: true });
         }, 1500);
       } else {
         setOtpError(response.message || 'Mã OTP không hợp lệ');
