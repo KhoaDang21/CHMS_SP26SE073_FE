@@ -93,8 +93,6 @@ export const apiConfig = {
       create: "/api/admin/roles",
       update: (id: string) => `/api/admin/roles/${id}`,
       delete: (id: string) => `/api/admin/roles/${id}`,
-      permissions: "/api/admin/permissions",
-      assignPermissions: (id: string) => `/api/admin/roles/${id}/permissions`,
       updatePermissions: (id: string) => `/api/admin/roles/${id}/permissions`,
     },
     adminBookings: {
@@ -102,9 +100,27 @@ export const apiConfig = {
       detail: (id: string) => `/api/admin/bookings/${id}`,
       update: (id: string) => `/api/admin/bookings/${id}`,
     },
+    adminCustomers: {
+      list: "/api/admin/customers",
+      detail: (id: string) => `/api/admin/customers/${id}`,
+      update: (id: string) => `/api/admin/customers/${id}`,
+      bookings: (id: string) => `/api/admin/customers/${id}/bookings`,
+      updateStatus: (id: string) => `/api/admin/customers/${id}/status`,
+    },
     adminTickets: {
       list: "/api/admin/tickets",
       statistics: "/api/admin/tickets/statistics",
+    },
+    adminDashboard: {
+      overview: "/api/admin/dashboard/overview",
+      today: "/api/admin/dashboard/today",
+      revenue: "/api/admin/dashboard/reports/revenue",
+      revenueByHomestay: "/api/admin/dashboard/reports/revenue/by-homestay",
+      revenueByPeriod: "/api/admin/dashboard/reports/revenue/by-period",
+      bookings: "/api/admin/dashboard/reports/bookings",
+      occupancy: "/api/admin/dashboard/reports/occupancy",
+      customers: "/api/admin/dashboard/reports/customers",
+      exportReports: "/api/admin/dashboard/reports/export",
     },
     reviews: {
       create: "/api/reviews",

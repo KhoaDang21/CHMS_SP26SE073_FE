@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { employeeService } from '../../services/employeeService';
 import type { Staff, StaffStatus } from '../../types/staff.types';
-import { roleService } from '../../services/roleService';
+import { adminRoleService } from '../../services/adminRoleService';
 import type { Role } from '../../types/role.types';
 
 interface CreateStaffModalProps {
@@ -46,7 +46,7 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
     if (!isOpen) return;
 
     const loadRoles = async () => {
-      const roles = await roleService.getRoles();
+      const roles = await adminRoleService.getRoles();
       const filtered = roles.filter((role) => {
         const name = (role.name || '').toLowerCase();
         return name === 'manager' || name === 'staff';

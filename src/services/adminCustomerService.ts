@@ -1,0 +1,202 @@
+import { apiConfig } from '../config/apiConfig';
+import { apiService } from './apiService';
+import type {
+  Customer,
+  CustomerBookingHistory,
+  CustomerStats,
+  CustomerStatus,
+  CustomerType,
+  UpdateCustomerDTO,
+} from '../types/customer.types';
+
+const extractList = <T>(res: any): T[] => {
+  if (Array.isArray(res)) return res as T[];
+
+  const data = res?.data ?? res?.result ?? res;
+  if (Array.isArray(data)) return data as T[];
+
+  return (data?.items ?? data?.Items ?? data?.customers ?? data?.bookings ?? []) as T[];
+};
+
+const toISO = (value: any): string => {
+  if (!value) return new Date().toISOString();
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return new Date().toISOString();
+  return date.toISOString();
+};
+
+const normalizeStatus = (value: any): CustomerStatus => {
+  const raw = String(value || '').toLowerCase();
+  if (raw === 'vip') return 'vip';
+  if (raw === 'blocked' || raw === 'suspended' || raw === 'disabled' || raw === 'banned') return 'blocked';
+  if (raw === 'inactive') return 'inactive';
+  return 'active';
+};
+
+const normalizeType = (value: any, country?: string): CustomerType => {
+  const raw = String(value || '').toLowerCase();
+  if (raw === 'international') return 'international';
+  if (raw === 'domestic') return 'domestic';
+
+  const countryRaw = String(country || '').toLowerCase();
+  if (!countryRaw || countryRaw.includes('việt') || countryRaw.includes('vietnam')) return 'domestic';
+  return 'international';
+};
+
+const mapCustomer = (item: any): Customer => {
+  const country = String(item?.country || item?.countryName || 'Việt Nam');
+  const status = normalizeStatus(item?.status ?? (item?.isActive === false ? 'inactive' : 'active'));
+  const totalBookings = Number(item?.totalBookings ?? item?.bookingCount ?? 0);
+  const totalSpent = Number(item?.totalSpent ?? item?.spentAmount ?? item?.totalAmount ?? 0);
+
+  return {
+    id: String(item?.id || item?.userId || ''),
+    name: String(item?.name || item?.fullName || item?.username || 'Khách hàng'),
+    email: String(item?.email || ''),
+    phone: String(item?.phone || item?.phoneNumber || item?.contactPhone || ''),
+    status,
+    type: normalizeType(item?.type, country),
+    avatar: item?.avatar || item?.avatarUrl,
+    city: item?.city || item?.province || item?.district,
+    country,
+    nationality: item?.nationality || country,
+    address: item?.address,
+    dateOfBirth: item?.dateOfBirth,
+    identityNumber: item?.identityNumber || item?.identityNo || item?.nationalId,
+    passportNumber: item?.passportNumber,
+    notes: item?.notes,
+    preferences: item?.preferences,
+    totalBookings,
+    totalSpent,
+    loyaltyPoints: Number(item?.loyaltyPoints ?? Math.floor(totalSpent / 1000000)),
+    registeredDate: toISO(item?.registeredDate || item?.createdAt),
+    lastBookingDate: item?.lastBookingDate ? toISO(item.lastBookingDate) : undefined,
+  };
+};
+
+const normalizeBookingStatus = (value: any): CustomerBookingHistory['status'] => {
+  const raw = String(value || '').toUpperCase();
+  if (raw === 'CONFIRMED') return 'confirmed';
+  if (raw === 'CHECKED_IN' || raw === 'CHECKEDIN' || raw === 'IN_PROGRESS') return 'checked_in';
+  if (raw === 'CHECKED_OUT' || raw === 'CHECKEDOUT' || raw === 'COMPLETED') return 'checked_out';
+  if (raw === 'CANCELLED' || raw === 'REJECTED') return 'cancelled';
+  return 'pending';
+};
+
+const mapCustomerBooking = (item: any): CustomerBookingHistory => {
+  const id = String(item?.id || item?.bookingId || '');
+  return {
+    id,
+    bookingCode: String(item?.bookingCode || item?.code || (id ? id.slice(0, 8) : 'N/A')),
+    homestayName: String(item?.homestayName || item?.name || item?.propertyName || 'Homestay'),
+    checkInDate: toISO(item?.checkInDate || item?.checkIn),
+    checkOutDate: toISO(item?.checkOutDate || item?.checkOut),
+    totalPrice: Number(item?.totalPrice ?? item?.amount ?? 0),
+    status: normalizeBookingStatus(item?.status),
+  };
+};
+
+const toBackendStatus = (status: CustomerStatus): string => {
+  if (status === 'vip') return 'VIP';
+  if (status === 'blocked') return 'BLOCKED';
+  if (status === 'inactive') return 'INACTIVE';
+  return 'ACTIVE';
+};
+
+export const adminCustomerService = {
+  async getAllCustomers(params?: Record<string, any>): Promise<Customer[]> {
+    const res = await apiService.get<any>(apiConfig.endpoints.adminCustomers.list, params);
+    return extractList<any>(res).map(mapCustomer).filter((item) => Boolean(item.id));
+  },
+
+  async getCustomerStats(): Promise<CustomerStats> {
+    const customers = await this.getAllCustomers();
+    const total = customers.length;
+    const active = customers.filter((x) => x.status === 'active').length;
+    const inactive = customers.filter((x) => x.status === 'inactive').length;
+    const vip = customers.filter((x) => x.status === 'vip').length;
+    const blocked = customers.filter((x) => x.status === 'blocked').length;
+    const domestic = customers.filter((x) => x.type === 'domestic').length;
+    const international = customers.filter((x) => x.type === 'international').length;
+    const totalRevenue = customers.reduce((sum, x) => sum + (Number(x.totalSpent) || 0), 0);
+    const totalLoyaltyPoints = customers.reduce((sum, x) => sum + (Number(x.loyaltyPoints) || 0), 0);
+
+    return {
+      total,
+      active,
+      inactive,
+      vip,
+      blocked,
+      domestic,
+      international,
+      totalRevenue,
+      averageSpending: total > 0 ? totalRevenue / total : 0,
+      totalLoyaltyPoints,
+    };
+  },
+
+  async getCustomerById(customerId: string): Promise<Customer | null> {
+    try {
+      const res = await apiService.get<any>(apiConfig.endpoints.adminCustomers.detail(customerId));
+      const payload = res?.data ?? res?.result ?? res;
+      if (!payload) return null;
+      return mapCustomer(payload);
+    } catch {
+      return null;
+    }
+  },
+
+  async getCustomerBookingHistory(customerId: string): Promise<{ bookings: CustomerBookingHistory[] }> {
+    try {
+      const res = await apiService.get<any>(apiConfig.endpoints.adminCustomers.bookings(customerId));
+      const bookings = extractList<any>(res).map(mapCustomerBooking).filter((item) => Boolean(item.id));
+      return { bookings };
+    } catch {
+      return { bookings: [] };
+    }
+  },
+
+  async updateCustomer(customerId: string, payload: UpdateCustomerDTO): Promise<{ success: boolean; message?: string; customer?: Customer | null }> {
+    try {
+      const updatePayload: Record<string, any> = {
+        ...(payload.name !== undefined ? { name: payload.name } : {}),
+        ...(payload.email !== undefined ? { email: payload.email } : {}),
+        ...(payload.phone !== undefined ? { phone: payload.phone } : {}),
+      };
+
+      if (Object.keys(updatePayload).length > 0) {
+        await apiService.put<any>(apiConfig.endpoints.adminCustomers.update(customerId), updatePayload);
+      }
+
+      if (payload.status !== undefined) {
+        const rawStatus = toBackendStatus(payload.status);
+        try {
+          await apiService.patch<any>(apiConfig.endpoints.adminCustomers.updateStatus(customerId), { status: rawStatus });
+        } catch {
+          await apiService.patch<any>(apiConfig.endpoints.adminCustomers.updateStatus(customerId), rawStatus);
+        }
+      }
+
+      const customer = await this.getCustomerById(customerId);
+      return { success: true, customer };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Không thể cập nhật khách hàng',
+      };
+    }
+  },
+
+  // API swagger hiện không có endpoint DELETE customer, nên dùng khóa tài khoản như xóa mềm.
+  async deleteCustomer(customerId: string): Promise<{ success: boolean; message?: string }> {
+    const result = await this.updateCustomer(customerId, { status: 'blocked' });
+    if (!result.success) {
+      return { success: false, message: result.message || 'Không thể xóa mềm khách hàng' };
+    }
+
+    return {
+      success: true,
+      message: 'Đã khóa tài khoản khách hàng (xóa mềm).',
+    };
+  },
+};

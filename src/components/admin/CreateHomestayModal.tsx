@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Check, Home, MapPin, DollarSign, Image, Sparkles, FileText } from 'lucide-react';
 import type { CreateHomestayDTO, District } from '../../types/homestay.types';
 import type { Amenity } from '../../types/amenity.types';
-import { amenityService } from '../../services/amenityService';
+import { adminAmenityService } from '../../services/adminAmenityService';
 import { districtService } from '../../services/districtService';
 
 interface CreateHomestayModalProps {
@@ -83,7 +83,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
 
   const loadAmenities = async () => {
     try {
-      const data = await amenityService.getAllAmenities();
+      const data = await adminAmenityService.getAllAmenities();
       setAmenities(data);
     } catch {
       setAmenities([]);

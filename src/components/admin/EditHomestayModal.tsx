@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X, MapPin, Sparkles } from 'lucide-react';
 import type { Amenity } from '../../types/amenity.types';
 import type { District, Homestay, HomestayImage, UpdateHomestayDTO } from '../../types/homestay.types';
-import { amenityService } from '../../services/amenityService';
+import { adminAmenityService } from '../../services/adminAmenityService';
 import { districtService } from '../../services/districtService';
 
 interface EditHomestayModalProps {
@@ -67,7 +67,7 @@ export default function EditHomestayModal({
       try {
         const [districtData, amenityData] = await Promise.all([
           districtService.getAllDistricts(),
-          amenityService.getAllAmenities(),
+          adminAmenityService.getAllAmenities(),
         ]);
 
         setDistricts(districtData);

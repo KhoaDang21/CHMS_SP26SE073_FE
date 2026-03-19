@@ -21,6 +21,7 @@ import type { DashboardStats, RevenueData } from '../../types/homestay.types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
+import { adminDashboardService } from '../../services/adminDashboardService';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -39,9 +40,15 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // TODO: Implement getDashboardStats and getRevenueData in homestayService
-      // For now, use mock data
-      const statsData: DashboardStats = {
+      const [statsData, revenueDataResult] = await Promise.all([
+        adminDashboardService.getOverview(),
+        adminDashboardService.getRevenueReport(),
+      ]);
+
+      setStats(statsData);
+      setRevenueData(revenueDataResult);
+    } catch {
+      const emptyStats: DashboardStats = {
         totalRevenue: 0,
         revenueGrowth: 0,
         totalBookings: 0,
@@ -52,12 +59,8 @@ export default function AdminDashboard() {
         totalHomestays: 0,
         averageRating: 0,
       };
-      const revenueDataResult: RevenueData[] = [];
-
-      setStats(statsData);
-      setRevenueData(revenueDataResult);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      setStats(emptyStats);
+      setRevenueData([]);
     } finally {
       setLoading(false);
     }
@@ -76,6 +79,7 @@ export default function AdminDashboard() {
     { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
     { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
     { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
+    { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
     { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
     { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },

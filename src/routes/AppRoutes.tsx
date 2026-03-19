@@ -19,6 +19,8 @@ import AmenityManagement from '../pages/admin/AmenityManagement';
 import HomestayManagement from '../pages/admin/HomestayManagement';
 import HomestayDetailPage from '../pages/admin/HomestayDetailPage';
 import StaffManagement from '../pages/admin/StaffManagement';
+import BookingManagement from '../pages/admin/BookingManagement';
+import CustomerManagement from '../pages/admin/CustomerManagement';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import ProfilePage from '../pages/customer/ProfilePage';
@@ -184,6 +186,22 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <StaffManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/bookings"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <BookingManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/customers"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <CustomerManagement />
           </ProtectedRoute>
         }
       />
