@@ -43,7 +43,13 @@ export default function BookingsPage() {
     setLoading(true);
     try {
       const res = await bookingService.getMyBookings();
-      setBookings(res);
+      // Sắp xếp mới nhất lên đầu theo createdAt
+      const sorted = [...res].sort((a, b) => {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return tb - ta;
+      });
+      setBookings(sorted);
 
       // Load homestay info để hiển thị đúng name/address/image
       try {
