@@ -32,6 +32,7 @@ export interface CreateAmenityDTO {
 
 export interface UpdateAmenityDTO extends Partial<CreateAmenityDTO> {
   isActive?: boolean;
+  iconFile?: File | null;
 }
 
 export interface AmenityStats {

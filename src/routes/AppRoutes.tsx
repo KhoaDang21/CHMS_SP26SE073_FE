@@ -9,7 +9,6 @@ import ExplorePage from '../pages/ExplorePage';
 import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
 import CustomerDashboard from '../pages/customer/CustomerDashboard';
-import ProfilePage from '../pages/customer/ProfilePage';
 import CustomerExplorePage from '../pages/customer/ExplorePage';
 import BookingsPage from '../pages/customer/BookingsPage';
 import FavoritesPage from '../pages/customer/FavoritesPage';
@@ -18,8 +17,10 @@ import AdminDashboard from '../pages/admin/AdminDashboard';
 import AmenityManagement from '../pages/admin/AmenityManagement';
 import HomestayManagement from '../pages/admin/HomestayManagement';
 import HomestayDetailPage from '../pages/admin/HomestayDetailPage';
+import StaffManagement from '../pages/admin/StaffManagement';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
+import ProfilePage from '../pages/customer/ProfilePage';
 import { authService } from '../services/authService';
 
 // Protected Route Component
@@ -166,6 +167,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AmenityManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/staff"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <StaffManagement />
           </ProtectedRoute>
         }
       />
