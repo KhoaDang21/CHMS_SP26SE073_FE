@@ -129,25 +129,39 @@ export default function HomestayManagement() {
   const handleCreateHomestay = async (data: CreateHomestayDTO, imageFiles: File[] = []) => {
     setCreatingHomestay(true);
     try {
-      console.log('Sending create homestay request with payload:', data);
       const result = await homestayService.createAdminHomestay(data);
-      console.log('Create homestay result:', result);
       
       if (result.success) {
-        const createdId = result?.data?.id || result?.data?.homestayId || result?.id || null;
+        let createdId = result?.data?.id || null;
+
+        // Some BE responses return success=true but data=null, so we recover id by querying latest matches.
+        if (!createdId && imageFiles.length > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          const allHomestays = await homestayService.getAllAdminHomestays();
+
+          const matched = allHomestays
+            .filter((h) =>
+              h.name === data.name &&
+              h.address === data.address &&
+              Number(h.pricePerNight) === Number(data.pricePerNight),
+            )
+            .sort((a, b) => {
+              const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+              const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+              return bTime - aTime;
+            });
+
+          createdId = matched[0]?.id || null;
+        }
 
         if (createdId && imageFiles.length > 0) {
-          const uploadResults = await Promise.all(
-            imageFiles.map((file) => homestayService.uploadAdminHomestayPhoto(createdId, file)),
-          );
+          const uploadSummary = await homestayService.uploadAdminHomestayPhotos(createdId, imageFiles);
 
-          const failedUploads = uploadResults.filter((uploadResult) => !uploadResult || uploadResult?.success === false).length;
-
-          if (failedUploads > 0) {
-            toast.warning(`Tao homestay thanh cong, nhung ${failedUploads}/${imageFiles.length} anh upload that bai`);
+          if (uploadSummary.failed > 0) {
+            toast.warning(`Tạo homestay thành công, nhưng ${uploadSummary.failed}/${uploadSummary.total} ảnh upload thất bại`);
           }
         } else if (imageFiles.length > 0) {
-          toast.warning('Da tao homestay nhung khong lay duoc ID de upload anh');
+          toast.warning('Đã tạo homestay nhưng không lấy được ID để upload ảnh');
         }
 
         toast.success('Đã tạo homestay mới thành công!');
@@ -381,7 +395,7 @@ export default function HomestayManagement() {
                   {/* Image */}
                   <div className="relative h-48">
                     <img
-                      src={homestay.imageUrls?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format'}
+                      src={homestay.imageUrls?.[0] || homestay.images?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format'}
                       alt={homestay.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
