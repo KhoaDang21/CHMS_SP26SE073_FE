@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock } from 'lucide-react';
+import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { publicHomestayService } from '../../services/publicHomestayService';
+import PaymentModal from './PaymentModal';
 import type { Homestay } from '../../types/homestay.types';
 
 const cleanLoadingText = (value?: string | null): string | undefined => {
@@ -33,6 +34,10 @@ export default function BookingsPage() {
   const [detailHomestay, setDetailHomestay] = useState<Homestay | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [homestayMap, setHomestayMap] = useState<Record<string, Homestay>>({});
+  const [payingBooking, setPayingBooking] = useState<{
+    id: string; homestayName: string; checkIn: string; checkOut: string;
+    totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
+  } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -67,12 +72,12 @@ export default function BookingsPage() {
   const filtered = useMemo(() => {
     const now = new Date();
     if (activeTab === 'all') return bookings;
-    if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'cancelled');
+    if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED');
     if (activeTab === 'upcoming') {
-      return bookings.filter(b => b.status !== 'cancelled' && new Date(b.checkIn) >= now);
+      return bookings.filter(b => b.status !== 'CANCELLED' && new Date(b.checkIn) >= now);
     }
     // past
-    return bookings.filter(b => b.status !== 'cancelled' && new Date(b.checkIn) < now);
+    return bookings.filter(b => b.status !== 'CANCELLED' && new Date(b.checkIn) < now);
   }, [bookings, activeTab]);
 
   const openDetail = async (b: Booking) => {
@@ -139,26 +144,29 @@ export default function BookingsPage() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-700 border-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'cancelled': return 'bg-red-100 text-red-700 border-red-200';
-      case 'completed': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+    switch (status.toUpperCase()) {
+      case 'CONFIRMED': return 'bg-green-100 text-green-700 border-green-200';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'CANCELLED': return 'bg-red-100 text-red-700 border-red-200';
+      case 'COMPLETED': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+      case 'REJECTED': return 'bg-red-100 text-red-700 border-red-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'Đã xác nhận';
-      case 'pending': return 'Chờ xác nhận';
-      case 'cancelled': return 'Đã hủy';
-      case 'completed': return 'Hoàn thành';
+    switch (status.toUpperCase()) {
+      case 'CONFIRMED': return 'Đã xác nhận';
+      case 'PENDING': return 'Chờ thanh toán';
+      case 'CANCELLED': return 'Đã hủy';
+      case 'COMPLETED': return 'Hoàn thành';
+      case 'REJECTED': return 'Bị từ chối';
       default: return 'Trạng thái';
     }
   };
 
   return (
+    <>
     <MainLayout>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
@@ -593,6 +601,7 @@ export default function BookingsPage() {
                               setSaving(true);
                               try {
                                 const res = await bookingService.modifyBooking(selected.id, {
+                                  homestayId: selected.homestayId,
                                   checkIn: editCheckIn,
                                   checkOut: editCheckOut,
                                   guestsCount: editGuests,
@@ -638,13 +647,37 @@ export default function BookingsPage() {
                     ) : (
                       /* Thao tác - Buttons */
                       <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                        {/* Nút Thanh toán - chỉ hiện khi PENDING */}
+                        {selected.status === 'PENDING' && (
+                          <button
+                            onClick={() => {
+                              const hs = detailHomestay ?? homestayMap[selected.homestayId];
+                              setPayingBooking({
+                                id: selected.id,
+                                homestayName: selected.homestayName || hs?.name || 'Homestay',
+                                checkIn: selected.checkIn,
+                                checkOut: selected.checkOut,
+                                totalNights: selected.totalNights ?? 0,
+                                guestsCount: selected.guestsCount,
+                                pricePerNight: selected.pricePerNight ?? hs?.pricePerNight ?? 0,
+                                totalPrice: selected.totalPrice ?? 0,
+                              });
+                            }}
+                            disabled={saving}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Thanh toán ngay
+                          </button>
+                        )}
                         <button
                           onClick={startEdit}
-                          disabled={saving || selected.status === 'cancelled'}
-                          className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${selected.status === 'cancelled'
-                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-900 hover:bg-black text-white'
-                            }`}
+                          disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED'}
+                          className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${
+                            selected.status !== 'PENDING'
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : 'bg-gray-900 hover:bg-black text-white'
+                          }`}
                         >
                           <Pencil className="w-4 h-4" />
                           Sửa booking
@@ -669,11 +702,12 @@ export default function BookingsPage() {
                               setSaving(false);
                             }
                           }}
-                          disabled={saving || selected.status === 'cancelled'}
-                          className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${selected.status === 'cancelled'
-                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                            : 'bg-red-600 hover:bg-red-700 text-white'
-                            }`}
+                          disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED'}
+                          className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${
+                            selected.status !== 'PENDING'
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : 'bg-red-600 hover:bg-red-700 text-white'
+                          }`}
                         >
                           <XCircle className="w-4 h-4" />
                           Hủy booking
@@ -688,5 +722,13 @@ export default function BookingsPage() {
         )}
       </div>
     </MainLayout>
+    {payingBooking && (
+      <PaymentModal
+        booking={payingBooking}
+        onClose={() => { setPayingBooking(null); load(); }}
+        onBack={() => setPayingBooking(null)}
+      />
+    )}
+    </>
   );
 }
