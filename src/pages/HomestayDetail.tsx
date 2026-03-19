@@ -7,6 +7,7 @@ import { ImageWithFallback } from '../components/figma/ImageWithFallback'
 import type { Homestay } from '../types/homestay.types'
 import { bookingService } from '../services/bookingService'
 import { authService } from '../services/authService'
+import PaymentModal from './customer/PaymentModal'
 import toast from 'react-hot-toast'
 
 export default function HomestayDetail() {
@@ -23,7 +24,12 @@ export default function HomestayDetail() {
     const [contactPhone, setContactPhone] = useState('')
     const [specialRequests, setSpecialRequests] = useState('')
     const [isCalculating, setIsCalculating] = useState(false)
-    const [calcResult, setCalcResult] = useState<any | null>(null)
+    const [calcResult, setCalcResult] = useState<number | null>(null)
+    const [pendingBooking, setPendingBooking] = useState<{
+        id: string; homestayName: string; checkIn: string; checkOut: string;
+        totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
+    } | null>(null)
+    const [isBooking, setIsBooking] = useState(false)
 
     const getInitials = (name?: string) => {
         if (!name) return ''
@@ -89,8 +95,6 @@ export default function HomestayDetail() {
                     checkIn,
                     checkOut,
                     guestsCount: guests,
-                    ...(specialRequests ? { specialRequests } : {}),
-                    ...(contactPhone ? { contactPhone } : {}),
                 })
                 if (!alive) return
                 setCalcResult(res)
@@ -122,19 +126,16 @@ export default function HomestayDetail() {
     }
 
     const computedTotal = useMemo(() => {
-        const candidateKeys = ['totalPrice', 'total', 'amount', 'grandTotal', 'finalTotal']
-        for (const k of candidateKeys) {
-            const v = calcResult?.[k] ?? calcResult?.data?.[k]
-            const n = typeof v === 'number' ? v : Number(v)
-            if (Number.isFinite(n)) return n
-        }
-        // fallback: use homestay price per night * nights
-        const price = (homestay as any)?.pricePerNight ?? (homestay as any)?.price
+        // BE calculate trả về số decimal trực tiếp
+        if (typeof calcResult === 'number' && Number.isFinite(calcResult)) return calcResult
+        // fallback: homestay price * nights
+        const price = homestay?.pricePerNight
         if (typeof price === 'number' && nights > 0) return price * nights
         return undefined
     }, [calcResult, homestay, nights])
 
     return (
+        <>
         <MainLayout>
             <div className="max-w-[1600px] mx-auto px-4 py-8">
                 {/* Back Button */}
@@ -324,9 +325,9 @@ export default function HomestayDetail() {
                                             {computedTotal !== undefined ? formatMoney(computedTotal) : (isCalculating ? 'Đang tính...' : '—')}
                                         </span>
                                     </div>
-                                    {calcResult && (
-                                        <div className="mt-2 text-xs text-gray-500">
-                                            (Đã tính theo hệ thống; phí/thuế/khuyến mãi nếu có sẽ nằm trong kết quả BE)
+                                    {calcResult !== null && (
+                                        <div className="mt-2 text-xs text-green-600">
+                                            ✓ Giá đã được tính chính xác từ hệ thống
                                         </div>
                                     )}
                                 </div>
@@ -353,6 +354,7 @@ export default function HomestayDetail() {
                                         return
                                     }
 
+                                    setIsBooking(true)
                                     try {
                                         const payload = {
                                             homestayId: homestay?.id,
@@ -364,18 +366,40 @@ export default function HomestayDetail() {
                                         } as any
 
                                         const res = await bookingService.createBooking(payload)
-                                        if (res && (res as any).success) {
-                                            toast.success('Đặt phòng thành công!')
-                                            navigate('/customer/bookings')
+                                        if (res && res.success && res.data?.id) {
+                                            const bookingData = res.data
+                                            const totalPrice = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
+                                            setPendingBooking({
+                                                id: bookingData.id,
+                                                homestayName: homestay!.name,
+                                                checkIn,
+                                                checkOut,
+                                                totalNights: nights,
+                                                guestsCount: guests,
+                                                pricePerNight: homestay!.pricePerNight,
+                                                totalPrice,
+                                            })
+                                        } else if (res && !res.success) {
+                                            toast.error(res.message || 'Đặt phòng thất bại')
                                         } else {
-                                            toast.error((res as any).message || 'Đặt phòng thất bại')
+                                            toast.error('Không lấy được thông tin booking, vui lòng thử lại')
                                         }
-                                    } catch (err) {
+                                    } catch (err: any) {
                                         console.error(err)
-                                        toast.error('Đã xảy ra lỗi khi đặt phòng')
+                                        toast.error(err?.message || 'Đã xảy ra lỗi khi đặt phòng')
+                                    } finally {
+                                        setIsBooking(false)
                                     }
-                                }} disabled={isCalculating || !checkIn || !checkOut || nights <= 0} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all ${isCalculating || !checkIn || !checkOut || nights <= 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
-                                    {isCalculating ? 'Đang tính giá...' : 'Xác nhận đặt phòng'}
+                                }} disabled={isCalculating || isBooking || !checkIn || !checkOut || nights <= 0} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
+                                    {isBooking ? (
+                                        <>
+                                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                            </svg>
+                                            Đang xử lý...
+                                        </>
+                                    ) : isCalculating ? 'Đang tính giá...' : 'Xác nhận đặt phòng'}
                                 </button>
 
                                 <div className="mt-4 text-xs text-gray-500">Phí dịch vụ và thuế sẽ được tính khi thanh toán.</div>
@@ -391,5 +415,13 @@ export default function HomestayDetail() {
                 )}
             </div>
         </MainLayout>
+        {pendingBooking && (
+            <PaymentModal
+                booking={pendingBooking}
+                onClose={() => { setPendingBooking(null); navigate('/customer/bookings'); }}
+                onBack={() => setPendingBooking(null)}
+            />
+        )}
+        </>
     )
 }

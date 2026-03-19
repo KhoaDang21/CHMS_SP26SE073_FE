@@ -112,9 +112,9 @@ export default function CustomerDashboard() {
     setFilteredHomestays(filtered);
   }, [selectedProvince, selectedDistrict, allHomestays, allDistricts]);
 
-  // Lọc booking sắp tới (confirmed và chưa qua ngày checkIn)
+  // Lọc booking sắp tới (CONFIRMED và chưa qua ngày checkIn)
   const upcomingBookings = myBookings.filter(
-    b => b.status === 'confirmed' && new Date(b.checkIn) >= new Date()
+    b => b.status === 'CONFIRMED' && new Date(b.checkIn) >= new Date()
   );
 
   const stats = [
@@ -132,7 +132,7 @@ export default function CustomerDashboard() {
     },
     {
       label: "Đã Hoàn Thành",
-      value: myBookings.filter(b => b.status === 'completed').length.toString(),
+      value: myBookings.filter(b => b.status === 'COMPLETED').length.toString(),
       icon: Star,
       color: "bg-yellow-500",
     },
@@ -326,23 +326,23 @@ export default function CustomerDashboard() {
                           </p>
                         </div>
                         <span className={`px-3 py-1 text-xs rounded-full font-medium ${
-                          booking.status === 'confirmed'
+                          booking.status === 'CONFIRMED'
                             ? 'bg-green-100 text-green-700'
-                            : booking.status === 'pending'
+                            : booking.status === 'PENDING'
                             ? 'bg-yellow-100 text-yellow-700'
-                            : booking.status === 'cancelled'
+                            : booking.status === 'CANCELLED'
                             ? 'bg-red-100 text-red-700'
-                            : booking.status === 'completed'
+                            : booking.status === 'COMPLETED'
                             ? 'bg-cyan-100 text-cyan-700'
                             : 'bg-gray-100 text-gray-700'
                         }`}>
-                          {booking.status === 'confirmed'
+                          {booking.status === 'CONFIRMED'
                             ? 'Đã Xác Nhận'
-                            : booking.status === 'pending'
-                            ? 'Chờ Xác Nhận'
-                            : booking.status === 'cancelled'
+                            : booking.status === 'PENDING'
+                            ? 'Chờ Thanh Toán'
+                            : booking.status === 'CANCELLED'
                             ? 'Đã Hủy'
-                            : booking.status === 'completed'
+                            : booking.status === 'COMPLETED'
                             ? 'Hoàn Thành'
                             : 'Trạng Thái'}
                         </span>
