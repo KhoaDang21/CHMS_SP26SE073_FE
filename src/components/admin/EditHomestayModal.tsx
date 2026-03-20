@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X, MapPin, Sparkles } from 'lucide-react';
+import { X, MapPin, Sparkles, Image } from 'lucide-react';
 import type { Amenity } from '../../types/amenity.types';
 import type { District, Homestay, HomestayImage, UpdateHomestayDTO } from '../../types/homestay.types';
 import { adminAmenityService } from '../../services/adminAmenityService';
@@ -10,7 +10,7 @@ interface EditHomestayModalProps {
   homestay: Homestay | null;
   loading?: boolean;
   onClose: () => void;
-  onSubmit: (data: UpdateHomestayDTO) => void;
+  onSubmit: (data: UpdateHomestayDTO, imageFiles: File[]) => void;
 }
 
 const DEFAULT_CANCELLATION_POLICY = 'Miễn phí hủy trước 24h. Sau đó phí hủy 50%.';
@@ -39,7 +39,9 @@ export default function EditHomestayModal({
 }: EditHomestayModalProps) {
   const [districts, setDistricts] = useState<District[]>([]);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
-  const [imageUrlsText, setImageUrlsText] = useState('');
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [districtError, setDistrictError] = useState('');
 
   const [formData, setFormData] = useState<UpdateHomestayDTO>({
@@ -59,6 +61,63 @@ export default function EditHomestayModal({
     amenityIds: [],
     images: [],
   });
+
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error('Cannot read file preview'));
+      };
+      reader.onerror = () => reject(reader.error || new Error('FileReader error'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const buildPreview = async (file: File): Promise<string> => {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        bitmap.close();
+        throw new Error('No canvas context');
+      }
+
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      return canvas.toDataURL('image/jpeg', 0.92);
+    } catch {
+      return fileToDataUrl(file);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newFiles = Array.from(files);
+    setSelectedFiles((prev) => [...prev, ...newFiles]);
+
+    Promise.all(newFiles.map((file) => buildPreview(file)))
+      .then((previews) => {
+        setImagePreviews((prev) => [...prev, ...previews]);
+      })
+      .catch(() => {
+        // Keep UI responsive if a preview fails.
+      });
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -94,7 +153,9 @@ export default function EditHomestayModal({
       ...toImageUrls(homestay.images),
     ].filter((value, index, arr) => arr.indexOf(value) === index);
 
-    setImageUrlsText(imageUrls.join('\n'));
+    setExistingImageUrls(imageUrls);
+    setSelectedFiles([]);
+    setImagePreviews([]);
 
     setFormData({
       name: homestay.name || '',
@@ -168,16 +229,15 @@ export default function EditHomestayModal({
   };
 
   const handleSubmit = () => {
-    const imageItems: HomestayImage[] = imageUrlsText
-      .split('\n')
-      .map((item) => item.trim())
+    const existingImageItems: HomestayImage[] = existingImageUrls
+      .map((imageUrl) => imageUrl.trim())
       .filter(Boolean)
       .map((imageUrl, index) => ({ imageUrl, caption: '', isPrimary: index === 0 }));
 
     onSubmit({
       ...formData,
-      images: imageItems,
-    });
+      images: existingImageItems,
+    }, selectedFiles);
   };
 
   if (!isOpen || !homestay) return null;
@@ -384,16 +444,77 @@ export default function EditHomestayModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Danh sach URL anh (moi dong 1 URL)</label>
-            <textarea
-              rows={4}
-              value={imageUrlsText}
-              onChange={(e) => setImageUrlsText(e.target.value)}
-              placeholder="https://.../img1.jpg&#10;https://.../img2.jpg"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="mt-1 text-xs text-gray-500">Anh dau tien se duoc gan la anh chinh (isPrimary = true).</p>
+          <div className="pt-2 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium text-gray-900">Hinh anh</h3>
+              <input
+                id="edit-homestay-image-input"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <label
+                htmlFor="edit-homestay-image-input"
+                className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm flex items-center gap-1 cursor-pointer"
+              >
+                <Image className="w-4 h-4" />
+                <span>Chon anh</span>
+              </label>
+            </div>
+
+            {existingImageUrls.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Anh hien tai</p>
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                  {existingImageUrls.map((url, index) => (
+                    <div key={`${url}-${index}`} className="relative">
+                      <img
+                        src={url}
+                        alt={`Current ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200 bg-gray-100"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format';
+                        }}
+                      />
+                      <div className="absolute top-1 left-1 bg-gray-900/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                        {index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {imagePreviews.length > 0 ? (
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Anh moi se upload sau khi cap nhat</p>
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border-2 border-blue-200 bg-gray-100"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format';
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">Ban co the chon them anh moi, he thong se giu nguyen anh hien tai.</p>
+            )}
           </div>
         </div>
 

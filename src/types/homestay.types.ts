@@ -18,6 +18,30 @@ export interface RevenueData {
   bookings: number;
 }
 
+export interface HomestayRevenueData {
+  homestayName: string;
+  totalRevenue: number;
+  totalBookings: number;
+}
+
+export interface OccupancyData {
+  month: string;
+  occupancyRate: number;
+  totalBookedNights: number;
+  totalCapacityNights: number;
+}
+
+export interface BookingStatusDetail {
+  status: string;
+  count: number;
+  percentage: number;
+}
+
+export interface BookingsReportData {
+  totalBookings: number;
+  statusDetails: BookingStatusDetail[];
+}
+
 export interface Homestay {
   id: string;
   name: string;
