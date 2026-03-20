@@ -132,13 +132,13 @@ export default function EditHomestayModal({
         setDistricts(districtData);
         setAmenities(amenityData);
         if (!districtData.length) {
-          setDistrictError('Khong tai duoc danh sach quan/huyen tu API. Ban co the nhap District ID thu cong ben duoi.');
+          setDistrictError('Không tải được danh sách quận/huyện từ API. Bạn có thể nhập District ID thủ công bên dưới.');
         } else {
           setDistrictError('');
         }
       } catch (error) {
         console.error('Error loading lookup data:', error);
-        setDistrictError('Khong ket noi duoc API district. Ban co the nhap District ID thu cong ben duoi.');
+        setDistrictError('Không kết nối được API district. Bạn có thể nhập District ID thủ công bên dưới.');
       }
     };
 
@@ -247,8 +247,8 @@ export default function EditHomestayModal({
       <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Chinh sua Homestay</h2>
-            <p className="text-sm text-gray-500 mt-1">Cap nhat thong tin cho {homestay.name}</p>
+            <h2 className="text-xl font-bold text-gray-900">Chỉnh sửa Homestay</h2>
+            <p className="text-sm text-gray-500 mt-1">Cập nhật thông tin cho {homestay.name}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
@@ -258,7 +258,7 @@ export default function EditHomestayModal({
         <div className="p-6 overflow-y-auto space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ten homestay *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tên homestay *</label>
               <input
                 value={formData.name}
                 onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
@@ -267,13 +267,13 @@ export default function EditHomestayModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Quan/Huyen *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quận/Huyện *</label>
               <select
                 value={formData.districtId}
                 onChange={(e) => setFormData((prev) => ({ ...prev, districtId: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">Chon quan/huyen</option>
+                <option value="">Chọn quận/huyện</option>
                 {districts.map((district) => (
                   <option key={district.id} value={district.id}>
                     {district.name} - {district.provinceName}
@@ -281,19 +281,19 @@ export default function EditHomestayModal({
                 ))}
               </select>
               {districts.length === 0 && (
-                <p className="mt-1 text-xs text-red-500">Khong tai duoc danh sach quan/huyen. Vui long kiem tra API /api/districts.</p>
+                <p className="mt-1 text-xs text-red-500">Không tải được danh sách quận/huyện. Vui lòng kiểm tra API /api/districts.</p>
               )}
             </div>
 
             {districtError && (
               <div>
                 <p className="text-xs text-red-600 mb-2">{districtError}</p>
-                <label className="block text-sm font-medium text-gray-700 mb-2">District ID (UUID) *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mã quận/huyện (District ID - UUID) *</label>
                 <input
                   type="text"
                   value={formData.districtId}
                   onChange={(e) => setFormData((prev) => ({ ...prev, districtId: e.target.value }))}
-                  placeholder="Nhap districtId, vi du: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  placeholder="Nhập districtId, ví dụ: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -301,7 +301,7 @@ export default function EditHomestayModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Mo ta *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả *</label>
             <textarea
               rows={4}
               value={formData.description}
@@ -311,7 +311,7 @@ export default function EditHomestayModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Dia chi *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Địa chỉ *</label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -324,7 +324,7 @@ export default function EditHomestayModal({
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Gia/ dem *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Giá/đêm *</label>
               <input
                 type="number"
                 min={0}
@@ -334,7 +334,7 @@ export default function EditHomestayModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Khach toi da *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Khách tối đa *</label>
               <input
                 type="number"
                 min={1}
@@ -344,7 +344,7 @@ export default function EditHomestayModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phong ngu *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phòng ngủ *</label>
               <input
                 type="number"
                 min={1}
@@ -354,7 +354,7 @@ export default function EditHomestayModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phong tam *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phòng tắm *</label>
               <input
                 type="number"
                 min={1}
@@ -367,7 +367,7 @@ export default function EditHomestayModal({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Dien tich (m2) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Diện tích (m2) *</label>
               <input
                 type="number"
                 min={1}
@@ -399,7 +399,7 @@ export default function EditHomestayModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Chinh sach huy</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Chính sách hủy</label>
             <textarea
               rows={2}
               value={formData.cancellationPolicy}
@@ -409,7 +409,7 @@ export default function EditHomestayModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Noi quy nha</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nội quy nhà</label>
             <textarea
               rows={2}
               value={formData.houseRules}
@@ -421,7 +421,7 @@ export default function EditHomestayModal({
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-blue-600" />
-              <label className="block text-sm font-medium text-gray-700">Tien ich</label>
+              <label className="block text-sm font-medium text-gray-700">Tiện ích</label>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {amenities.map((amenity) => {
@@ -446,7 +446,7 @@ export default function EditHomestayModal({
 
           <div className="pt-2 border-t border-gray-200">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-gray-900">Hinh anh</h3>
+              <h3 className="font-medium text-gray-900">Hình ảnh</h3>
               <input
                 id="edit-homestay-image-input"
                 type="file"
@@ -460,13 +460,13 @@ export default function EditHomestayModal({
                 className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm flex items-center gap-1 cursor-pointer"
               >
                 <Image className="w-4 h-4" />
-                <span>Chon anh</span>
+                <span>Chọn ảnh</span>
               </label>
             </div>
 
             {existingImageUrls.length > 0 && (
               <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Anh hien tai</p>
+                <p className="text-sm text-gray-600 mb-2">Ảnh hiện tại</p>
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                   {existingImageUrls.map((url, index) => (
                     <div key={`${url}-${index}`} className="relative">
@@ -489,7 +489,7 @@ export default function EditHomestayModal({
 
             {imagePreviews.length > 0 ? (
               <div>
-                <p className="text-sm text-gray-600 mb-2">Anh moi se upload sau khi cap nhat</p>
+                <p className="text-sm text-gray-600 mb-2">Ảnh mới sẽ upload sau khi cập nhật</p>
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative group">
@@ -513,7 +513,7 @@ export default function EditHomestayModal({
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-gray-500">Ban co the chon them anh moi, he thong se giu nguyen anh hien tai.</p>
+              <p className="text-xs text-gray-500">Bạn có thể chọn thêm ảnh mới, hệ thống sẽ giữ nguyên ảnh hiện tại.</p>
             )}
           </div>
         </div>
@@ -523,14 +523,14 @@ export default function EditHomestayModal({
             onClick={onClose}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
           >
-            Huy
+            Hủy
           </button>
           <button
             disabled={!canSubmit || loading}
             onClick={handleSubmit}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Dang cap nhat...' : 'Cap nhat Homestay'}
+            {loading ? 'Đang cập nhật...' : 'Cập nhật Homestay'}
           </button>
         </div>
       </div>

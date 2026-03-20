@@ -11,8 +11,6 @@ import {
   MapPin,
   Users,
   DollarSign,
-  ToggleLeft,
-  ToggleRight,
   Menu,
   X,
   Building2,
@@ -99,17 +97,6 @@ export default function HomestayManagement() {
     setFilteredHomestays(filtered);
   };
 
-  const handleToggleStatus = async (homestay: Homestay) => {
-    const newStatus = homestay.status === 'ACTIVE' ? 'inactive' : 'active';
-    const result = await homestayService.updateAdminHomestayStatus(homestay.id, newStatus);
-    
-    if (result.success) {
-      toast.success(`Đã ${newStatus === 'active' ? 'kích hoạt' : 'vô hiệu hóa'} homestay`);
-      loadHomestays();
-    } else {
-      toast.error(result.message || 'Không thể cập nhật trạng thái');
-    }
-  };
 
   const handleDeleteHomestay = async () => {
     if (!selectedHomestay) return;
@@ -223,7 +210,7 @@ export default function HomestayManagement() {
       if (imageFiles.length > 0) {
         const uploadSummary = await homestayService.uploadAdminHomestayPhotos(editingHomestay.id, imageFiles);
         if (uploadSummary.failed > 0) {
-          toast.warning(`Cap nhat thanh cong, nhung ${uploadSummary.failed}/${uploadSummary.total} anh upload that bai`);
+          toast.warning(`Cập nhật thành công, nhưng ${uploadSummary.failed}/${uploadSummary.total} ảnh upload thất bại`);
         }
       }
 
@@ -412,21 +399,14 @@ export default function HomestayManagement() {
                         e.currentTarget.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format';
                       }}
                     />
-                    <div className="absolute top-3 right-3">
-                      <button
-                        onClick={() => handleToggleStatus(homestay)}
-                        className={`p-2 rounded-lg border border-white/70 bg-white/85 backdrop-blur-sm ${
-                          homestay.status === 'ACTIVE'
-                            ? 'text-green-600 hover:bg-white'
-                            : 'text-gray-600 hover:bg-white'
-                        } transition-colors`}
-                      >
-                        {homestay.status === 'ACTIVE' ? (
-                          <ToggleRight className="w-5 h-5" />
-                        ) : (
-                          <ToggleLeft className="w-5 h-5" />
-                        )}
-                      </button>
+                    <div className="absolute top-3 right-3 bg-white/85 backdrop-blur-sm rounded-lg border border-white/70 px-2 py-1 text-xs font-medium text-gray-700">
+                      {homestay.status === 'ACTIVE'
+                        ? 'Đang hoạt động'
+                        : homestay.status === 'INACTIVE'
+                        ? 'Tạm ngưng'
+                        : homestay.status === 'MAINTENANCE'
+                        ? 'Bảo trì'
+                        : 'Chờ duyệt'}
                     </div>
                     {homestay.featured && (
                       <div className="absolute top-3 left-3 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full text-xs font-medium">
@@ -461,14 +441,22 @@ export default function HomestayManagement() {
                       </div>
                     </div>
 
-                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-4 ${
+                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-3 ${
                       homestay.status === 'ACTIVE'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : homestay.status === 'INACTIVE'
                         ? 'bg-gray-100 text-gray-700 border border-gray-200'
+                        : homestay.status === 'PENDING'
+                        ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
                         : 'bg-amber-50 text-amber-700 border border-amber-200'
                     }`}>
-                      {homestay.status === 'ACTIVE' ? 'Đang hoạt động' : homestay.status === 'INACTIVE' ? 'Tạm ngưng' : 'Bảo trì'}
+                      {homestay.status === 'ACTIVE'
+                        ? 'Đang hoạt động'
+                        : homestay.status === 'INACTIVE'
+                        ? 'Tạm ngưng'
+                        : homestay.status === 'PENDING'
+                        ? 'Chờ duyệt'
+                        : 'Bảo trì'}
                     </div>
 
                     {/* Actions */}
