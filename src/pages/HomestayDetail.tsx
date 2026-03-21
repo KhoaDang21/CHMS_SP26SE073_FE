@@ -304,8 +304,13 @@ export default function HomestayDetail() {
                                     )}
                                 </div>
 
-                                {/* Sub-category averages */}
+                {/* Sub-category averages — chỉ hiện khi có data */}
                                 {reviews.length > 0 && (() => {
+                                    const hasSubRatings = reviews.some(r =>
+                                        r.cleanlinessRating > 0 || r.locationRating > 0 ||
+                                        r.valueRating > 0 || r.communicationRating > 0
+                                    );
+                                    if (!hasSubRatings) return null;
                                     const avg = (key: keyof typeof reviews[0]) =>
                                         Math.round(reviews.reduce((s, r) => s + (r[key] as number), 0) / reviews.length * 10) / 10
                                     const cats = [

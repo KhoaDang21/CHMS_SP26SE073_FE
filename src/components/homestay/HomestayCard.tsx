@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Star, MapPin, Users, MessageSquare } from 'lucide-react';
+import { Star, MapPin, Users } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { apiService } from '../../services/apiService';
 import { apiConfig } from '../../config/apiConfig';
@@ -25,7 +25,7 @@ interface ReviewSummary {
 // Module-level cache: homestayId → summary
 const reviewCache = new Map<string, ReviewSummary>();
 
-async function fetchReviewSummary(homestayId: string): Promise<ReviewSummary> {
+export async function fetchReviewSummary(homestayId: string): Promise<ReviewSummary> {
   if (reviewCache.has(homestayId)) return reviewCache.get(homestayId)!;
   try {
     const res = await apiService.get<any>(
@@ -99,9 +99,9 @@ export default function HomestayCard({ homestay, onBook }: Props) {
           )}
         </div>
 
-        <div className="p-4 flex-1 flex flex-col">
-          {/* Name + rating */}
-          <div className="flex items-start justify-between mb-1.5 gap-2">
+        <div className="p-4 flex flex-col h-[160px]">
+          {/* Name + rating — 1 dòng cố định */}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
             <h4 className="font-semibold text-gray-900 line-clamp-1 flex-1">{homestay.name}</h4>
             {avgDisplay ? (
               <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -113,32 +113,14 @@ export default function HomestayCard({ homestay, onBook }: Props) {
             )}
           </div>
 
-          {/* Location */}
-          <p className="text-sm text-gray-500 flex items-start gap-1 mb-3 line-clamp-1">
+          {/* Location — cố định 2 dòng */}
+          <p className="text-sm text-gray-500 flex items-start gap-1 mb-2 line-clamp-2 h-10 overflow-hidden">
             <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             <span>{locationText || 'Đang cập nhật'}</span>
           </p>
 
-          {/* Latest comment */}
-          {summary?.latest?.comment && (
-            <div className="mb-3 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
-              <div className="flex items-center gap-1.5 mb-1">
-                <MessageSquare className="w-3 h-3 text-gray-400" />
-                <span className="text-xs font-medium text-gray-600 truncate">
-                  {summary.latest.customerName}
-                </span>
-                <div className="flex gap-0.5 ml-auto">
-                  {[1,2,3,4,5].map(s => (
-                    <Star key={s} className={`w-2.5 h-2.5 ${s <= summary.latest!.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`} />
-                  ))}
-                </div>
-              </div>
-              <p className="text-xs text-gray-600 line-clamp-2 italic">"{summary.latest.comment}"</p>
-            </div>
-          )}
-
-          {/* Guests + bedrooms */}
-          <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
+          {/* Guests + bedrooms — 1 dòng cố định */}
+          <div className="flex items-center gap-4 text-sm text-gray-500 mb-0">
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
               {homestay.maxGuests ?? '-'} khách
@@ -163,8 +145,8 @@ export default function HomestayCard({ homestay, onBook }: Props) {
         </div>
       </Link>
 
-      {/* Book button */}
-      <div className="px-4 pb-4">
+      {/* Book button — luôn ở đáy */}
+      <div className="px-4 pb-4 mt-auto">
         <button
           onClick={onBook ?? (() => navigate(`/homestays/${homestay.id}`))}
           className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium"

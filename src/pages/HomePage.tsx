@@ -6,7 +6,7 @@ import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { provinceService } from "../services/provinceService";
 import { districtService } from "../services/districtService";
-import HomestayCard from "../components/homestay/HomestayCard";
+import HomestayCard, { fetchReviewSummary } from "../components/homestay/HomestayCard";
 import toast from 'react-hot-toast';
 import type { Homestay } from "../types/homestay.types";
 import type { Province, District } from "../types/homestay.types";
@@ -50,8 +50,21 @@ export default function HomePage() {
       try {
         const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
         if (!mounted) return;
-        setAllHomestays(res.Items || []);
-        setHomestays((res.Items || []).slice(0, 8));
+        const items: Homestay[] = res.Items || [];
+        const summaries = await Promise.allSettled(items.map(h => fetchReviewSummary(h.id)));
+        const sorted = [...items].sort((a, b) => {
+          const sa = summaries[items.indexOf(a)];
+          const sb = summaries[items.indexOf(b)];
+          const avgA = sa.status === 'fulfilled' ? sa.value.avg : 0;
+          const avgB = sb.status === 'fulfilled' ? sb.value.avg : 0;
+          const cntA = sa.status === 'fulfilled' ? sa.value.count : 0;
+          const cntB = sb.status === 'fulfilled' ? sb.value.count : 0;
+          if (avgB !== avgA) return avgB - avgA;
+          return cntB - cntA;
+        });
+        if (!mounted) return;
+        setAllHomestays(sorted);
+        setHomestays(sorted.slice(0, 8));
       } catch (err) {
         console.error('Load homestays error', err);
         if (!mounted) return;
