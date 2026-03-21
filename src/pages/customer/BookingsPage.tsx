@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard } from 'lucide-react';
+import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import PaymentModal from './PaymentModal';
+import ReviewModal from './ReviewModal';
 import type { Homestay } from '../../types/homestay.types';
 
 const cleanLoadingText = (value?: string | null): string | undefined => {
@@ -18,7 +19,7 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'cancelled'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all');
 
   const [selected, setSelected] = useState<Booking | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -38,6 +39,8 @@ export default function BookingsPage() {
     id: string; homestayName: string; checkIn: string; checkOut: string;
     totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
   } | null>(null);
+
+  const [reviewingBooking, setReviewingBooking] = useState<{ id: string; homestayName: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -76,12 +79,11 @@ export default function BookingsPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    const now = new Date();
     if (activeTab === 'all') return bookings;
-    if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED');
-    if (activeTab === 'upcoming') {
-      return bookings.filter(b => b.status !== 'CANCELLED' && new Date(b.checkIn) >= now);
-    }
+    if (activeTab === 'pending') return bookings.filter(b => b.status === 'PENDING');
+    if (activeTab === 'confirmed') return bookings.filter(b => b.status === 'CONFIRMED');
+    if (activeTab === 'completed') return bookings.filter(b => b.status === 'COMPLETED');
+    if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED' || b.status === 'REJECTED');
     return bookings;
   }, [bookings, activeTab]);
 
@@ -198,16 +200,18 @@ export default function BookingsPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 mb-6">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {([
               { key: 'all', label: 'Tất cả' },
-              { key: 'upcoming', label: 'Sắp tới' },
+              { key: 'pending', label: 'Chờ thanh toán' },
+              { key: 'confirmed', label: 'Đã xác nhận' },
+              { key: 'completed', label: 'Hoàn thành' },
               { key: 'cancelled', label: 'Đã hủy' },
             ] as const).map(t => (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`px-4 py-2 rounded-xl font-semibold transition-all ${activeTab === t.key
+                className={`px-3 py-2 rounded-xl font-semibold transition-all text-sm ${activeTab === t.key
                   ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                   : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                   }`}
@@ -343,6 +347,18 @@ export default function BookingsPage() {
                       )}
 
                       <div className="flex items-center gap-2">
+                        {b.status === 'COMPLETED' && (
+                          <button
+                            onClick={() => setReviewingBooking({
+                              id: b.id,
+                              homestayName: homestayMap[b.homestayId]?.name || cleanLoadingText(b.homestayName) || 'Homestay',
+                            })}
+                            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
+                          >
+                            <Star className="w-4 h-4" />
+                            Đánh giá
+                          </button>
+                        )}
                         <button
                           onClick={() => openDetail(b)}
                           className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
@@ -738,6 +754,14 @@ export default function BookingsPage() {
         booking={payingBooking}
         onClose={() => { setPayingBooking(null); load(); }}
         onBack={() => setPayingBooking(null)}
+      />
+    )}
+    {reviewingBooking && (
+      <ReviewModal
+        bookingId={reviewingBooking.id}
+        homestayName={reviewingBooking.homestayName}
+        onClose={() => setReviewingBooking(null)}
+        onSuccess={() => { setReviewingBooking(null); toast.success('Đánh giá đã được gửi, chờ kiểm duyệt!'); }}
       />
     )}
     </>

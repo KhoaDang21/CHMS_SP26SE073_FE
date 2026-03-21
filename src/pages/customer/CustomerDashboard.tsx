@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Users, Star, ChevronRight, Heart } from "lucide-react";
+import { MapPin, Calendar, Users, ChevronRight } from "lucide-react";
 import { bookingService, type Booking } from "../../services/bookingService";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import MainLayout from "../../layouts/MainLayout";
@@ -8,6 +8,7 @@ import { publicHomestayService } from "../../services/publicHomestayService";
 import { authService } from "../../services/authService";
 import { provinceService } from "../../services/provinceService";
 import { districtService } from "../../services/districtService";
+import HomestayCard, { fetchReviewSummary } from "../../components/homestay/HomestayCard";
 import type { Province, District } from "../../types/homestay.types";
 
 export default function CustomerDashboard() {
@@ -55,8 +56,22 @@ export default function CustomerDashboard() {
       try {
         const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
         if (!mounted) return;
-        setAllHomestays(res.Items || []);
-        setFilteredHomestays(res.Items || []);
+        const items = res.Items || [];
+        // Fetch ratings song song rồi sort cao → thấp
+        const summaries = await Promise.allSettled(items.map((h: any) => fetchReviewSummary(h.id)));
+        const sorted = [...items].sort((a: any, b: any) => {
+          const sa = summaries[items.indexOf(a)];
+          const sb = summaries[items.indexOf(b)];
+          const avgA = sa.status === 'fulfilled' ? sa.value.avg : 0;
+          const avgB = sb.status === 'fulfilled' ? sb.value.avg : 0;
+          const cntA = sa.status === 'fulfilled' ? sa.value.count : 0;
+          const cntB = sb.status === 'fulfilled' ? sb.value.count : 0;
+          if (avgB !== avgA) return avgB - avgA;
+          return cntB - cntA; // tie-break: nhiều đánh giá hơn lên trước
+        });
+        if (!mounted) return;
+        setAllHomestays(sorted);
+        setFilteredHomestays(sorted);
       } catch (err) {
         console.error('Load all homestays failed', err);
       }
@@ -117,26 +132,7 @@ export default function CustomerDashboard() {
     b => b.status === 'CONFIRMED' && new Date(b.checkIn) >= new Date()
   );
 
-  const stats = [
-    {
-      label: "Chuyến Đi Sắp Tới",
-      value: upcomingBookings.length.toString(),
-      icon: Calendar,
-      color: "bg-blue-500",
-    },
-    {
-      label: "Tổng Booking",
-      value: myBookings.length.toString(),
-      icon: Heart,
-      color: "bg-pink-500"
-    },
-    {
-      label: "Đã Hoàn Thành",
-      value: myBookings.filter(b => b.status === 'COMPLETED').length.toString(),
-      icon: Star,
-      color: "bg-yellow-500",
-    },
-  ];
+
 
   return (
     <MainLayout>
@@ -149,29 +145,7 @@ export default function CustomerDashboard() {
           <p className="text-gray-600">Tìm kiếm homestay ven biển hoàn hảo cho bạn</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stat.value}
-                  </p>
-                </div>
-                <div
-                  className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}
-                >
-                  <stat.icon className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+
 
         {/* Search Section */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
@@ -384,69 +358,11 @@ export default function CustomerDashboard() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {filteredHomestays.map((homestay) => (
-                  <div
+                  <HomestayCard
                     key={homestay.id}
-                    className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-                  >
-                    <Link to={`/homestays/${homestay.id}`} className="block">
-                      <div className="relative h-48 overflow-hidden">
-                        <ImageWithFallback
-                          src={homestay.images?.[0] || ''}
-                          alt={homestay.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                      </div>
-                      <div className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-semibold text-gray-900 line-clamp-1">
-                            {homestay.name}
-                          </h4>
-                          <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm font-medium">
-                              {homestay.rating ?? '-'}
-                            </span>
-                          </div>
-                        </div>
-                          <p className="text-sm text-gray-600 flex items-center gap-1 mb-3">
-                          <MapPin className="w-4 h-4" />
-                          {homestay.address
-                            ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
-                            : `${homestay.districtName || homestay.city || ''} ${homestay.provinceName || homestay.country || ''}`}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                          <span className="flex items-center gap-1">
-                            <Users className="w-4 h-4" />
-                            {homestay.maxGuests ?? '-'}
-                          </span>
-                          <span>{homestay.bedrooms ?? '-'} Phòng Ngủ</span>
-                        </div>
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                          <div>
-                            <span className="font-bold text-gray-900">
-                              {homestay.pricePerNight ? homestay.pricePerNight.toLocaleString("vi-VN") + 'đ' : '-'}
-                            </span>
-                            <span className="text-sm text-gray-600">/đêm</span>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-
-                    <div className="p-4 pt-0">
-                      <button
-                        onClick={() => {
-                          if (!authService.isAuthenticated()) {
-                            navigate('/auth/login');
-                            return;
-                          }
-                          navigate(`/homestays/${homestay.id}`);
-                        }}
-                        className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium"
-                      >
-                        Đặt Ngay
-                      </button>
-                    </div>
-                  </div>
+                    homestay={homestay}
+                    onBook={() => navigate(`/homestays/${homestay.id}`)}
+                  />
                 ))}
               </div>
             )}
@@ -461,78 +377,12 @@ export default function CustomerDashboard() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {filteredHomestays.slice(0, 8).map((homestay) => (
-                <div
+              {filteredHomestays.map((homestay) => (
+                <HomestayCard
                   key={homestay.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group flex flex-col"
-                >
-                  <Link to={`/homestays/${homestay.id}`} className="block flex-1 flex flex-col">
-                    <div className="relative h-48 overflow-hidden flex-shrink-0">
-                      <ImageWithFallback
-                        src={homestay.images?.[0] || ''}
-                        alt={homestay.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute left-3 top-3 bg-white/80 rounded-full p-1 shadow">
-                        <Star className="w-4 h-4 text-yellow-400" />
-                      </div>
-                    </div>
-
-                    <div className="p-4 flex-1 flex flex-col">
-                      <div className="flex items-start justify-between mb-2 min-h-[3rem]">
-                        <h4 className="font-semibold text-gray-900 line-clamp-2 flex-1">
-                          {homestay.name}
-                        </h4>
-                        <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                          <span className="text-sm font-medium">
-                            {homestay.rating ?? '-'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-sm text-gray-600 flex items-start gap-1 mb-3 min-h-[2.5rem]">
-                        <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <span className="line-clamp-2">
-                          {homestay.address
-                            ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
-                            : `${homestay.districtName || homestay.city || ''} ${homestay.provinceName || homestay.country || ''}`}
-                        </span>
-                      </p>
-
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                        <span className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {homestay.maxGuests ?? '-'}
-                        </span>
-                        <span>{homestay.bedrooms ?? '-'} Phòng Ngủ</span>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
-                        <div>
-                          <span className="font-bold text-gray-900">
-                            {homestay.pricePerNight ? homestay.pricePerNight.toLocaleString("vi-VN") + 'đ' : '-'}
-                          </span>
-                          <span className="text-sm text-gray-600">/đêm</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-
-                  <div className="p-4 pt-0">
-                    <button
-                      onClick={() => {
-                        if (!authService.isAuthenticated()) {
-                          navigate('/auth/login');
-                          return;
-                        }
-                        navigate(`/homestays/${homestay.id}`);
-                      }}
-                      className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium"
-                    >
-                      Đặt Ngay
-                    </button>
-                  </div>
-                </div>
+                  homestay={homestay}
+                  onBook={() => navigate(`/homestays/${homestay.id}`)}
+                />
               ))}
             </div>
           </div>
