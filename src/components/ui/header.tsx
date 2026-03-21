@@ -14,6 +14,7 @@ import {
   X,
   Trash2,
   CheckCheck,
+  Star,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
@@ -343,6 +344,13 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                       >
                         <BookOpen className="w-4 h-4" />
                         Lịch Sử Đặt Phòng
+                      </button>
+                      <button
+                        onClick={() => { navigate('/customer/reviews'); setIsUserMenuOpen(false); }}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
+                      >
+                        <Star className="w-4 h-4" />
+                        Đánh Giá Của Tôi
                       </button>
                       <hr className="my-2" />
                       <button
