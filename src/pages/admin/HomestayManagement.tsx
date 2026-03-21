@@ -187,26 +187,29 @@ export default function HomestayManagement() {
     }
   };
 
-  const handleOpenEditModal = async (homestayId: string) => {
+  const handleOpenEditModal = async (homestay: Homestay) => {
+    // Open modal immediately so user can edit even if detail API is slow/fails.
+    setEditingHomestay(homestay);
+    setShowEditModal(true);
+
     setUpdatingHomestay(true);
     try {
-      const detail = await homestayService.getAdminHomestayById(homestayId);
+      const detail = await homestayService.getAdminHomestayById(homestay.id);
       if (!detail) {
-        toast.error('Không thể tải dữ liệu homestay để chỉnh sửa');
+        toast.warning('Không tải được chi tiết mới nhất, đang dùng dữ liệu hiện tại');
         return;
       }
 
       setEditingHomestay(detail);
-      setShowEditModal(true);
     } catch (error) {
       console.error('Error loading homestay detail for editing:', error);
-      toast.error('Không thể mở form chỉnh sửa');
+      toast.warning('Không tải được chi tiết mới nhất, đang dùng dữ liệu hiện tại');
     } finally {
       setUpdatingHomestay(false);
     }
   };
 
-  const handleUpdateHomestay = async (data: UpdateHomestayDTO) => {
+  const handleUpdateHomestay = async (data: UpdateHomestayDTO, imageFiles: File[] = []) => {
     if (!editingHomestay) return;
 
     setUpdatingHomestay(true);
@@ -215,6 +218,13 @@ export default function HomestayManagement() {
       if (result?.success === false) {
         toast.error(result.message || 'Không thể cập nhật homestay');
         return;
+      }
+
+      if (imageFiles.length > 0) {
+        const uploadSummary = await homestayService.uploadAdminHomestayPhotos(editingHomestay.id, imageFiles);
+        if (uploadSummary.failed > 0) {
+          toast.warning(`Cap nhat thanh cong, nhung ${uploadSummary.failed}/${uploadSummary.total} anh upload that bai`);
+        }
       }
 
       toast.success('Cập nhật homestay thành công');
@@ -471,7 +481,7 @@ export default function HomestayManagement() {
                         <span>Xem</span>
                       </button>
                       <button
-                        onClick={() => handleOpenEditModal(homestay.id)}
+                        onClick={() => handleOpenEditModal(homestay)}
                         disabled={updatingHomestay}
                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 disabled:opacity-60"
                       >

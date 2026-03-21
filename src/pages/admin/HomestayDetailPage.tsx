@@ -27,10 +27,11 @@ import {
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
-import type { Homestay } from '../../types/homestay.types';
+import type { Homestay, UpdateHomestayDTO } from '../../types/homestay.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
+import EditHomestayModal from '../../components/admin/EditHomestayModal';
 
 export default function HomestayDetailPage() {
   const navigate = useNavigate();
@@ -38,6 +39,8 @@ export default function HomestayDetailPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [homestay, setHomestay] = useState<Homestay | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingHomestay, setUpdatingHomestay] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const user = authService.getCurrentUser();
@@ -85,6 +88,34 @@ export default function HomestayDetailPage() {
     // } else {
     //   toast.error(result.message || 'Không thể cập nhật trạng thái');
     // }
+  };
+
+  const handleUpdateHomestay = async (data: UpdateHomestayDTO, imageFiles: File[] = []) => {
+    if (!homestay || !id) return;
+
+    setUpdatingHomestay(true);
+    try {
+      const result = await homestayService.updateAdminHomestay(homestay.id, data);
+      if (result?.success === false) {
+        toast.error(result.message || 'Khong the cap nhat homestay');
+        return;
+      }
+
+      if (imageFiles.length > 0) {
+        const uploadSummary = await homestayService.uploadAdminHomestayPhotos(homestay.id, imageFiles);
+        if (uploadSummary.failed > 0) {
+          toast.warning(`Cap nhat thanh cong, nhung ${uploadSummary.failed}/${uploadSummary.total} anh upload that bai`);
+        }
+      }
+
+      toast.success('Cap nhat homestay thanh cong');
+      setShowEditModal(false);
+      await loadHomestayDetail(id);
+    } catch (error: any) {
+      toast.error(error?.message || 'Da xay ra loi khi cap nhat homestay');
+    } finally {
+      setUpdatingHomestay(false);
+    }
   };
 
   const handleLogout = () => {
@@ -238,7 +269,7 @@ export default function HomestayDetailPage() {
                 <span>{homestay.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm ngưng'}</span>
               </button>
               <button
-                onClick={() => toast.info('Tính năng chỉnh sửa đang phát triển')}
+                onClick={() => setShowEditModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Edit className="w-5 h-5" />
@@ -531,6 +562,14 @@ export default function HomestayDetailPage() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      <EditHomestayModal
+        isOpen={showEditModal}
+        homestay={homestay}
+        loading={updatingHomestay}
+        onClose={() => setShowEditModal(false)}
+        onSubmit={handleUpdateHomestay}
+      />
     </div>
   );
 }

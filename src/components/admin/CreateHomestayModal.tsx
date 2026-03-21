@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Check, Home, MapPin, DollarSign, Image, Sparkles, FileText } from 'lucide-react';
 import type { CreateHomestayDTO, District } from '../../types/homestay.types';
 import type { Amenity } from '../../types/amenity.types';
-import { amenityService } from '../../services/amenityService';
+import { adminAmenityService } from '../../services/adminAmenityService';
 import { districtService } from '../../services/districtService';
 
 interface CreateHomestayModalProps {
@@ -38,40 +38,12 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
-  const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-          return;
-        }
-        reject(new Error('Cannot read file preview'));
-      };
-      reader.onerror = () => reject(reader.error || new Error('FileReader error'));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const buildPreview = async (file: File): Promise<string> => {
-    try {
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx) {
-        bitmap.close();
-        throw new Error('No canvas context');
+  const clearPreviewUrls = (urls: string[]) => {
+    urls.forEach((url) => {
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
       }
-
-      ctx.drawImage(bitmap, 0, 0);
-      bitmap.close();
-      return canvas.toDataURL('image/jpeg', 0.92);
-    } catch {
-      return fileToDataUrl(file);
-    }
+    });
   };
 
   useEffect(() => {
@@ -83,7 +55,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
 
   const loadAmenities = async () => {
     try {
-      const data = await amenityService.getAllAmenities();
+      const data = await adminAmenityService.getAllAmenities();
       setAmenities(data);
     } catch {
       setAmenities([]);
@@ -124,6 +96,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       images: [],
     });
     setSelectedFiles([]);
+    clearPreviewUrls(imagePreviews);
     setImagePreviews([]);
     setDistrictError('');
     onClose();
@@ -191,16 +164,15 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     const newFiles = Array.from(files);
     setSelectedFiles(prev => [...prev, ...newFiles]);
 
-    Promise.all(newFiles.map((file) => buildPreview(file)))
-      .then((previews) => {
-        setImagePreviews((prev) => [...prev, ...previews]);
-      })
-      .catch(() => {
-        // Keep UI responsive even if preview conversion fails for some files.
-      });
+    const previewUrls = newFiles.map((file) => URL.createObjectURL(file));
+    setImagePreviews((prev) => [...prev, ...previewUrls]);
   };
 
   const removeFile = (index: number) => {
+    const url = imagePreviews[index];
+    if (url?.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
@@ -595,7 +567,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                 {imagePreviews.length > 0 ? (
                   <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto">
                     {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative group">
+                      <div key={`${preview}-${index}`} className="relative">
                         <img
                           src={preview}
                           alt={`Preview ${index + 1}`}
@@ -604,15 +576,13 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                             e.currentTarget.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format';
                           }}
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all rounded-lg flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="opacity-0 group-hover:opacity-100 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                         <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
                           {index + 1}
                         </div>

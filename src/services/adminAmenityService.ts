@@ -7,7 +7,7 @@ import type {
   UpdateAmenityDTO,
 } from "../types/amenity.types";
 
-export const amenityService = {
+export const adminAmenityService = {
   /**
    * GET /api/amenities (public)
    */

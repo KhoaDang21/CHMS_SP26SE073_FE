@@ -4,19 +4,17 @@ import { apiConfig } from '../config/apiConfig';
 export interface Notification {
   id: string;
   title?: string;
-  message: string;
+  content: string;
   isRead: boolean;
   createdAt: string;
-  type?: string;
 }
 
 const mapNotification = (raw: any): Notification => ({
   id: raw.id ?? '',
   title: raw.title ?? '',
-  message: raw.message ?? '',
+  content: raw.content ?? '',
   isRead: raw.isRead ?? false,
   createdAt: raw.createdAt ?? '',
-  type: raw.type ?? '',
 });
 
 export const notificationService = {
@@ -56,21 +54,5 @@ export const notificationService = {
   /** DELETE /api/notifications/{id} */
   async delete(id: string): Promise<void> {
     await apiService.delete<any>(apiConfig.endpoints.notifications.delete(id));
-  },
-
-  /** GET /api/notifications/settings */
-  async getSettings(): Promise<any> {
-    try {
-      const res = await apiService.get<any>(apiConfig.endpoints.notifications.settings);
-      return res?.data ?? res ?? {};
-    } catch (e) {
-      console.error('getSettings error:', e);
-      return {};
-    }
-  },
-
-  /** PUT /api/notifications/settings */
-  async updateSettings(settings: object): Promise<void> {
-    await apiService.put<any>(apiConfig.endpoints.notifications.settings, settings);
   },
 };
