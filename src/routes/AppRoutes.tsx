@@ -22,7 +22,7 @@ import StaffManagement from '../pages/admin/StaffManagement';
 import BookingManagement from '../pages/admin/BookingManagement';
 import CustomerManagement from '../pages/admin/CustomerManagement';
 import RevenueReport from '../pages/admin/RevenueReport';
-import StaffDashboard from '../pages/staff/StaffDashboard';
+import StaffBookings from '../pages/staff/StaffBookings';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import ManagerBookings from '../pages/manager/ManagerBookings';
 import ManagerCustomers from '../pages/manager/ManagerCustomers';
@@ -31,6 +31,7 @@ import ManagerHomestayDetailPage from '../pages/manager/ManagerHomestayDetailPag
 import ProfilePage from '../pages/customer/ProfilePage';
 import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import { authService } from '../services/authService';
+import StaffDashboard from '../pages/staff/StaffDashboard';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -190,6 +191,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <StaffDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/bookings"
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <StaffBookings />
           </ProtectedRoute>
         }
       />
