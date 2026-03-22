@@ -99,9 +99,9 @@ export default function HomestayCard({ homestay, onBook }: Props) {
           )}
         </div>
 
-        <div className="p-4 flex flex-col h-[160px]">
-          {/* Name + rating — 1 dòng cố định */}
-          <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="p-4 flex flex-col gap-2 h-[180px]">
+          {/* Name + rating */}
+          <div className="flex items-center justify-between gap-2">
             <h4 className="font-semibold text-gray-900 line-clamp-1 flex-1">{homestay.name}</h4>
             {avgDisplay ? (
               <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -113,14 +113,14 @@ export default function HomestayCard({ homestay, onBook }: Props) {
             )}
           </div>
 
-          {/* Location — cố định 2 dòng */}
-          <p className="text-sm text-gray-500 flex items-start gap-1 mb-2 line-clamp-2 h-10 overflow-hidden">
+          {/* Location — tối đa 2 dòng */}
+          <p className="text-sm text-gray-500 flex items-start gap-1 line-clamp-2 min-h-[2.5rem]">
             <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             <span>{locationText || 'Đang cập nhật'}</span>
           </p>
 
-          {/* Guests + bedrooms — 1 dòng cố định */}
-          <div className="flex items-center gap-4 text-sm text-gray-500 mb-0">
+          {/* Guests + bedrooms */}
+          <div className="flex items-center gap-4 text-sm text-gray-500">
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
               {homestay.maxGuests ?? '-'} khách
@@ -129,7 +129,7 @@ export default function HomestayCard({ homestay, onBook }: Props) {
           </div>
 
           {/* Price */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
             <div>
               <span className="font-bold text-gray-900">
                 {homestay.pricePerNight
