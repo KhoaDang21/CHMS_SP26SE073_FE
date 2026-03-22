@@ -22,8 +22,6 @@ import {
   Shield,
   FileText,
   UserCheck,
-  ToggleLeft,
-  ToggleRight,
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
@@ -40,6 +38,7 @@ export default function HomestayDetailPage() {
   const [homestay, setHomestay] = useState<Homestay | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingHomestay, setUpdatingHomestay] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -73,21 +72,32 @@ export default function HomestayDetailPage() {
     }
   };
 
-  const handleToggleStatus = async () => {
-    if (!homestay) return;
-    
-    // TODO: Implement update homestay API
-    toast.info('Tính năng cập nhật trạng thái đang phát triển');
-    
-    // const newStatus = homestay.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    // const result = await homestayService.updateHomestay(homestay.id, { status: newStatus });
-    // 
-    // if (result.success && result.homestay) {
-    //   toast.success(`Đã ${newStatus === 'ACTIVE' ? 'kích hoạt' : 'vô hiệu hóa'} homestay`);
-    //   setHomestay(result.homestay);
-    // } else {
-    //   toast.error(result.message || 'Không thể cập nhật trạng thái');
-    // }
+  const handleChangeStatus = async (newStatus: Homestay['status']) => {
+    if (!homestay || !id || homestay.status === newStatus) return;
+
+    setUpdatingStatus(true);
+    try {
+      const result = await homestayService.updateAdminHomestayStatus(homestay.id, newStatus);
+      if (result?.success === false) {
+        toast.error(result.message || 'Không thể cập nhật trạng thái homestay');
+        return;
+      }
+
+      const statusText: Record<Homestay['status'], string> = {
+        ACTIVE: 'Đang hoạt động',
+        INACTIVE: 'Tạm ngưng',
+        PENDING: 'Chờ duyệt',
+        MAINTENANCE: 'Bảo trì',
+      };
+
+      toast.success(`Đã cập nhật trạng thái: ${statusText[newStatus]}`);
+      await loadHomestayDetail(id);
+    } catch (error) {
+      console.error('Error updating homestay status:', error);
+      toast.error('Không thể cập nhật trạng thái homestay');
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   const handleUpdateHomestay = async (data: UpdateHomestayDTO, imageFiles: File[] = []) => {
@@ -253,21 +263,21 @@ export default function HomestayDetailPage() {
               </button>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={handleToggleStatus}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  homestay.status === 'ACTIVE'
-                    ? 'bg-green-50 text-green-600 hover:bg-green-100'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white"
               >
-                {homestay.status === 'ACTIVE' ? (
-                  <ToggleRight className="w-5 h-5" />
-                ) : (
-                  <ToggleLeft className="w-5 h-5" />
-                )}
-                <span>{homestay.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm ngưng'}</span>
-              </button>
+                <span className="text-sm text-gray-600">Trạng thái:</span>
+                <select
+                  value={homestay.status}
+                  disabled={updatingStatus}
+                  onChange={(e) => handleChangeStatus(e.target.value as Homestay['status'])}
+                  className="px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-60"
+                >
+                  <option value="PENDING">Chờ duyệt</option>
+                  <option value="ACTIVE">Đang hoạt động</option>
+                  <option value="MAINTENANCE">Bảo trì</option>
+                  <option value="INACTIVE">Tạm ngưng</option>
+                </select>
+              </div>
               <button
                 onClick={() => setShowEditModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
