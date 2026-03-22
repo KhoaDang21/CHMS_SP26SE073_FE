@@ -55,7 +55,7 @@ class ProfileService {
       }
 
       const profile: UserProfile = {
-        id: data.id ?? data.userId ?? '',
+        id: data.id ?? '',
         fullName: data.fullName ?? data.name ?? '',
         name: data.fullName ?? data.name ?? '',
         email: data.email ?? '',

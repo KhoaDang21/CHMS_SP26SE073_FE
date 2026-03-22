@@ -24,6 +24,10 @@ import CustomerManagement from '../pages/admin/CustomerManagement';
 import RevenueReport from '../pages/admin/RevenueReport';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
+import ManagerBookings from '../pages/manager/ManagerBookings';
+import ManagerCustomers from '../pages/manager/ManagerCustomers';
+import ManagerHomestayManagement from '../pages/manager/ManagerHomestayManagement';
+import ManagerHomestayDetailPage from '../pages/manager/ManagerHomestayDetailPage';
 import ProfilePage from '../pages/customer/ProfilePage';
 import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import { authService } from '../services/authService';
@@ -144,6 +148,38 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['manager']}>
             <ManagerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/bookings"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerBookings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/customers"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerCustomers />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/homestays"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerHomestayManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/homestays/:id"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerHomestayDetailPage />
           </ProtectedRoute>
         }
       />

@@ -33,13 +33,9 @@ export const authService = {
     const tokenPayload = token ? this._parseJwt(token) : null;
 
     return (
-      apiData?.userId ||
       apiData?.id ||
-      apiData?.guid ||
       apiData?.user?.id ||
-      tokenPayload?.userId ||
       tokenPayload?.sub ||
-      tokenPayload?.nameid ||
       tokenPayload?.id ||
       tokenPayload?.[
         "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
