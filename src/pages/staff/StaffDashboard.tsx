@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Calendar, Home, Users, ClipboardList, BarChart3 } from 'lucide-react';
+import { authService } from '../../services/authService';
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('userData') || sessionStorage.getItem('userData') || '{}');
 
   const handleLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
+    authService.logout();
     navigate('/auth/login');
   };
 
