@@ -98,6 +98,9 @@ export const authService = {
           storage.setItem("userData", JSON.stringify(userData));
         }
 
+        // Notify toàn app biết user đã login
+        window.dispatchEvent(new Event("auth-login"));
+
         return {
           success: true,
           token: token,
@@ -194,6 +197,8 @@ export const authService = {
       sessionStorage.removeItem("authToken");
       sessionStorage.removeItem("userData");
       sessionStorage.removeItem("refreshToken");
+      // Notify toàn app biết user đã logout
+      window.dispatchEvent(new Event("auth-logout"));
     }
   },
 
