@@ -49,8 +49,6 @@ interface RecentActivity {
   icon: LucideIcon;
   color: string;
 }
-import { Crown, Home, TrendingUp, Users, Calendar, DollarSign, Settings } from 'lucide-react';
-import { authService } from '../../services/authService';
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();

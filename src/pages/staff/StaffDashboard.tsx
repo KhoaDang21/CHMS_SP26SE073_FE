@@ -1,158 +1,408 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Calendar, Home, Users, ClipboardList, BarChart3 } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Bell,
+  Calendar,
+  CheckCircle,
+  ClipboardList,
+  Clock,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Users,
+  X,
+} from 'lucide-react';
 import { authService } from '../../services/authService';
+import { adminBookingService } from '../../services/adminBookingService';
+import type { Booking, BookingStatus } from '../../types/booking.types';
+import { RoleBadge } from '../../components/common/RoleBadge';
+import { toast } from 'sonner';
+
+interface DashboardStats {
+  todayCheckIns: number;
+  todayCheckOuts: number;
+  currentOccupancy: number;
+  pendingTasks: number;
+}
+
+interface TodayTask {
+  id: string;
+  bookingId: string;
+  type: 'checkin' | 'checkout' | 'cleaning' | 'maintenance';
+  title: string;
+  time: string;
+  room: string;
+  status: 'pending' | 'completed';
+  priority: 'high' | 'medium' | 'low';
+}
+
+const dateKey = (value: string) => new Date(value).toISOString().split('T')[0];
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('userData') || sessionStorage.getItem('userData') || '{}');
+  const currentUser = authService.getCurrentUser();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [todayTasks, setTodayTasks] = useState<TodayTask[]>([]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const data = await adminBookingService.getAllBookings();
+      setBookings(data);
+
+      const today = new Date().toISOString().split('T')[0];
+      const checkIns = data.filter((b) => dateKey(b.checkInDate) === today && b.status === 'confirmed');
+      const checkOuts = data.filter(
+        (b) => dateKey(b.checkOutDate) === today && (b.status === 'checked_in' || b.status === 'confirmed'),
+      );
+
+      const tasks: TodayTask[] = [
+        ...checkIns.map((b) => ({
+          id: `checkin-${b.id}`,
+          bookingId: b.id,
+          type: 'checkin' as const,
+          title: `Check-in: ${b.customerName}`,
+          time: '14:00',
+          room: b.homestayName,
+          status: 'pending' as const,
+          priority: 'high' as const,
+        })),
+        ...checkOuts.map((b) => ({
+          id: `checkout-${b.id}`,
+          bookingId: b.id,
+          type: 'checkout' as const,
+          title: `Check-out: ${b.customerName}`,
+          time: '12:00',
+          room: b.homestayName,
+          status: 'pending' as const,
+          priority: 'high' as const,
+        })),
+      ];
+
+      setTodayTasks(tasks.slice(0, 8));
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+      toast.error('Không thể tải dữ liệu dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const stats = useMemo<DashboardStats>(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayCheckIns = bookings.filter((b) => dateKey(b.checkInDate) === today && b.status === 'confirmed').length;
+    const todayCheckOuts = bookings.filter(
+      (b) => dateKey(b.checkOutDate) === today && (b.status === 'checked_in' || b.status === 'confirmed'),
+    ).length;
+    const currentOccupancy = bookings.filter((b) => b.status === 'checked_in').length;
+    const pendingTasks = todayTasks.filter((t) => t.status === 'pending').length;
+    return { todayCheckIns, todayCheckOuts, currentOccupancy, pendingTasks };
+  }, [bookings, todayTasks]);
 
   const handleLogout = () => {
     authService.logout();
+    toast.success('Đăng xuất thành công!');
     navigate('/auth/login');
   };
 
+  const handleCompleteTask = async (task: TodayTask) => {
+    try {
+      const nextStatus: BookingStatus = task.type === 'checkin' ? 'checked_in' : 'checked_out';
+      await adminBookingService.updateBooking(task.bookingId, { status: nextStatus });
+
+      setTodayTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, status: 'completed' } : item)));
+      toast.success('Đã hoàn thành công việc!');
+      await loadDashboardData();
+    } catch (error) {
+      console.error('Complete task error:', error);
+      toast.error('Không thể cập nhật trạng thái booking');
+    }
+  };
+
+  const navigationItems = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: true },
+    { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: false },
+    { name: 'Tasks', icon: ClipboardList, path: '/staff/tasks', active: false },
+  ];
+
+  const getTaskIcon = (type: TodayTask['type']) => {
+    switch (type) {
+      case 'checkin':
+        return CheckCircle;
+      case 'checkout':
+        return ArrowUpRight;
+      case 'cleaning':
+        return Home;
+      case 'maintenance':
+        return AlertCircle;
+      default:
+        return Clock;
+    }
+  };
+
+  const getTaskColor = (type: TodayTask['type']) => {
+    switch (type) {
+      case 'checkin':
+        return 'text-green-600 bg-green-50';
+      case 'checkout':
+        return 'text-blue-600 bg-blue-50';
+      case 'cleaning':
+        return 'text-purple-600 bg-purple-50';
+      case 'maintenance':
+        return 'text-orange-600 bg-orange-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  const getPriorityBadge = (priority: TodayTask['priority']) => {
+    const colors = {
+      high: 'bg-red-100 text-red-700',
+      medium: 'bg-yellow-100 text-yellow-700',
+      low: 'bg-gray-100 text-gray-700',
+    };
+    return colors[priority];
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50 flex">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-br from-cyan-600 to-blue-700 text-white transform transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between p-6 border-b border-cyan-500/30">
             <div className="flex items-center gap-3">
-              <Briefcase className="w-8 h-8 text-green-600" />
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                <Home className="w-6 h-6" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Staff Dashboard</h1>
-                <p className="text-sm text-gray-600">Bảng điều khiển nhân viên</p>
+                <h1 className="font-bold text-lg">CHMS</h1>
+                <p className="text-xs text-cyan-200">Staff Portal</p>
               </div>
             </div>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden" type="button">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="p-6 border-b border-cyan-500/30">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
+                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
+                <RoleBadge role={currentUser?.role || 'staff'} size="sm" />
+              </div>
+            </div>
+          </div>
+
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => navigate(item.path)}
+                  type="button"
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    item.active ? 'bg-white/20 text-white font-medium' : 'text-cyan-100 hover:bg-white/10'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span>{item.name}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="p-4 border-t border-cyan-500/30">
+            <button
+              onClick={handleLogout}
+              type="button"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-cyan-100 hover:bg-white/10 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Đăng xuất</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex-1 lg:ml-64">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user.name || 'Staff'}</p>
-                <p className="text-xs text-green-600 font-semibold">Nhân viên</p>
-              </div>
               <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                type="button"
               >
-                Đăng xuất
+                <Menu className="w-6 h-6" />
               </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-green-600 to-teal-600 rounded-2xl p-8 mb-8 text-white">
-          <h2 className="text-3xl font-bold mb-2">Xin chào, {user.name}!</h2>
-          <p className="text-green-100 text-lg">Bạn đang truy cập với vai trò Nhân viên</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-md border border-green-100">
-            <div className="flex items-center justify-between mb-4">
-              <Calendar className="w-10 h-10 text-blue-600" />
-              <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Hôm nay</span>
-            </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">8</h3>
-            <p className="text-sm text-gray-600">Check-in cần xử lý</p>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-md border border-orange-100">
-            <div className="flex items-center justify-between mb-4">
-              <ClipboardList className="w-10 h-10 text-orange-600" />
-              <span className="text-sm font-medium text-orange-600 bg-orange-50 px-3 py-1 rounded-full">Nhiệm vụ</span>
-            </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">15</h3>
-            <p className="text-sm text-gray-600">Công việc đang làm</p>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-md border border-purple-100">
-            <div className="flex items-center justify-between mb-4">
-              <Home className="w-10 h-10 text-purple-600" />
-              <span className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1 rounded-full">Phòng</span>
-            </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">23</h3>
-            <p className="text-sm text-gray-600">Homestay quản lý</p>
-          </div>
-        </div>
-
-        {/* Today's Tasks */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <ClipboardList className="w-6 h-6 text-green-600" />
-            Nhiệm vụ hôm nay
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
-              <input type="checkbox" className="w-5 h-5 text-green-600 rounded" />
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-900">Check-in khách hàng - Phòng 101</h4>
-                <p className="text-sm text-gray-600">10:00 AM - Nguyễn Văn A</p>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Staff Dashboard</h2>
+                <p className="text-sm text-gray-500">Quản lý công việc hàng ngày</p>
               </div>
-              <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">Đang chờ</span>
             </div>
+            <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
+              <Bell className="w-6 h-6 text-gray-600" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+          </div>
+        </header>
 
-            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <input type="checkbox" className="w-5 h-5 text-blue-600 rounded" />
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-900">Kiểm tra phòng - Phòng 205</h4>
-                <p className="text-sm text-gray-600">02:00 PM - Dọn dẹp và chuẩn bị</p>
+        <main className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-cyan-500 border-t-transparent"></div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                    <ArrowDownRight className="w-5 h-5 text-green-500" />
+                  </div>
+                  <p className="text-gray-600 text-sm mb-1">Check-in hôm nay</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.todayCheckIns}</p>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <ArrowUpRight className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <p className="text-gray-600 text-sm mb-1">Check-out hôm nay</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.todayCheckOuts}</p>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <Users className="w-6 h-6 text-purple-600" />
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm mb-1">Khách đang lưu trú</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.currentOccupancy}</p>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-orange-600" />
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm mb-1">Công việc chờ xử lý</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.pendingTasks}</p>
+                </div>
               </div>
-              <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">Sắp tới</span>
-            </div>
 
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <input type="checkbox" checked className="w-5 h-5 text-gray-400 rounded" />
-              <div className="flex-1 opacity-60">
-                <h4 className="font-medium text-gray-900">Check-out khách - Phòng 308</h4>
-                <p className="text-sm text-gray-600">08:00 AM - Trần Thị B</p>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="p-6 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Công việc hôm nay</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {todayTasks.filter((t) => t.status === 'pending').length} công việc đang chờ xử lý
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/staff/bookings')}
+                      type="button"
+                      className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors text-sm font-medium"
+                    >
+                      Xem tất cả
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  {todayTasks.length === 0 ? (
+                    <div className="text-center py-12">
+                      <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                      <p className="text-gray-900 font-medium mb-2">Không có công việc nào hôm nay!</p>
+                      <p className="text-gray-500 text-sm">Bạn đã hoàn thành tất cả công việc.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {todayTasks.map((task) => {
+                        const TaskIcon = getTaskIcon(task.type);
+                        return (
+                          <div
+                            key={task.id}
+                            className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
+                              task.status === 'completed'
+                                ? 'border-gray-200 bg-gray-50 opacity-60'
+                                : 'border-gray-200 hover:border-cyan-300 hover:bg-cyan-50/30'
+                            }`}
+                          >
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getTaskColor(task.type)}`}>
+                              <TaskIcon className="w-6 h-6" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p
+                                  className={`font-medium ${
+                                    task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
+                                  }`}
+                                >
+                                  {task.title}
+                                </p>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityBadge(task.priority)}`}>
+                                  {task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'Trung bình' : 'Thấp'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  {task.time}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Home className="w-4 h-4" />
+                                  {task.room}
+                                </span>
+                              </div>
+                            </div>
+                            {task.status === 'pending' ? (
+                              <button
+                                onClick={() => handleCompleteTask(task)}
+                                type="button"
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium whitespace-nowrap"
+                              >
+                                Hoàn thành
+                              </button>
+                            ) : (
+                              <div className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium">✓ Đã xong</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
-              <span className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-full font-medium">Hoàn thành</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-green-600" />
-            Thao tác nhanh
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button className="p-4 bg-green-50 hover:bg-green-100 rounded-lg text-center transition-colors border border-green-200">
-              <Calendar className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900 text-sm">Check-in</h4>
-            </button>
-            <button className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg text-center transition-colors border border-blue-200">
-              <Home className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900 text-sm">Kiểm tra phòng</h4>
-            </button>
-            <button className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg text-center transition-colors border border-purple-200">
-              <Users className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900 text-sm">Khách hàng</h4>
-            </button>
-            <button className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg text-center transition-colors border border-orange-200">
-              <ClipboardList className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-              <h4 className="font-semibold text-gray-900 text-sm">Báo cáo</h4>
-            </button>
-          </div>
-        </div>
-
-        {/* Info Box */}
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-          <div className="flex items-start gap-3">
-            <Briefcase className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
-            <div>
-              <h4 className="font-semibold text-green-900 mb-2">Vai trò Nhân viên</h4>
-              <p className="text-sm text-green-800">
-                Bạn có quyền quản lý check-in/out, kiểm tra phòng và hỗ trợ khách hàng. Liên hệ manager nếu cần trợ giúp.
-              </p>
-            </div>
-          </div>
-        </div>
-      </main>
+            </>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
