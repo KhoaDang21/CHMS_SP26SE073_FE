@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Users, Star } from "lucide-react";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { useNavigate } from 'react-router-dom';
+import { MapPin, Calendar } from "lucide-react";
 import { publicHomestayService } from "../services/publicHomestayService";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { provinceService } from "../services/provinceService";
 import { districtService } from "../services/districtService";
+import HomestayCard, { fetchReviewSummary } from "../components/homestay/HomestayCard";
 import toast from 'react-hot-toast';
 import type { Homestay } from "../types/homestay.types";
 import type { Province, District } from "../types/homestay.types";
@@ -50,8 +50,21 @@ export default function HomePage() {
       try {
         const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
         if (!mounted) return;
-        setAllHomestays(res.Items || []);
-        setHomestays((res.Items || []).slice(0, 8));
+        const items: Homestay[] = res.Items || [];
+        const summaries = await Promise.allSettled(items.map(h => fetchReviewSummary(h.id)));
+        const sorted = [...items].sort((a, b) => {
+          const sa = summaries[items.indexOf(a)];
+          const sb = summaries[items.indexOf(b)];
+          const avgA = sa.status === 'fulfilled' ? sa.value.avg : 0;
+          const avgB = sb.status === 'fulfilled' ? sb.value.avg : 0;
+          const cntA = sa.status === 'fulfilled' ? sa.value.count : 0;
+          const cntB = sb.status === 'fulfilled' ? sb.value.count : 0;
+          if (avgB !== avgA) return avgB - avgA;
+          return cntB - cntA;
+        });
+        if (!mounted) return;
+        setAllHomestays(sorted);
+        setHomestays(sorted.slice(0, 8));
       } catch (err) {
         console.error('Load homestays error', err);
         if (!mounted) return;
@@ -220,114 +233,44 @@ export default function HomePage() {
             )}
 
             {!loading && homestays.map((homestay) => (
-              <div
+              <HomestayCard
                 key={homestay.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group flex flex-col"
-              >
-                <Link to={`/homestays/${homestay.id}`} className="block flex-1 flex flex-col">
-                  <div className="relative h-48 overflow-hidden flex-shrink-0">
-                    <ImageWithFallback
-                      src={homestay.images?.[0] || ''}
-                      alt={homestay.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                    <div className="absolute left-3 top-3 bg-white/80 rounded-full p-1 shadow">
-                      <Star className="w-4 h-4 text-yellow-400" />
-                    </div>
-                  </div>
-
-                  <div className="p-4 flex-1 flex flex-col">
-                    <div className="flex items-start justify-between mb-2 min-h-[3rem]">
-                      <h4 className="font-semibold text-gray-900 line-clamp-2 flex-1">
-                        {homestay.name}
-                      </h4>
-                      <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                        <span className="text-sm font-medium">
-                          {homestay.rating ?? '-'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-sm text-gray-600 flex items-start gap-1 mb-3 min-h-[2.5rem]">
-                      <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      <span className="line-clamp-2">
-                        {homestay.address
-                          ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
-                          : `${homestay.districtName || homestay.city || ''} ${homestay.provinceName || homestay.country || ''}`}
-                      </span>
-                    </p>
-
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {homestay.maxGuests ?? '-'}
-                      </span>
-                      <span>{homestay.bedrooms ?? '-'} Phòng Ngủ</span>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
-                      <div>
-                        <span className="font-bold text-gray-900">
-                          {homestay.pricePerNight ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ' : '-'}
-                        </span>
-                        <span className="text-sm text-gray-600">/đêm</span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-
-                <div className="p-4 pt-0">
-                  <button
-                    onClick={async () => {
-                      if (!authService.isAuthenticated() || !authService.isTokenValid()) {
-                        if (authService.isAuthenticated() && !authService.isTokenValid()) {
-                          toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
-                        }
-                        navigate('/auth/login');
-                        return;
-                      }
-
-                      if (!checkInDate || !checkOutDate) {
-                        toast.error('Vui lòng chọn ngày nhận và trả phòng trước khi đặt.');
-                        return;
-                      }
-
-                      if (new Date(checkInDate) < new Date(today)) {
-                        toast.error('Ngày nhận phòng không được nhỏ hơn ngày hiện tại.');
-                        return;
-                      }
-
-                      if (new Date(checkOutDate) <= new Date(checkInDate)) {
-                        toast.error('Ngày trả phòng phải sau ngày nhận phòng.');
-                        return;
-                      }
-
-                      try {
-                        const payload = {
-                          homestayId: homestay.id,
-                          checkIn: checkInDate,
-                          checkOut: checkOutDate,
-                          guestsCount: 1,
-                        };
-
-                        const res = await bookingService.createBooking(payload as any);
-                        if (res && (res as any).success) {
-                          toast.success('Đặt phòng thành công!');
-                          navigate('/customer/bookings');
-                        } else {
-                          toast.error((res as any).message || 'Đặt phòng thất bại');
-                        }
-                      } catch (err) {
-                        console.error(err);
-                        toast.error('Đã xảy ra lỗi khi đặt phòng. Vui lòng thử lại.');
-                      }
-                    }}
-                    className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium"
-                  >
-                    Đặt Ngay
-                  </button>
-                </div>
-              </div>
+                homestay={homestay}
+                onBook={async () => {
+                  if (!authService.isAuthenticated() || !authService.isTokenValid()) {
+                    if (authService.isAuthenticated() && !authService.isTokenValid()) {
+                      toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
+                    }
+                    navigate('/auth/login');
+                    return;
+                  }
+                  if (!checkInDate || !checkOutDate) {
+                    toast.error('Vui lòng chọn ngày nhận và trả phòng trước khi đặt.');
+                    return;
+                  }
+                  if (new Date(checkInDate) < new Date(today)) {
+                    toast.error('Ngày nhận phòng không được nhỏ hơn ngày hiện tại.');
+                    return;
+                  }
+                  if (new Date(checkOutDate) <= new Date(checkInDate)) {
+                    toast.error('Ngày trả phòng phải sau ngày nhận phòng.');
+                    return;
+                  }
+                  try {
+                    const payload = { homestayId: homestay.id, checkIn: checkInDate, checkOut: checkOutDate, guestsCount: 1 };
+                    const res = await bookingService.createBooking(payload as any);
+                    if (res && (res as any).success) {
+                      toast.success('Đặt phòng thành công!');
+                      navigate('/customer/bookings');
+                    } else {
+                      toast.error((res as any).message || 'Đặt phòng thất bại');
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    toast.error('Đã xảy ra lỗi khi đặt phòng. Vui lòng thử lại.');
+                  }
+                }}
+              />
             ))}
           </div>
         </div>

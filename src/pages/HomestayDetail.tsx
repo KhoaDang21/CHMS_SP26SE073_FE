@@ -9,6 +9,9 @@ import { bookingService } from '../services/bookingService'
 import { authService } from '../services/authService'
 import PaymentModal from './customer/PaymentModal'
 import toast from 'react-hot-toast'
+import { apiService } from '../services/apiService'
+import { apiConfig } from '../config/apiConfig'
+import type { Review } from '../services/reviewService'
 
 export default function HomestayDetail() {
     const { id } = useParams()
@@ -30,6 +33,8 @@ export default function HomestayDetail() {
         totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
     } | null>(null)
     const [isBooking, setIsBooking] = useState(false)
+    const [reviews, setReviews] = useState<Review[]>([])
+    const [reviewsLoading, setReviewsLoading] = useState(false)
 
     const getInitials = (name?: string) => {
         if (!name) return ''
@@ -67,6 +72,43 @@ export default function HomestayDetail() {
         const max = homestay.maxGuests ?? 1
         setGuests((g) => Math.min(g, Math.max(1, max)))
     }, [homestay])
+
+    // Fetch public reviews
+    useEffect(() => {
+        if (!id) return
+        let mounted = true
+        const load = async () => {
+            setReviewsLoading(true)
+            try {
+                const res = await apiService.get<any>(apiConfig.endpoints.publicHomestays.reviews(id))
+                if (!mounted) return
+                const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
+                setReviews(list.map((r: any) => ({
+                    id: r.id,
+                    bookingId: r.bookingId ?? '',
+                    homestayId: r.homestayId ?? id,
+                    homestayName: r.homestayName ?? '',
+                    customerName: r.customerName ?? 'Khách',
+                    rating: r.rating ?? 0,
+                    cleanlinessRating: r.cleanlinessRating ?? 0,
+                    locationRating: r.locationRating ?? 0,
+                    valueRating: r.valueRating ?? 0,
+                    communicationRating: r.communicationRating ?? 0,
+                    comment: r.comment ?? '',
+                    replyFromOwner: r.replyFromOwner ?? undefined,
+                    replyAt: r.replyAt ?? undefined,
+                    isVerified: r.isVerified ?? undefined,
+                    createdAt: r.createdAt ?? '',
+                })))
+            } catch {
+                if (mounted) setReviews([])
+            } finally {
+                if (mounted) setReviewsLoading(false)
+            }
+        }
+        load()
+        return () => { mounted = false }
+    }, [id])
 
     const images = homestay?.images ?? []
 
@@ -109,6 +151,12 @@ export default function HomestayDetail() {
         run()
         return () => { alive = false }
     }, [homestay?.id, checkIn, checkOut, guests, nights, specialRequests, contactPhone])
+
+    const avgRating = useMemo(() => {
+        if (reviews.length === 0) return null
+        const sum = reviews.reduce((acc, r) => acc + r.rating, 0)
+        return Math.round((sum / reviews.length) * 10) / 10
+    }, [reviews])
 
     const formatMoney = (value: any) => {
         const n = typeof value === 'number' ? value : Number(value)
@@ -191,10 +239,13 @@ export default function HomestayDetail() {
                                     </div>
 
                                     <div className="flex items-center gap-3">
-                                        <div className="flex items-center gap-1 bg-white/90 px-3 py-1 rounded-full shadow">
-                                            <Star className="w-4 h-4 text-yellow-400" />
-                                            <span className="text-sm font-medium">{homestay.rating ?? '—'}</span>
-                                        </div>
+                                        {avgRating !== null && (
+                                            <div className="flex items-center gap-1 bg-white/90 px-3 py-1 rounded-full shadow">
+                                                <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                                                <span className="text-sm font-medium">{avgRating}</span>
+                                                <span className="text-xs text-gray-500">({reviews.length})</span>
+                                            </div>
+                                        )}
                                         <button className="p-2 rounded-full border hover:bg-gray-50"><Heart className="w-5 h-5 text-gray-600" /></button>
                                     </div>
                                 </div>
@@ -239,6 +290,92 @@ export default function HomestayDetail() {
                                     )}
                                 </div>
                             </div>
+
+                            {/* Reviews Section */}
+                            <div className="mt-6 bg-white rounded-xl p-6 shadow">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-bold">Đánh giá</h3>
+                                    {avgRating !== null && (
+                                        <div className="flex items-center gap-2">
+                                            <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                                            <span className="text-xl font-bold">{avgRating}</span>
+                                            <span className="text-sm text-gray-500">({reviews.length} đánh giá)</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                {/* Sub-category averages — chỉ hiện khi có data */}
+                                {reviews.length > 0 && (() => {
+                                    const hasSubRatings = reviews.some(r =>
+                                        r.cleanlinessRating > 0 || r.locationRating > 0 ||
+                                        r.valueRating > 0 || r.communicationRating > 0
+                                    );
+                                    if (!hasSubRatings) return null;
+                                    const avg = (key: keyof typeof reviews[0]) =>
+                                        Math.round(reviews.reduce((s, r) => s + (r[key] as number), 0) / reviews.length * 10) / 10
+                                    const cats = [
+                                        { label: 'Vệ sinh', val: avg('cleanlinessRating') },
+                                        { label: 'Vị trí', val: avg('locationRating') },
+                                        { label: 'Giá trị', val: avg('valueRating') },
+                                        { label: 'Giao tiếp', val: avg('communicationRating') },
+                                    ]
+                                    return (
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-4 bg-gray-50 rounded-xl">
+                                            {cats.map(c => (
+                                                <div key={c.label} className="text-center">
+                                                    <div className="text-lg font-bold text-gray-800">{c.val}</div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">{c.label}</div>
+                                                    <div className="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${(c.val / 5) * 100}%` }} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )
+                                })()}
+
+                                {reviewsLoading && (
+                                    <div className="py-6 text-center text-gray-500 text-sm">Đang tải đánh giá...</div>
+                                )}
+
+                                {!reviewsLoading && reviews.length === 0 && (
+                                    <div className="py-6 text-center text-gray-400 text-sm">Chưa có đánh giá nào cho homestay này.</div>
+                                )}
+
+                                {!reviewsLoading && reviews.length > 0 && (
+                                    <div className="space-y-5">
+                                        {reviews.map(r => (
+                                            <div key={r.id} className="border-b border-gray-100 pb-5 last:border-0 last:pb-0">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                                                        {getInitials(r.customerName)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="font-medium text-sm">{r.customerName}</span>
+                                                            <span className="text-xs text-gray-400 flex-shrink-0">
+                                                                {r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-0.5 mt-0.5">
+                                                            {Array.from({ length: 5 }).map((_, i) => (
+                                                                <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} />
+                                                            ))}
+                                                        </div>
+                                                        <p className="mt-2 text-sm text-gray-700 leading-relaxed">{r.comment}</p>
+                                                        {r.replyFromOwner && (
+                                                            <div className="mt-3 bg-gray-50 border-l-4 border-cyan-400 rounded-r-lg p-3">
+                                                                <div className="text-xs font-semibold text-cyan-700 mb-1">Phản hồi từ chủ nhà</div>
+                                                                <p className="text-sm text-gray-600">{r.replyFromOwner}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Right: booking card */}
@@ -248,7 +385,9 @@ export default function HomestayDetail() {
                                     <div>
                                         <div className="text-2xl font-bold">{homestay.pricePerNight?.toLocaleString('vi-VN')}đ <span className="text-sm font-medium text-gray-600">/ đêm</span></div>
                                     </div>
-                                    <div className="text-right text-sm text-gray-600">{homestay.rating ?? '—'} ★</div>
+                                    <div className="text-right text-sm text-gray-600">
+                                        {avgRating !== null ? `${avgRating} ★` : ''}
+                                    </div>
                                 </div>
 
                                 <div className="mt-5 grid grid-cols-2 gap-3">

@@ -25,6 +25,7 @@ import RevenueReport from '../pages/admin/RevenueReport';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import ProfilePage from '../pages/customer/ProfilePage';
+import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import { authService } from '../services/authService';
 
 // Protected Route Component
@@ -125,6 +126,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <PaymentResultPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/reviews"
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <MyReviewsPage />
           </ProtectedRoute>
         }
       />
