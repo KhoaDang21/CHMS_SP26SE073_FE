@@ -16,11 +16,10 @@ import {
   Building2,
   LogOut,
   LayoutDashboard,
-  CalendarDays,
+  Calendar,
   UserCog,
   TrendingUp,
-  Settings,
-  Sparkles,
+  ClipboardList,
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
@@ -31,7 +30,7 @@ import CreateHomestayModal from '../../components/admin/CreateHomestayModal';
 import EditHomestayModal from '../../components/admin/EditHomestayModal';
 import { authService } from '../../services/authService';
 
-export default function HomestayManagement() {
+export default function ManagerHomestayManagement() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
@@ -234,14 +233,13 @@ export default function HomestayManagement() {
   };
 
   const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'bookings', label: 'Đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
+    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
+    { id: 'bookings', label: 'Đơn đặt phòng', icon: Calendar, path: '/manager/bookings' },
+    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
+    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
+    { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
+    { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
+    { id: 'tasks', label: 'Công việc', icon: ClipboardList, path: '/manager/tasks' },
   ];
 
   return (
@@ -256,8 +254,8 @@ export default function HomestayManagement() {
           <div className="flex items-center gap-2">
             <Building2 className="w-8 h-8 text-blue-600" />
             <div>
-              <h1 className="font-bold text-gray-900">CHMS Admin</h1>
-              <p className="text-xs text-gray-500">Management System</p>
+              <h1 className="font-bold text-gray-900">CHMS Manager</h1>
+              <p className="text-xs text-gray-500">Quản lý vận hành</p>
             </div>
           </div>
           <button
@@ -325,7 +323,7 @@ export default function HomestayManagement() {
               </button>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Quản lý Homestay</h2>
-                <p className="text-sm text-gray-500">Quản lý tất cả homestay trong chuỗi</p>
+                <p className="text-sm text-gray-500">Xem và quản lý homestay vận hành</p>
               </div>
             </div>
             <button
@@ -484,7 +482,7 @@ export default function HomestayManagement() {
                     {/* Actions */}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => navigate(`/admin/homestays/${homestay.id}`)}
+                        onClick={() => navigate(`/manager/homestays/${homestay.id}`)}
                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
                       >
                         <Eye className="w-4 h-4" />

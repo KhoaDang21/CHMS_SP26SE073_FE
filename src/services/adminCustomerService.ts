@@ -50,7 +50,7 @@ const mapCustomer = (item: any): Customer => {
   const totalSpent = Number(item?.totalSpent ?? item?.spentAmount ?? item?.totalAmount ?? 0);
 
   return {
-    id: String(item?.id || item?.userId || ''),
+    id: String(item?.id || ''),
     name: String(item?.name || item?.fullName || item?.username || 'Khách hàng'),
     email: String(item?.email || ''),
     phone: String(item?.phone || item?.phoneNumber || item?.contactPhone || ''),
@@ -84,7 +84,7 @@ const normalizeBookingStatus = (value: any): CustomerBookingHistory['status'] =>
 };
 
 const mapCustomerBooking = (item: any): CustomerBookingHistory => {
-  const id = String(item?.id || item?.bookingId || '');
+  const id = String(item?.id || '');
   return {
     id,
     bookingCode: String(item?.bookingCode || item?.code || (id ? id.slice(0, 8) : 'N/A')),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { employeeService } from '../../services/employeeService';
@@ -28,6 +28,8 @@ const initialState: EditStaffFormState = {
 export function EditStaffModal({ isOpen, onClose, onSuccess, staff }: EditStaffModalProps) {
   const [form, setForm] = useState<EditStaffFormState>(initialState);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
 
   useEffect(() => {
     if (!isOpen || !staff) return;
@@ -38,9 +40,35 @@ export function EditStaffModal({ isOpen, onClose, onSuccess, staff }: EditStaffM
       avatarUrl: staff.avatar || '',
       status: staff.status || 'active',
     });
+    setSelectedAvatarFile(null);
+    setAvatarPreview(staff.avatar || '');
   }, [isOpen, staff]);
 
+  useEffect(() => {
+    if (!selectedAvatarFile) return;
+
+    const previewUrl = URL.createObjectURL(selectedAvatarFile);
+    setAvatarPreview(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [selectedAvatarFile]);
+
   if (!isOpen || !staff) return null;
+
+  const handleAvatarFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setSelectedAvatarFile(file);
+    setForm((prev) => ({ ...prev, avatarUrl: '' }));
+  };
+
+  const clearAvatarFile = () => {
+    setSelectedAvatarFile(null);
+    setAvatarPreview(form.avatarUrl || staff.avatar || '');
+  };
 
   const handleSubmit = async () => {
     if (!form.fullName.trim()) {
@@ -64,6 +92,13 @@ export function EditStaffModal({ isOpen, onClose, onSuccess, staff }: EditStaffM
       const statusRes = await employeeService.updateEmployeeStatus(staff.id, { status: form.status });
       if (statusRes?.success === false) {
         toast.warning(statusRes.message || 'Đã cập nhật thông tin, nhưng chưa cập nhật được trạng thái');
+      }
+
+      if (selectedAvatarFile) {
+        const avatarRes = await employeeService.uploadAvatar(staff.id, selectedAvatarFile);
+        if (!avatarRes?.success) {
+          toast.warning(avatarRes?.message || 'Đã cập nhật thông tin, nhưng upload avatar thất bại');
+        }
       }
 
       toast.success('Cập nhật nhân viên thành công');
@@ -154,10 +189,45 @@ export function EditStaffModal({ isOpen, onClose, onSuccess, staff }: EditStaffM
               <label className="block text-sm text-gray-700 mb-1">Avatar URL</label>
               <input
                 value={form.avatarUrl}
-                onChange={(e) => setForm((prev) => ({ ...prev, avatarUrl: e.target.value }))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setForm((prev) => ({ ...prev, avatarUrl: value }));
+                  if (value.trim()) {
+                    setSelectedAvatarFile(null);
+                    setAvatarPreview(value.trim());
+                  } else if (!selectedAvatarFile) {
+                    setAvatarPreview(staff.avatar || '');
+                  }
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="https://..."
               />
+              <div className="mt-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarFileChange}
+                  className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+              {(selectedAvatarFile || avatarPreview) && (
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src={avatarPreview}
+                    alt="Avatar preview"
+                    className="h-14 w-14 rounded-full object-cover border border-gray-200"
+                  />
+                  {selectedAvatarFile && (
+                    <button
+                      type="button"
+                      onClick={clearAvatarFile}
+                      className="text-sm text-red-600 hover:text-red-700"
+                    >
+                      Bỏ ảnh đã chọn
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
