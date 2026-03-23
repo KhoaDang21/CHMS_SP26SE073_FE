@@ -38,7 +38,7 @@ const authenticatedNavigationItems = [
   { name: 'Dashboard', nameVi: 'Trang Chủ', href: '/customer/dashboard', icon: Compass },
   { name: 'Booking', nameVi: 'Đặt Phòng', href: '/customer/bookings', icon: Compass },
   { name: 'Favorites', nameVi: 'Yêu Thích', href: '/customer/favorites', icon: Heart },
-  { name: 'Messages', nameVi: 'Tin Nhắn', href: '/customer/messages', icon: MessageCircle },
+  { name: 'Messages', nameVi: 'Hỗ Trợ', href: '/customer/messages', icon: MessageCircle },
 ];
 
 function formatTime(dateStr: string): string {
