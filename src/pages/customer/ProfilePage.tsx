@@ -1,22 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  User as UserIcon,
-  Home,
-  BookOpen,
-  Compass,
-  Heart,
-  MessageCircle,
-  ChevronLeft,
-  Loader2
-} from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { profileService, type UserProfile } from '../../services/profileService';
 import { toast } from 'sonner';
 import PersonalInfoSection from '../../components/profile/PersonalInfoSection';
 import SecuritySection from '../../components/profile/SecuritySection';
 import PreferencesSection from '../../components/profile/PreferencesSection';
-import Header from '../../components/ui/header';
 import AccountLayout from '../../layouts/AccountLayout';
 
 type TabType = 'personal' | 'security' | 'preferences';
@@ -42,9 +32,13 @@ const translations = {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const currentUser = authService.getCurrentUser();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('personal');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'preferences' || tab === 'security') return tab;
+    return 'personal';
+  });
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

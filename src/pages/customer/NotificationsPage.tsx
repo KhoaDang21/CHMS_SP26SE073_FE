@@ -31,10 +31,8 @@ const STATUS_BADGES: Record<string, string> = {
 };
 
 function renderContentWithStatus(text: string): React.ReactNode {
-  const pattern = new RegExp(
-    `\\b(${Object.keys(STATUS_BADGES).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`,
-    'gi'
-  );
+  const keys = Object.keys(STATUS_BADGES).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c));
+  const pattern = new RegExp(`(${keys.join('|')})`, 'gi');
   const parts = text.split(pattern);
   return parts.map((part, i) => {
     const cls = STATUS_BADGES[part.toLowerCase()];
@@ -48,6 +46,7 @@ function renderContentWithStatus(text: string): React.ReactNode {
     return part;
   });
 }
+
 
 // Navigate đến trang phù hợp
 function getNotifRoute(notif: Notification): string {
