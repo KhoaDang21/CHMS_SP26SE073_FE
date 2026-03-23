@@ -1,25 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Bell,
-  BookOpen,
-  Compass,
-  Heart,
-  User,
-  LogOut,
-  MessageCircle,
-  Settings,
-  Waves,
-  Menu,
-  X,
-  Trash2,
-  CheckCheck,
-  Star,
+  Bell, Compass, Heart, User, LogOut, MessageCircle,
+  BellRing, Waves, Menu, X, Trash2, CheckCheck, Star,
+  Mail, Smartphone, Save,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
 import { notificationService } from '../../services/notificationService';
-import type { Notification } from '../../services/notificationService';
+import type { Notification, NotificationSettings } from '../../services/notificationService';
 import { signalRService } from '../../services/signalRService';
 import { minDelay } from '../../utils/minDelay';
 
@@ -56,6 +45,53 @@ function formatTime(dateStr: string): string {
   return date.toLocaleDateString('vi-VN');
 }
 
+// Map status keyword → badge color
+const STATUS_BADGES: Record<string, string> = {
+  completed: 'bg-cyan-100 text-cyan-700',
+  'hoàn thành': 'bg-cyan-100 text-cyan-700',
+  confirmed: 'bg-green-100 text-green-700',
+  'đã xác nhận': 'bg-green-100 text-green-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  'chờ thanh toán': 'bg-yellow-100 text-yellow-700',
+  cancelled: 'bg-red-100 text-red-700',
+  'đã hủy': 'bg-red-100 text-red-700',
+  rejected: 'bg-red-100 text-red-700',
+  'bị từ chối': 'bg-red-100 text-red-700',
+  paid: 'bg-green-100 text-green-700',
+  'đã thanh toán': 'bg-green-100 text-green-700',
+  refunded: 'bg-purple-100 text-purple-700',
+  'hoàn tiền': 'bg-purple-100 text-purple-700',
+};
+
+function renderContentWithStatus(text: string): React.ReactNode {
+  const pattern = new RegExp(
+    `\\b(${Object.keys(STATUS_BADGES).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`,
+    'gi'
+  );
+  const parts = text.split(pattern);
+  return parts.map((part, i) => {
+    const cls = STATUS_BADGES[part.toLowerCase()];
+    if (cls) {
+      return (
+        <span key={i} className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold mx-0.5 ${cls}`}>
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
+// Navigate đến trang phù hợp dựa vào nội dung notification
+function getNotifRoute(notif: Notification): string {
+  const text = `${notif.title ?? ''} ${notif.content}`.toLowerCase();
+  if (text.includes('đặt phòng') || text.includes('booking') || text.includes('check-in') || text.includes('check-out') || text.includes('hủy')) return '/customer/bookings';
+  if (text.includes('thanh toán') || text.includes('payment') || text.includes('tiền')) return '/customer/bookings';
+  if (text.includes('đánh giá') || text.includes('review')) return '/customer/reviews';
+  if (text.includes('hỗ trợ') || text.includes('ticket') || text.includes('support')) return '/customer/messages';
+  return '/customer/notifications';
+}
+
 export default function Header({ showMenuButton = false, onMenuClick }: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,6 +108,12 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // Notification settings modal (in avatar dropdown)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<NotificationSettings>({ emailNotif: true, pushNotif: true, smsNotif: false });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const currentNavigationItems = isAuthenticated ? authenticatedNavigationItems : navigationItems;
 
@@ -90,7 +132,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
 
     signalRService.connect(token).then((conn) => {
       // Join vào group của user để nhận notification riêng
-      if (userId) conn.invoke('JoinUserGroup', userId).catch(() => {});
+      if (userId) conn.invoke('JoinUserGroup', userId).catch(() => { });
 
       // Lắng nghe event BE push xuống (tên event BE sẽ dùng)
       conn.on('ReceiveNotification', (notif: Notification) => {
@@ -176,6 +218,31 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
     }
   };
 
+  const handleOpenSettings = async () => {
+    setIsUserMenuOpen(false);
+    setIsSettingsOpen(true);
+    setSettingsLoading(true);
+    try {
+      const s = await notificationService.getSettings();
+      setSettings(s);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await notificationService.updateSettings(settings);
+      toast.success('Đã lưu cài đặt thông báo');
+      setIsSettingsOpen(false);
+    } catch {
+      toast.error('Lưu cài đặt thất bại');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   const isActivePath = (path: string) => location.pathname === path;
 
   return (
@@ -209,11 +276,10 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
               <button
                 key={item.href}
                 onClick={() => navigate(item.href)}
-                className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                  isActivePath(item.href)
-                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`px-6 py-2 rounded-lg font-medium transition-all ${isActivePath(item.href)
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+                  }`}
               >
                 {item.nameVi}
               </button>
@@ -265,7 +331,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                       </div>
 
                       {/* Body */}
-                      <div className="max-h-80 overflow-y-auto">
+                      <div className="max-h-72 overflow-y-auto">
                         {notifLoading ? (
                           <div className="flex items-center justify-center py-10">
                             <svg className="animate-spin w-6 h-6 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -279,13 +345,16 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                             <p className="text-sm">Không có thông báo</p>
                           </div>
                         ) : (
-                          notifications.map((notif) => (
+                          notifications.slice(0, 5).map((notif) => (
                             <div
                               key={notif.id}
-                              onClick={() => !notif.isRead && handleMarkAsRead(notif.id)}
-                              className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors group ${
-                                !notif.isRead ? 'bg-blue-50/50' : ''
-                              }`}
+                              onClick={async () => {
+                                if (!notif.isRead) await handleMarkAsRead(notif.id);
+                                setIsNotifOpen(false);
+                                navigate(getNotifRoute(notif));
+                              }}
+                              className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors group ${!notif.isRead ? 'bg-blue-50/50' : ''
+                                }`}
                             >
                               {/* Unread dot */}
                               <div className="mt-1.5 flex-shrink-0">
@@ -303,7 +372,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                                   </p>
                                 )}
                                 <p className={`text-sm ${!notif.isRead ? 'text-gray-700' : 'text-gray-500'} line-clamp-2`}>
-                                  {notif.content}
+                                  {renderContentWithStatus(notif.content)}
                                 </p>
                                 <p className="text-xs text-gray-400 mt-0.5">{formatTime(notif.createdAt)}</p>
                               </div>
@@ -317,6 +386,16 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                             </div>
                           ))
                         )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="border-t border-gray-100">
+                        <button
+                          onClick={() => { setIsNotifOpen(false); navigate('/customer/notifications'); }}
+                          className="w-full py-2.5 text-sm text-center text-blue-500 hover:text-blue-700 hover:bg-gray-50 transition-colors font-medium"
+                        >
+                          Xem tất cả thông báo
+                        </button>
                       </div>
                     </div>
                   )}
@@ -339,11 +418,11 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                       <button
-                        onClick={() => { navigate('/customer/bookings'); setIsUserMenuOpen(false); }}
+                        onClick={() => { navigate('/customer/profile'); setIsUserMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
-                        <BookOpen className="w-4 h-4" />
-                        Lịch Sử Đặt Phòng
+                        <User className="w-4 h-4" />
+                        Hồ Sơ
                       </button>
                       <button
                         onClick={() => { navigate('/customer/reviews'); setIsUserMenuOpen(false); }}
@@ -352,17 +431,12 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                         <Star className="w-4 h-4" />
                         Đánh Giá Của Tôi
                       </button>
-                      <hr className="my-2" />
                       <button
-                        onClick={() => { navigate('/customer/profile'); setIsUserMenuOpen(false); }}
+                        onClick={handleOpenSettings}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
-                        <User className="w-4 h-4" />
-                        Hồ Sơ
-                      </button>
-                      <button className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700">
-                        <Settings className="w-4 h-4" />
-                        Cài Đặt
+                        <BellRing className="w-4 h-4" />
+                        Cài Đặt Thông Báo
                       </button>
                       <hr className="my-2" />
                       <button
@@ -414,11 +488,10 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                   <button
                     key={item.href}
                     onClick={() => { navigate(item.href); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${
-                      isActive
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     {Icon ? <Icon className="w-4 h-4 mr-2" /> : null}
                     {item.nameVi}
@@ -457,6 +530,84 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
             setIsNotifOpen(false);
           }}
         />
+      )}
+
+      {/* ── Notification Settings Modal ── */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <BellRing className="w-5 h-5 text-blue-500" />
+                <span className="font-semibold text-gray-800">Cài đặt thông báo</span>
+              </div>
+              <button onClick={() => setIsSettingsOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {settingsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <svg className="animate-spin w-7 h-7 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {([
+                  { key: 'emailNotif' as keyof NotificationSettings, icon: Mail, label: 'Email', desc: 'Nhận thông báo qua email', color: 'text-blue-500', bg: 'bg-blue-50' },
+                  { key: 'pushNotif' as keyof NotificationSettings, icon: Bell, label: 'Push Notification', desc: 'Thông báo đẩy trên trình duyệt', color: 'text-purple-500', bg: 'bg-purple-50' },
+                  { key: 'smsNotif' as keyof NotificationSettings, icon: Smartphone, label: 'SMS', desc: 'Tin nhắn SMS trên điện thoại', color: 'text-green-500', bg: 'bg-green-50' },
+                ] as const).map(({ key, icon: Icon, label, desc, color, bg }) => (
+                  <div key={key} className="flex items-center justify-between px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 ${bg} rounded-xl flex items-center justify-center`}>
+                        <Icon className={`w-4 h-4 ${color}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{label}</p>
+                        <p className="text-xs text-gray-400">{desc}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSettings(prev => ({ ...prev, [key]: !prev[key] }))}
+                      style={{ width: 40, height: 22 }}
+                      className={`relative rounded-full transition-colors duration-200 focus:outline-none flex-shrink-0 ${settings[key] ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gray-200'}`}
+                    >
+                      <span
+                        className="absolute top-0.5 bg-white rounded-full shadow transition-transform duration-200"
+                        style={{ width: 18, height: 18, left: 2, transform: settings[key] ? 'translateX(18px)' : 'translateX(0)' }}
+                      />
+                    </button>
+                  </div>
+                ))}
+                <div className="px-5 py-4">
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={savingSettings}
+                    className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-medium hover:from-blue-400 hover:to-cyan-400 transition-all disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
+                  >
+                    {savingSettings ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Đang lưu...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Lưu cài đặt
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Logout overlay */}

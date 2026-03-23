@@ -9,6 +9,12 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface NotificationSettings {
+  emailNotif: boolean;
+  pushNotif: boolean;
+  smsNotif: boolean;
+}
+
 const mapNotification = (raw: any): Notification => ({
   id: raw.id ?? '',
   title: raw.title ?? '',
@@ -54,5 +60,26 @@ export const notificationService = {
   /** DELETE /api/notifications/{id} */
   async delete(id: string): Promise<void> {
     await apiService.delete<any>(apiConfig.endpoints.notifications.delete(id));
+  },
+
+  /** GET /api/notifications/settings */
+  async getSettings(): Promise<NotificationSettings> {
+    try {
+      const res = await apiService.get<any>(apiConfig.endpoints.notifications.settings);
+      const d = res?.data ?? res ?? {};
+      return {
+        emailNotif: d.emailNotif ?? d.EmailNotif ?? true,
+        pushNotif: d.pushNotif ?? d.PushNotif ?? true,
+        smsNotif: d.smsNotif ?? d.SmsNotif ?? false,
+      };
+    } catch (e) {
+      console.error('getSettings error:', e);
+      return { emailNotif: true, pushNotif: true, smsNotif: false };
+    }
+  },
+
+  /** PUT /api/notifications/settings */
+  async updateSettings(settings: NotificationSettings): Promise<void> {
+    await apiService.put<any>(apiConfig.endpoints.notifications.settings, settings);
   },
 };

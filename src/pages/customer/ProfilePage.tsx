@@ -17,6 +17,7 @@ import PersonalInfoSection from '../../components/profile/PersonalInfoSection';
 import SecuritySection from '../../components/profile/SecuritySection';
 import PreferencesSection from '../../components/profile/PreferencesSection';
 import Header from '../../components/ui/header';
+import AccountLayout from '../../layouts/AccountLayout';
 
 type TabType = 'personal' | 'security' | 'preferences';
 
@@ -122,137 +123,74 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50">
-      <Header showMenuButton onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+    <AccountLayout>
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Header */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">{t.profile}</h2>
+          <p className="text-gray-500 text-sm mt-0.5">{language === 'vi' ? 'Quản lý thông tin cá nhân của bạn' : 'Manage your personal information'}</p>
+        </div>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className={`
-          fixed lg:sticky top-16 left-0 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 z-30
-          transition-transform duration-300 w-64
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
-          <nav className="p-4 space-y-2">
+        {/* Tabs */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
+          <div className="flex gap-2">
             <button
-              onClick={() => navigate('/customer/dashboard')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors"
+              onClick={() => setActiveTab('personal')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                activeTab === 'personal'
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
             >
-              <Home className="w-5 h-5" />
-              <span className="font-medium">Dashboard</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors">
-              <Compass className="w-5 h-5" />
-              <span className="font-medium">{language === 'vi' ? 'Khám Phá' : 'Explore'}</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors">
-              <BookOpen className="w-5 h-5" />
-              <span className="font-medium">{language === 'vi' ? 'Đặt Phòng' : 'My Bookings'}</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors">
-              <Heart className="w-5 h-5" />
-              <span className="font-medium">{language === 'vi' ? 'Yêu Thích' : 'Favorites'}</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors">
-              <MessageCircle className="w-5 h-5" />
-              <span className="font-medium">{language === 'vi' ? 'Tin Nhắn' : 'Messages'}</span>
+              {t.personalInfo}
             </button>
             <button
-              onClick={() => navigate('/customer/profile')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+              onClick={() => setActiveTab('security')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                activeTab === 'security'
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
             >
-              <UserIcon className="w-5 h-5" />
-              <span className="font-medium">{language === 'vi' ? 'Hồ Sơ' : 'Profile'}</span>
+              {t.security}
             </button>
-          </nav>
-        </aside>
-
-        {/* Overlay for mobile */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-          ></div>
-        )}
-
-        {/* Main Content */}
-        <main className="flex-1 p-4 lg:p-8">
-          <div className="max-w-5xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-              <button
-                onClick={() => navigate('/customer/dashboard')}
-                className="p-2 hover:bg-white rounded-lg transition-colors"
-              >
-                <ChevronLeft className="w-6 h-6 text-gray-700" />
-              </button>
-              <div>
-                <h2 className="text-gray-900">{t.profile}</h2>
-                <p className="text-gray-600 text-sm">{language === 'vi' ? 'Quản lý thông tin cá nhân của bạn' : 'Manage your personal information'}</p>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setActiveTab('personal')}
-                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
-                    activeTab === 'personal'
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {t.personalInfo}
-                </button>
-                <button
-                  onClick={() => setActiveTab('security')}
-                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
-                    activeTab === 'security'
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {t.security}
-                </button>
-                <button
-                  onClick={() => setActiveTab('preferences')}
-                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
-                    activeTab === 'preferences'
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {t.preferences}
-                </button>
-              </div>
-            </div>
-
-            {/* Tab Content */}
-            <div>
-              {activeTab === 'personal' && (
-                <PersonalInfoSection
-                  profile={profile}
-                  onProfileUpdate={handleProfileUpdate}
-                  language={language}
-                />
-              )}
-              {activeTab === 'security' && (
-                <SecuritySection
-                  userId={profile.id ?? ''}
-                  language={language}
-                />
-              )}
-              {activeTab === 'preferences' && (
-                <PreferencesSection
-                  profile={profile}
-                  onProfileUpdate={handleProfileUpdate}
-                  language={language}
-                />
-              )}
-            </div>
+            <button
+              onClick={() => setActiveTab('preferences')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                activeTab === 'preferences'
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {t.preferences}
+            </button>
           </div>
-        </main>
+        </div>
+
+        {/* Tab Content */}
+        <div>
+          {activeTab === 'personal' && (
+            <PersonalInfoSection
+              profile={profile}
+              onProfileUpdate={handleProfileUpdate}
+              language={language}
+            />
+          )}
+          {activeTab === 'security' && (
+            <SecuritySection
+              userId={profile.id ?? ''}
+              language={language}
+            />
+          )}
+          {activeTab === 'preferences' && (
+            <PreferencesSection
+              profile={profile}
+              onProfileUpdate={handleProfileUpdate}
+              language={language}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </AccountLayout>
   );
 }
