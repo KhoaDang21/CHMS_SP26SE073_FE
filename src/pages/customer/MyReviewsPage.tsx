@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Star, Pencil, Trash2, MessageSquare, RefreshCcw, CheckCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import MainLayout from '../../layouts/MainLayout';
+import AccountLayout from '../../layouts/AccountLayout';
 import { reviewService } from '../../services/reviewService';
 import type { Review } from '../../services/reviewService';
 import ReviewModal from './ReviewModal';
@@ -57,7 +57,7 @@ export default function MyReviewsPage() {
   };
 
   return (
-    <MainLayout>
+    <AccountLayout>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -171,6 +171,6 @@ export default function MyReviewsPage() {
           onSuccess={() => { setEditTarget(null); load(); }}
         />
       )}
-    </MainLayout>
+    </AccountLayout>
   );
 }
