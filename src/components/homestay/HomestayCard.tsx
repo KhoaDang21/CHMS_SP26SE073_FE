@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Star, MapPin, Users } from 'lucide-react';
+import { Star, MapPin, Users, Heart } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { apiService } from '../../services/apiService';
 import { apiConfig } from '../../config/apiConfig';
+import { useWishlist } from '../../contexts/WishlistContext';
+import { authService } from '../../services/authService';
+import toast from 'react-hot-toast';
 import type { Homestay } from '../../types/homestay.types';
 
 interface PublicReview {
@@ -63,6 +66,8 @@ interface Props {
 export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
   const navigate = useNavigate();
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
+  const { favorites, loading: favLoading, toggle } = useWishlist();
+  const isFavorite = favLoading ? false : favorites.has(homestay.id);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +95,28 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
             alt={homestay.name}
             className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 ${isBooked ? 'brightness-50' : ''}`}
           />
+          {/* Favorite button */}
+          <button
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!authService.isAuthenticated()) {
+                toast('Vui lòng đăng nhập để lưu yêu thích', { icon: '🔒' });
+                return;
+              }
+              try {
+                await toggle(homestay.id);
+                toast.success(isFavorite ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
+              } catch (err) {
+                toast.error('Không thể thay đổi trạng thái yêu thích');
+              }
+            }}
+            title={isFavorite ? 'Bỏ thích' : 'Lưu yêu thích'}
+            className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow hover:scale-105 transition-transform"
+            type="button"
+          >
+            <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+          </button>
           {/* Booked overlay */}
           {isBooked && (
             <div className="absolute inset-0 flex items-center justify-center">

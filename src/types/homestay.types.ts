@@ -74,6 +74,7 @@ export interface Homestay {
   houseRules?: string;
   createdAt?: string;
   updatedAt?: string;
+  addedAt?: string;
 }
 
 export interface Booking {

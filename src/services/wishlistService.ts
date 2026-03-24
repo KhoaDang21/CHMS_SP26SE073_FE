@@ -3,15 +3,16 @@ import { apiConfig } from '../config/apiConfig';
 import type { Homestay } from '../types/homestay.types';
 
 const mapHomestay = (it: any): Homestay => ({
-  id: String(it.id ?? it.Id ?? ''),
-  name: it.name ?? it.Name ?? '',
+  id: String(it.id ?? it.Id ?? it.HomestayId ?? it.homestayId ?? ''),
+  name: it.name ?? it.Name ?? it.HomestayName ?? it.homestayName ?? '',
   description: it.description ?? it.Description ?? '',
   address: it.address ?? it.Address ?? '',
   districtName: it.districtName ?? it.DistrictName ?? '',
   provinceName: it.provinceName ?? it.ProvinceName ?? '',
   city: it.city ?? it.City ?? '',
   country: it.country ?? it.Country ?? '',
-  pricePerNight: it.pricePerNight ?? it.PricePerNight ?? 0,
+  pricePerNight: it.pricePerNight ?? it.PricePerNight ?? it.Price ?? it.price ?? 0,
+  addedAt: it.addedAt ?? it.AddedAt ?? it.AddedAt ?? it.createdAt ?? it.CreatedAt ?? '',
   maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
   bedrooms: it.bedrooms ?? it.Bedrooms ?? 0,
   bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
@@ -32,7 +33,24 @@ export const wishlistService = {
     try {
       const res = await apiService.get<any>(apiConfig.endpoints.wishlist.list);
       const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      return list.map(mapHomestay);
+      const mapped: Homestay[] = list.map(mapHomestay);
+
+      // If items lack images, fetch homestay details to enrich (BE wishlist may not include images)
+      const enriched = await Promise.all(
+        mapped.map(async (it) => {
+          if (it.images && it.images.length > 0) return it;
+          try {
+            const detailRes = await apiService.get<any>(apiConfig.endpoints.homestays.detail(it.id));
+            const detailData = detailRes?.data ?? detailRes ?? {};
+            const images = detailData.images ?? detailData.imageUrls ?? detailData.ImageUrls ?? [];
+            return { ...it, images } as Homestay;
+          } catch (e) {
+            return it;
+          }
+        })
+      );
+
+      return enriched;
     } catch (e) {
       console.error('getMyWishlist error:', e);
       return [];
