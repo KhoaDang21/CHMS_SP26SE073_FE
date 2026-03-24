@@ -16,12 +16,12 @@ import {
   X,
   LogOut,
   LayoutDashboard,
-  ClipboardList,
   UserCog,
   TrendingUp,
   Shield,
   FileText,
   UserCheck,
+  MessageSquare,
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
@@ -155,7 +155,7 @@ export default function ManagerHomestayDetailPage() {
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
     { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
     { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
-    { id: 'tasks', label: 'Công việc', icon: ClipboardList, path: '/manager/tasks' },
+    { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
   ];
 
   if (loading) {

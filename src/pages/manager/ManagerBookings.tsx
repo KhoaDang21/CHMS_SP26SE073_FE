@@ -21,7 +21,7 @@ import {
   Phone,
   Mail,
   Eye,
-  ClipboardList,
+  MessageSquare,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { adminBookingService } from '../../services/adminBookingService';
@@ -188,7 +188,7 @@ export default function ManagerBookings() {
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
     { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
     { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
-    { id: 'tasks', label: 'Công việc', icon: ClipboardList, path: '/manager/tasks' },
+    { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
   ];
 
   return (
