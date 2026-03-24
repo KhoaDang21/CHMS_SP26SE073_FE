@@ -112,24 +112,58 @@ export default function CustomerDashboard() {
     }
   }, [selectedProvince, allDistricts]);
 
-  // Filter homestays when province/district changes
+  // Tập homestayId đã bị block trong khoảng checkIn–checkOut đang chọn
+  const bookedHomestayIds = useMemo(() => {
+    if (!checkInDate || !checkOutDate) return new Set<string>();
+    const selIn = new Date(checkInDate);
+    const selOut = new Date(checkOutDate);
+    const blocked = new Set<string>();
+    myBookings.forEach(b => {
+      if (b.status === 'CANCELLED' || b.status === 'REJECTED') return;
+      const bIn = new Date(b.checkIn);
+      const bOut = new Date(b.checkOut);
+      if (selIn < bOut && selOut > bIn) {
+        blocked.add(b.homestayId);
+      }
+    });
+    return blocked;
+  }, [checkInDate, checkOutDate, myBookings]);
+
+  // Filter homestays when province/district/date changes
   useEffect(() => {
-    if (!selectedProvince && !selectedDistrict) {
-      setFilteredHomestays(allHomestays);
-      return;
-    }
     const district = allDistricts.find(d => d.id === selectedDistrict);
-    const filtered = allHomestays.filter(h => {
+
+    let result = allHomestays.filter(h => {
       const matchProvince = !selectedProvince || (h.provinceName || '').toLowerCase() === selectedProvince.toLowerCase();
       const matchDistrict = !district || (h.districtName || '').toLowerCase() === district.name.toLowerCase();
       return matchProvince && matchDistrict;
     });
-    setFilteredHomestays(filtered);
-  }, [selectedProvince, selectedDistrict, allHomestays, allDistricts]);
 
-  // Lọc booking sắp tới (CONFIRMED và chưa qua ngày checkIn)
+    if (checkInDate && checkOutDate) {
+      const selIn = new Date(checkInDate);
+      const selOut = new Date(checkOutDate);
+      const hasLocationFilter = !!(selectedProvince || selectedDistrict);
+
+      if (!hasLocationFilter) {
+        // Chỉ chọn ngày, không filter địa điểm → ẩn luôn homestay đã bị block
+        result = result.filter(h => {
+          const isBlocked = myBookings.some(b => {
+            if (b.status === 'CANCELLED' || b.status === 'REJECTED') return false;
+            if (b.homestayId !== h.id) return false;
+            return selIn < new Date(b.checkOut) && selOut > new Date(b.checkIn);
+          });
+          return !isBlocked;
+        });
+      }
+      // Có filter địa điểm → giữ tất cả, card sẽ tự mark "Đã đặt" qua bookedHomestayIds
+    }
+
+    setFilteredHomestays(result);
+  }, [selectedProvince, selectedDistrict, checkInDate, checkOutDate, allHomestays, allDistricts, myBookings]);
+
+  // Lọc booking sắp tới (CONFIRMED/CHECKED_IN và chưa qua ngày checkOut)
   const upcomingBookings = myBookings.filter(
-    b => b.status === 'CONFIRMED' && new Date(b.checkIn) >= new Date()
+    b => (b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && new Date(b.checkOut) >= new Date()
   );
 
 
@@ -344,11 +378,16 @@ export default function CustomerDashboard() {
         )}
 
         {/* Search Results */}
-        {(selectedProvince || selectedDistrict) && (
+        {(selectedProvince || selectedDistrict || (checkInDate && checkOutDate)) && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">
                 Kết Quả Tìm Kiếm ({filteredHomestays.length})
+                {checkInDate && checkOutDate && (
+                  <span className="ml-2 text-sm font-normal text-gray-500">
+                    · {new Date(checkInDate).toLocaleDateString('vi-VN')} – {new Date(checkOutDate).toLocaleDateString('vi-VN')}
+                  </span>
+                )}
               </h3>
             </div>
             {filteredHomestays.length === 0 ? (
@@ -361,6 +400,7 @@ export default function CustomerDashboard() {
                   <HomestayCard
                     key={homestay.id}
                     homestay={homestay}
+                    isBooked={bookedHomestayIds.has(homestay.id)}
                     onBook={() => navigate(`/homestays/${homestay.id}`)}
                   />
                 ))}
@@ -370,7 +410,7 @@ export default function CustomerDashboard() {
         )}
 
         {/* All Homestays */}
-        {!selectedProvince && !selectedDistrict && (
+        {!selectedProvince && !selectedDistrict && !(checkInDate && checkOutDate) && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">Homestay Nổi Bật</h3>
@@ -381,6 +421,7 @@ export default function CustomerDashboard() {
                 <HomestayCard
                   key={homestay.id}
                   homestay={homestay}
+                  isBooked={bookedHomestayIds.has(homestay.id)}
                   onBook={() => navigate(`/homestays/${homestay.id}`)}
                 />
               ))}

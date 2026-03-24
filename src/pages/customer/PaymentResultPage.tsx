@@ -37,7 +37,7 @@ export default function PaymentResultPage() {
       setBooking(detail);
 
       const status = (detail.status as string).toUpperCase();
-      if (status === 'CONFIRMED') setState('success');
+      if (status === 'CONFIRMED' || status === 'CHECKED_IN') setState('success');
       else if (status === 'CANCELLED' || status === 'REJECTED') setState('cancelled');
       else setState('pending'); // PENDING = chưa thanh toán
     } catch {

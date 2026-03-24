@@ -94,7 +94,7 @@ export default function BookingsPage() {
   const filtered = useMemo(() => {
     if (activeTab === 'all') return bookings;
     if (activeTab === 'pending') return bookings.filter(b => b.status === 'PENDING');
-    if (activeTab === 'confirmed') return bookings.filter(b => b.status === 'CONFIRMED');
+    if (activeTab === 'confirmed') return bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'CHECKED_IN');
     if (activeTab === 'completed') return bookings.filter(b => b.status === 'COMPLETED');
     if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED' || b.status === 'REJECTED');
     return bookings;
@@ -165,23 +165,25 @@ export default function BookingsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
-      case 'CONFIRMED': return 'bg-green-100 text-green-700 border-green-200';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'CANCELLED': return 'bg-red-100 text-red-700 border-red-200';
-      case 'COMPLETED': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
-      case 'REJECTED': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'CONFIRMED':   return 'bg-green-100 text-green-700 border-green-200';
+      case 'CHECKED_IN':  return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'PENDING':     return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'CANCELLED':   return 'bg-red-100 text-red-700 border-red-200';
+      case 'COMPLETED':   return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+      case 'REJECTED':    return 'bg-red-100 text-red-700 border-red-200';
+      default:            return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status.toUpperCase()) {
-      case 'CONFIRMED': return 'Đã xác nhận';
-      case 'PENDING': return 'Chờ thanh toán';
-      case 'CANCELLED': return 'Đã hủy';
-      case 'COMPLETED': return 'Hoàn thành';
-      case 'REJECTED': return 'Bị từ chối';
-      default: return 'Trạng thái';
+      case 'CONFIRMED':   return 'Đã xác nhận';
+      case 'CHECKED_IN':  return 'Đang lưu trú';
+      case 'PENDING':     return 'Chờ thanh toán';
+      case 'CANCELLED':   return 'Đã hủy';
+      case 'COMPLETED':   return 'Hoàn thành';
+      case 'REJECTED':    return 'Bị từ chối';
+      default:            return 'Trạng thái';
     }
   };
 
@@ -729,7 +731,7 @@ export default function BookingsPage() {
                           )}
                           <button
                             onClick={startEdit}
-                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED'}
+                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
                             className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${selected.status !== 'PENDING'
                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 : 'bg-gray-900 hover:bg-black text-white'
@@ -758,7 +760,7 @@ export default function BookingsPage() {
                                 setSaving(false);
                               }
                             }}
-                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED'}
+                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
                             className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${selected.status !== 'PENDING'
                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 : 'bg-red-600 hover:bg-red-700 text-white'

@@ -8,7 +8,7 @@ import { apiConfig } from "../config/apiConfig";
 // status ("PENDING"|"CONFIRMED"|"CANCELLED"|"COMPLETED"|"REJECTED"),
 // specialRequests, contactPhone, createdAt
 
-export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REJECTED";
+export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REJECTED" | "CHECKED_IN";
 
 export interface Booking {
   id: string;
@@ -69,6 +69,7 @@ const normalizeStatus = (raw: any): BookingStatus => {
   if (v === "CANCELLED") return "CANCELLED";
   if (v === "COMPLETED") return "COMPLETED";
   if (v === "REJECTED") return "REJECTED";
+  if (v === "CHECKED_IN") return "CHECKED_IN";
   return "PENDING";
 };
 

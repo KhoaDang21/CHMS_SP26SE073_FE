@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar } from "lucide-react";
 import { publicHomestayService } from "../services/publicHomestayService";
-import { bookingService } from "../services/bookingService";
+import { bookingService, type Booking } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { provinceService } from "../services/provinceService";
 import { districtService } from "../services/districtService";
@@ -34,11 +34,19 @@ export default function HomePage() {
   const [homestays, setHomestays] = useState<Homestay[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [myBookings, setMyBookings] = useState<Booking[]>([]);
 
   // Load provinces & districts once
   useEffect(() => {
     provinceService.getAllProvinces().then(setProvinces);
     districtService.getAllDistricts().then(setAllDistricts);
+  }, []);
+
+  // Load bookings nếu đã login (để tính booked dates)
+  useEffect(() => {
+    if (authService.isAuthenticated() && authService.isTokenValid()) {
+      bookingService.getMyBookings().then(setMyBookings).catch(() => {});
+    }
   }, []);
 
   // Load all homestays initially
@@ -64,7 +72,7 @@ export default function HomePage() {
         });
         if (!mounted) return;
         setAllHomestays(sorted);
-        setHomestays(sorted.slice(0, 8));
+        setHomestays(sorted);
       } catch (err) {
         console.error('Load homestays error', err);
         if (!mounted) return;
@@ -89,20 +97,49 @@ export default function HomePage() {
     }
   }, [selectedProvince, allDistricts]);
 
-  // Filter homestays when province/district changes
+  // Tập homestayId đã bị block trong khoảng ngày đang chọn
+  const bookedHomestayIds = useMemo(() => {
+    if (!checkInDate || !checkOutDate) return new Set<string>();
+    const selIn = new Date(checkInDate);
+    const selOut = new Date(checkOutDate);
+    const blocked = new Set<string>();
+    myBookings.forEach(b => {
+      if (b.status === 'CANCELLED' || b.status === 'REJECTED') return;
+      if (selIn < new Date(b.checkOut) && selOut > new Date(b.checkIn)) {
+        blocked.add(b.homestayId);
+      }
+    });
+    return blocked;
+  }, [checkInDate, checkOutDate, myBookings]);
+
+  // Filter homestays when province/district/date changes
   useEffect(() => {
-    if (!selectedProvince && !selectedDistrict) {
-      setHomestays(allHomestays.slice(0, 8));
-      return;
-    }
     const district = allDistricts.find(d => d.id === selectedDistrict);
-    const filtered = allHomestays.filter(h => {
+
+    let result = allHomestays.filter(h => {
       const matchProvince = !selectedProvince || (h.provinceName || '').toLowerCase() === selectedProvince.toLowerCase();
       const matchDistrict = !district || (h.districtName || '').toLowerCase() === district.name.toLowerCase();
       return matchProvince && matchDistrict;
     });
-    setHomestays(filtered);
-  }, [selectedProvince, selectedDistrict, allHomestays, allDistricts]);
+
+    if (checkInDate && checkOutDate) {
+      const selIn = new Date(checkInDate);
+      const selOut = new Date(checkOutDate);
+      const hasLocationFilter = !!(selectedProvince || selectedDistrict);
+
+      if (!hasLocationFilter) {
+        // Chỉ chọn ngày → ẩn luôn homestay đã bị block
+        result = result.filter(h => !myBookings.some(b => {
+          if (b.status === 'CANCELLED' || b.status === 'REJECTED') return false;
+          if (b.homestayId !== h.id) return false;
+          return selIn < new Date(b.checkOut) && selOut > new Date(b.checkIn);
+        }));
+      }
+      // Có filter địa điểm → giữ tất cả, card mark "Đã đặt" qua bookedHomestayIds
+    }
+
+    setHomestays(result);
+  }, [selectedProvince, selectedDistrict, checkInDate, checkOutDate, allHomestays, allDistricts, myBookings]);
 
   return (
     <MainLayout>
@@ -216,7 +253,14 @@ export default function HomePage() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900">
-              {(selectedProvince || selectedDistrict) ? `Kết Quả Tìm Kiếm (${homestays.length})` : 'Homestay Nổi Bật'}
+              {(selectedProvince || selectedDistrict || (checkInDate && checkOutDate))
+                ? `Kết Quả Tìm Kiếm (${homestays.length})`
+                : 'Homestay Nổi Bật'}
+              {checkInDate && checkOutDate && (
+                <span className="ml-2 text-sm font-normal text-gray-500">
+                  · {new Date(checkInDate).toLocaleDateString('vi-VN')} – {new Date(checkOutDate).toLocaleDateString('vi-VN')}
+                </span>
+              )}
             </h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -236,6 +280,7 @@ export default function HomePage() {
               <HomestayCard
                 key={homestay.id}
                 homestay={homestay}
+                isBooked={bookedHomestayIds.has(homestay.id)}
                 onBook={async () => {
                   if (!authService.isAuthenticated() || !authService.isTokenValid()) {
                     if (authService.isAuthenticated() && !authService.isTokenValid()) {

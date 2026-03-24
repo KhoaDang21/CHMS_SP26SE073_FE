@@ -12,10 +12,12 @@ import toast from 'react-hot-toast'
 import { apiService } from '../services/apiService'
 import { apiConfig } from '../config/apiConfig'
 import type { Review } from '../services/reviewService'
+import { useWishlist } from '../contexts/WishlistContext'
 
 export default function HomestayDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { favorites, toggle } = useWishlist()
     const [homestay, setHomestay] = useState<Homestay | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -246,7 +248,24 @@ export default function HomestayDetail() {
                                                 <span className="text-xs text-gray-500">({reviews.length})</span>
                                             </div>
                                         )}
-                                        <button className="p-2 rounded-full border hover:bg-gray-50"><Heart className="w-5 h-5 text-gray-600" /></button>
+                                        {authService.isAuthenticated() && (
+                                        <button
+                                            onClick={async () => {
+                                                if (!homestay) return;
+                                                const isFav = favorites.has(homestay.id);
+                                                try {
+                                                    await toggle(homestay.id);
+                                                    toast.success(isFav ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
+                                                } catch {
+                                                    toast.error('Không thể thay đổi trạng thái yêu thích');
+                                                }
+                                            }}
+                                            className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
+                                            title={homestay && favorites.has(homestay.id) ? 'Bỏ thích' : 'Lưu yêu thích'}
+                                        >
+                                            <Heart className={`w-5 h-5 transition-colors ${homestay && favorites.has(homestay.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+                                        </button>
+                                        )}
                                     </div>
                                 </div>
 
