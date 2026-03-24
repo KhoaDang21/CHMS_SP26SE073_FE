@@ -57,9 +57,10 @@ export async function fetchReviewSummary(homestayId: string): Promise<ReviewSumm
 interface Props {
   homestay: Homestay;
   onBook?: () => void;
+  isBooked?: boolean;
 }
 
-export default function HomestayCard({ homestay, onBook }: Props) {
+export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
   const navigate = useNavigate();
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
 
@@ -87,8 +88,16 @@ export default function HomestayCard({ homestay, onBook }: Props) {
           <ImageWithFallback
             src={homestay.images?.[0] || ''}
             alt={homestay.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 ${isBooked ? 'brightness-50' : ''}`}
           />
+          {/* Booked overlay */}
+          {isBooked && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg tracking-wide">
+                Đã đặt
+              </span>
+            </div>
+          )}
           {/* Rating badge on image */}
           {avgDisplay && (
             <div className="absolute top-3 left-3 flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm">
@@ -148,10 +157,15 @@ export default function HomestayCard({ homestay, onBook }: Props) {
       {/* Book button — luôn ở đáy */}
       <div className="px-4 pb-4 mt-auto">
         <button
-          onClick={onBook ?? (() => navigate(`/homestays/${homestay.id}`))}
-          className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium"
+          onClick={isBooked ? undefined : (onBook ?? (() => navigate(`/homestays/${homestay.id}`)))}
+          disabled={isBooked}
+          className={`w-full px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+            isBooked
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
+          }`}
         >
-          Đặt Ngay
+          {isBooked ? 'Đã đặt trong khoảng này' : 'Đặt Ngay'}
         </button>
       </div>
     </div>
