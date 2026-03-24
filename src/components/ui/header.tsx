@@ -1,20 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Bell,
-  BookOpen,
-  Compass,
-  Heart,
-  User,
-  LogOut,
-  MessageCircle,
-  Settings,
-  Waves,
-  Menu,
-  X,
-  Trash2,
-  CheckCheck,
-  Star,
+  Bell, Compass, Heart, User, LogOut, MessageCircle,
+  BellRing, Waves, Menu, X, Trash2, CheckCheck, Star,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
@@ -38,7 +26,7 @@ const authenticatedNavigationItems = [
   { name: 'Dashboard', nameVi: 'Trang Chủ', href: '/customer/dashboard', icon: Compass },
   { name: 'Booking', nameVi: 'Đặt Phòng', href: '/customer/bookings', icon: Compass },
   { name: 'Favorites', nameVi: 'Yêu Thích', href: '/customer/favorites', icon: Heart },
-  { name: 'Messages', nameVi: 'Tin Nhắn', href: '/customer/messages', icon: MessageCircle },
+  { name: 'Messages', nameVi: 'Hỗ Trợ', href: '/customer/messages', icon: MessageCircle },
 ];
 
 function formatTime(dateStr: string): string {
@@ -54,6 +42,52 @@ function formatTime(dateStr: string): string {
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) return `${diffDays} ngày trước`;
   return date.toLocaleDateString('vi-VN');
+}
+
+// Map status keyword → badge color
+const STATUS_BADGES: Record<string, string> = {
+  completed: 'bg-cyan-100 text-cyan-700',
+  'hoàn thành': 'bg-cyan-100 text-cyan-700',
+  confirmed: 'bg-green-100 text-green-700',
+  'đã xác nhận': 'bg-green-100 text-green-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  'chờ thanh toán': 'bg-yellow-100 text-yellow-700',
+  cancelled: 'bg-red-100 text-red-700',
+  'đã hủy': 'bg-red-100 text-red-700',
+  rejected: 'bg-red-100 text-red-700',
+  'bị từ chối': 'bg-red-100 text-red-700',
+  paid: 'bg-green-100 text-green-700',
+  'đã thanh toán': 'bg-green-100 text-green-700',
+  refunded: 'bg-purple-100 text-purple-700',
+  'hoàn tiền': 'bg-purple-100 text-purple-700',
+};
+
+function renderContentWithStatus(text: string): React.ReactNode {
+  const keys = Object.keys(STATUS_BADGES).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, (c) => '\\' + c));
+  const pattern = new RegExp(`(${keys.join('|')})`, 'gi');
+  const parts = text.split(pattern);
+  return parts.map((part, i) => {
+    const cls = STATUS_BADGES[part.toLowerCase()];
+    if (cls) {
+      return (
+        <span key={i} className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold mx-0.5 ${cls}`}>
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
+
+// Navigate đến trang phù hợp dựa vào nội dung notification
+function getNotifRoute(notif: Notification): string {
+  const text = `${notif.title ?? ''} ${notif.content}`.toLowerCase();
+  if (text.includes('đặt phòng') || text.includes('booking') || text.includes('check-in') || text.includes('check-out') || text.includes('hủy')) return '/customer/bookings';
+  if (text.includes('thanh toán') || text.includes('payment') || text.includes('tiền')) return '/customer/bookings';
+  if (text.includes('đánh giá') || text.includes('review')) return '/customer/reviews';
+  if (text.includes('hỗ trợ') || text.includes('ticket') || text.includes('support')) return '/customer/messages';
+  return '/customer/notifications';
 }
 
 export default function Header({ showMenuButton = false, onMenuClick }: HeaderProps) {
@@ -73,6 +107,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
   const [notifLoading, setNotifLoading] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
+
   const currentNavigationItems = isAuthenticated ? authenticatedNavigationItems : navigationItems;
 
   // Fetch unread count + kết nối SignalR khi đã đăng nhập
@@ -90,7 +125,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
 
     signalRService.connect(token).then((conn) => {
       // Join vào group của user để nhận notification riêng
-      if (userId) conn.invoke('JoinUserGroup', userId).catch(() => {});
+      if (userId) conn.invoke('JoinUserGroup', userId).catch(() => { });
 
       // Lắng nghe event BE push xuống (tên event BE sẽ dùng)
       conn.on('ReceiveNotification', (notif: Notification) => {
@@ -176,6 +211,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
     }
   };
 
+
   const isActivePath = (path: string) => location.pathname === path;
 
   return (
@@ -209,11 +245,10 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
               <button
                 key={item.href}
                 onClick={() => navigate(item.href)}
-                className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                  isActivePath(item.href)
-                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`px-6 py-2 rounded-lg font-medium transition-all ${isActivePath(item.href)
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+                  }`}
               >
                 {item.nameVi}
               </button>
@@ -265,7 +300,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                       </div>
 
                       {/* Body */}
-                      <div className="max-h-80 overflow-y-auto">
+                      <div className="max-h-72 overflow-y-auto">
                         {notifLoading ? (
                           <div className="flex items-center justify-center py-10">
                             <svg className="animate-spin w-6 h-6 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -279,13 +314,16 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                             <p className="text-sm">Không có thông báo</p>
                           </div>
                         ) : (
-                          notifications.map((notif) => (
+                          notifications.slice(0, 5).map((notif) => (
                             <div
                               key={notif.id}
-                              onClick={() => !notif.isRead && handleMarkAsRead(notif.id)}
-                              className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors group ${
-                                !notif.isRead ? 'bg-blue-50/50' : ''
-                              }`}
+                              onClick={async () => {
+                                if (!notif.isRead) await handleMarkAsRead(notif.id);
+                                setIsNotifOpen(false);
+                                navigate(getNotifRoute(notif));
+                              }}
+                              className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors group ${!notif.isRead ? 'bg-blue-50/50' : ''
+                                }`}
                             >
                               {/* Unread dot */}
                               <div className="mt-1.5 flex-shrink-0">
@@ -303,7 +341,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                                   </p>
                                 )}
                                 <p className={`text-sm ${!notif.isRead ? 'text-gray-700' : 'text-gray-500'} line-clamp-2`}>
-                                  {notif.content}
+                                  {renderContentWithStatus(notif.content)}
                                 </p>
                                 <p className="text-xs text-gray-400 mt-0.5">{formatTime(notif.createdAt)}</p>
                               </div>
@@ -317,6 +355,16 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                             </div>
                           ))
                         )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="border-t border-gray-100">
+                        <button
+                          onClick={() => { setIsNotifOpen(false); navigate('/customer/notifications'); }}
+                          className="w-full py-2.5 text-sm text-center text-blue-500 hover:text-blue-700 hover:bg-gray-50 transition-colors font-medium"
+                        >
+                          Xem tất cả thông báo
+                        </button>
                       </div>
                     </div>
                   )}
@@ -339,11 +387,11 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                       <button
-                        onClick={() => { navigate('/customer/bookings'); setIsUserMenuOpen(false); }}
+                        onClick={() => { navigate('/customer/profile'); setIsUserMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
-                        <BookOpen className="w-4 h-4" />
-                        Lịch Sử Đặt Phòng
+                        <User className="w-4 h-4" />
+                        Hồ Sơ
                       </button>
                       <button
                         onClick={() => { navigate('/customer/reviews'); setIsUserMenuOpen(false); }}
@@ -352,16 +400,11 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                         <Star className="w-4 h-4" />
                         Đánh Giá Của Tôi
                       </button>
-                      <hr className="my-2" />
                       <button
-                        onClick={() => { navigate('/customer/profile'); setIsUserMenuOpen(false); }}
+                        onClick={() => { navigate('/customer/profile?tab=preferences'); setIsUserMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
-                        <User className="w-4 h-4" />
-                        Hồ Sơ
-                      </button>
-                      <button className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700">
-                        <Settings className="w-4 h-4" />
+                        <BellRing className="w-4 h-4" />
                         Cài Đặt
                       </button>
                       <hr className="my-2" />
@@ -414,11 +457,10 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                   <button
                     key={item.href}
                     onClick={() => { navigate(item.href); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${
-                      isActive
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     {Icon ? <Icon className="w-4 h-4 mr-2" /> : null}
                     {item.nameVi}
@@ -458,6 +500,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
           }}
         />
       )}
+
 
       {/* Logout overlay */}
       {isLoggingOut && (
