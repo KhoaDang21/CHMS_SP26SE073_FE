@@ -118,11 +118,11 @@ export default function ProfilePage() {
 
   return (
     <AccountLayout>
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">{t.profile}</h2>
-          <p className="text-gray-500 text-sm mt-0.5">{language === 'vi' ? 'Quản lý thông tin cá nhân của bạn' : 'Manage your personal information'}</p>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">{t.profile}</h1>
+          <p className="text-gray-500 text-sm mt-1">{language === 'vi' ? 'Quản lý thông tin cá nhân của bạn' : 'Manage your personal information'}</p>
         </div>
 
         {/* Tabs */}
