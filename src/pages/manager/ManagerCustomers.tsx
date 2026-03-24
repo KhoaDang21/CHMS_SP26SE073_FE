@@ -11,7 +11,6 @@ import {
   Home,
   UserCog,
   TrendingUp,
-  ClipboardList,
   Building2,
   Calendar,
   Phone,
@@ -31,6 +30,7 @@ import {
   FileText,
   History,
   AlertCircle,
+  MessageSquare,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { adminCustomerService } from '../../services/adminCustomerService';
@@ -225,7 +225,7 @@ export default function ManagerCustomers() {
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
     { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
     { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
-    { id: 'tasks', label: 'Công việc', icon: ClipboardList, path: '/manager/tasks' },
+    { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
   ];
 
   return (

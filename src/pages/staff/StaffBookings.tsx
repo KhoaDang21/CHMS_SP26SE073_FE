@@ -6,7 +6,6 @@ import {
   Bell,
   Calendar,
   CheckCircle,
-  ClipboardList,
   Home,
   LogOut,
   Menu,
