@@ -10,6 +10,7 @@ import {
   Home,
   LogOut,
   Menu,
+  MessageSquare,
   Phone,
   Search,
   StickyNote,
@@ -145,7 +146,7 @@ export default function StaffBookings() {
   const navigationItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
     { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: true },
-    { name: 'Tasks', icon: ClipboardList, path: '/staff/tasks', active: false },
+    { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: false },
   ];
 
   const filterOptions: { value: FilterStatus; label: string }[] = [

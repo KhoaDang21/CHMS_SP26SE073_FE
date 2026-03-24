@@ -23,6 +23,7 @@ import BookingManagement from '../pages/admin/BookingManagement';
 import CustomerManagement from '../pages/admin/CustomerManagement';
 import RevenueReport from '../pages/admin/RevenueReport';
 import StaffBookings from '../pages/staff/StaffBookings';
+import StaffReviews from '../pages/staff/StaffReviews';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import ManagerBookings from '../pages/manager/ManagerBookings';
 import ManagerCustomers from '../pages/manager/ManagerCustomers';
@@ -199,6 +200,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <StaffBookings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/reviews"
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <StaffReviews />
           </ProtectedRoute>
         }
       />
