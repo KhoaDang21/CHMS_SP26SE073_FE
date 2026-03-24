@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { wishlistService } from '../services/wishlistService';
+import { authService } from '../services/authService';
 
 type WishlistContextValue = {
     favorites: Set<string>;
@@ -23,6 +24,11 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [loading, setLoading] = useState(true);
 
     const load = async () => {
+        if (!authService.isAuthenticated()) {
+            setFavorites(new Set());
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             const list = await wishlistService.getMyWishlist();

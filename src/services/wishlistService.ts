@@ -46,21 +46,31 @@ export const wishlistService = {
           : [];
       const mapped: Homestay[] = list.map(mapHomestay);
 
-      // If items lack images, fetch homestay details to enrich (BE wishlist may not include images)
+      // Always fetch full detail for each wishlist item to get complete info
       const enriched = await Promise.all(
         mapped.map(async (it) => {
-          if (it.images && it.images.length > 0) return it;
           try {
             const detailRes = await apiService.get<any>(
               apiConfig.endpoints.homestays.detail(it.id),
             );
-            const detailData = detailRes?.data ?? detailRes ?? {};
-            const images =
-              detailData.images ??
-              detailData.imageUrls ??
-              detailData.ImageUrls ??
-              [];
-            return { ...it, images } as Homestay;
+            const d = detailRes?.data ?? detailRes ?? {};
+            return {
+              ...it,
+              name: d.name ?? d.Name ?? it.name,
+              description: d.description ?? d.Description ?? it.description,
+              address: d.address ?? d.Address ?? it.address,
+              districtName: d.districtName ?? d.DistrictName ?? it.districtName,
+              provinceName: d.provinceName ?? d.ProvinceName ?? it.provinceName,
+              city: d.city ?? d.City ?? it.city,
+              pricePerNight: d.pricePerNight ?? d.PricePerNight ?? it.pricePerNight,
+              maxGuests: d.maxGuests ?? d.MaxGuests ?? it.maxGuests,
+              bedrooms: d.bedrooms ?? d.Bedrooms ?? it.bedrooms,
+              bathrooms: d.bathrooms ?? d.Bathrooms ?? it.bathrooms,
+              images: d.images ?? d.imageUrls ?? d.ImageUrls ?? it.images ?? [],
+              amenities: d.amenities ?? d.AmenityNames ?? d.amenityNames ?? it.amenities ?? [],
+              rating: d.rating ?? d.Rating ?? it.rating,
+              reviewCount: d.reviewCount ?? d.ReviewCount ?? it.reviewCount,
+            } as Homestay;
           } catch (e) {
             return it;
           }

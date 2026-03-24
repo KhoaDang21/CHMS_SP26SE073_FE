@@ -81,9 +81,15 @@ const typeConfig: Record<NotifType, { icon: React.ElementType; bg: string; iconC
 };
 
 // ─── Format time ─────────────────────────────────────────────────────────────
+function parseUtc(dateStr: string): Date {
+  // BE stores DateTime.UtcNow without 'Z' suffix — append it so browser parses as UTC
+  if (!dateStr) return new Date();
+  return new Date(dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z');
+}
+
 function formatTime(dateStr: string): string {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
+  const date = parseUtc(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
@@ -98,7 +104,7 @@ function formatTime(dateStr: string): string {
 
 function formatGroupDate(dateStr: string): string {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
+  const date = parseUtc(dateStr);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today.getTime() - 86400000);

@@ -67,6 +67,7 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
   const navigate = useNavigate();
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
   const { favorites, loading: favLoading, toggle } = useWishlist();
+  const isLoggedIn = authService.isAuthenticated();
   const isFavorite = favLoading ? false : favorites.has(homestay.id);
 
   useEffect(() => {
@@ -95,15 +96,12 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
             alt={homestay.name}
             className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 ${isBooked ? 'brightness-50' : ''}`}
           />
-          {/* Favorite button */}
+          {/* Favorite button — chỉ hiện khi đã login */}
+          {isLoggedIn && (
           <button
             onClick={async (e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (!authService.isAuthenticated()) {
-                toast('Vui lòng đăng nhập để lưu yêu thích', { icon: '🔒' });
-                return;
-              }
               try {
                 await toggle(homestay.id);
                 toast.success(isFavorite ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
@@ -117,6 +115,7 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
           >
             <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
           </button>
+          )}
           {/* Booked overlay */}
           {isBooked && (
             <div className="absolute inset-0 flex items-center justify-center">

@@ -1,9 +1,25 @@
 import { useEffect, useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
-import HomestayCard from '../../components/homestay/HomestayCard';
+import HomestayCard, { fetchReviewSummary } from '../../components/homestay/HomestayCard';
 import { wishlistService } from '../../services/wishlistService';
 import type { Homestay } from '../../types/homestay.types';
 import toast from 'react-hot-toast';
+
+async function sortByReview(list: Homestay[]): Promise<Homestay[]> {
+  const summaries = await Promise.all(list.map(h => fetchReviewSummary(h.id)));
+  return [...list].sort((a, b) => {
+    const ia = list.indexOf(a);
+    const ib = list.indexOf(b);
+    const sa = summaries[ia];
+    const sb = summaries[ib];
+    const avgA = sa && sa.count > 0 ? sa.avg : 0;
+    const avgB = sb && sb.count > 0 ? sb.avg : 0;
+    if (avgB !== avgA) return avgB - avgA;
+    const cntA = sa?.count ?? 0;
+    const cntB = sb?.count ?? 0;
+    return cntB - cntA;
+  });
+}
 
 export default function FavoritesPage() {
   const [items, setItems] = useState<Homestay[]>([]);
@@ -14,14 +30,8 @@ export default function FavoritesPage() {
     (async () => {
       try {
         const list = await wishlistService.getMyWishlist();
-        // sort by rating desc, fallback to reviewCount
-        list.sort((a, b) => {
-          const ra = a.rating ?? 0;
-          const rb = b.rating ?? 0;
-          if (rb !== ra) return rb - ra;
-          return (b.reviewCount ?? 0) - (a.reviewCount ?? 0);
-        });
-        if (mounted) setItems(list);
+        const sorted = await sortByReview(list);
+        if (mounted) setItems(sorted);
       } catch (e) {
         toast.error('Lấy danh sách yêu thích thất bại');
       } finally {
@@ -31,30 +41,13 @@ export default function FavoritesPage() {
     const onChange = async () => {
       try {
         const list = await wishlistService.getMyWishlist();
-        list.sort((a, b) => {
-          const ra = a.rating ?? 0;
-          const rb = b.rating ?? 0;
-          if (rb !== ra) return rb - ra;
-          return (b.reviewCount ?? 0) - (a.reviewCount ?? 0);
-        });
-        if (mounted) setItems(list);
+        const sorted = await sortByReview(list);
+        if (mounted) setItems(sorted);
       } catch { }
     };
     window.addEventListener('wishlist-changed', onChange);
     return () => { mounted = false; window.removeEventListener('wishlist-changed', onChange); };
   }, []);
-
-  const handleRemove = async (id: string) => {
-    const prev = items;
-    setItems(prev.filter(h => h.id !== id));
-    try {
-      await wishlistService.remove(id);
-      toast.success('Đã bỏ thích');
-    } catch (e) {
-      setItems(prev);
-      toast.error('Không thể bỏ thích, thử lại');
-    }
-  };
 
   return (
     <MainLayout>
@@ -62,7 +55,7 @@ export default function FavoritesPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Homestay Yêu Thích</h1>
-            <p className="text-gray-600">Danh sách homestay bạn đã lưu</p>
+            <p className="text-gray-600">Danh sách homestay bạn đã lưu · sắp xếp theo đánh giá</p>
           </div>
         </div>
 
@@ -75,10 +68,7 @@ export default function FavoritesPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {items.map(h => (
-              <div key={h.id} className="relative">
-                <HomestayCard homestay={h} />
-                {/* Removed addedAt label as requested */}
-              </div>
+              <HomestayCard key={h.id} homestay={h} />
             ))}
           </div>
         )}
