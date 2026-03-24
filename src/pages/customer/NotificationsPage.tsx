@@ -193,16 +193,15 @@ export default function NotificationsPage() {
 
   return (
     <AccountLayout>
-      <div className="min-h-0">
+      <div className="space-y-6">
 
         {/* ── Page Header ── */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Bell className="w-6 h-6 text-blue-500" />
+            <h1 className="text-2xl font-bold text-gray-900">
               Thông Báo
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-gray-500 mt-1">
               {unreadCount > 0 ? `${unreadCount} thông báo chưa đọc` : 'Bạn đã đọc hết thông báo'}
             </p>
           </div>
