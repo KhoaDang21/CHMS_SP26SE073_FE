@@ -28,7 +28,9 @@ import {
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import { employeeService } from '../../services/employeeService';
+import { adminRoleService } from '../../services/adminRoleService';
 import type { Staff, StaffRole, StaffStatus } from '../../types/staff.types';
+import type { Role } from '../../types/role.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { CreateStaffModal } from '../../components/admin/CreateStaffModal';
 import { EditStaffModal } from '../../components/admin/EditStaffModal';
@@ -66,6 +68,15 @@ const mapEmployeeToStaff = (item: any): Staff => {
   };
 };
 
+const mapRoleItem = (item: any): Role => ({
+  id: String(item?.id || ''),
+  name: String(item?.name || item?.roleName || ''),
+  description: item?.description ? String(item.description) : '',
+  isSystemRole: Boolean(item?.isSystemRole),
+  createdAt: item?.createdAt,
+  updatedAt: item?.updatedAt,
+});
+
 export default function StaffManagement() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -79,6 +90,14 @@ export default function StaffManagement() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [roleSearchQuery, setRoleSearchQuery] = useState('');
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [deletingRole, setDeletingRole] = useState<Role | null>(null);
+  const [roleForm, setRoleForm] = useState({ name: '', description: '' });
+  const [roleSubmitting, setRoleSubmitting] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -91,7 +110,8 @@ export default function StaffManagement() {
   const user = authService.getCurrentUser();
 
   useEffect(() => {
-    loadStaff();
+    void loadStaff();
+    void loadRoles();
   }, []);
 
   useEffect(() => {
@@ -142,6 +162,20 @@ export default function StaffManagement() {
     }
   };
 
+  const loadRoles = async () => {
+    setRoleLoading(true);
+    try {
+      const data = await adminRoleService.getRoles();
+      const mapped = data.map(mapRoleItem).filter((x) => Boolean(x.id) && Boolean(x.name));
+      setRoles(mapped);
+    } catch (error) {
+      console.error('Error loading roles:', error);
+      toast.error('Không thể tải danh sách role');
+    } finally {
+      setRoleLoading(false);
+    }
+  };
+
   const handleDelete = async (staffMember: Staff) => {
     const result = await employeeService.deleteEmployee(staffMember.id);
     if (result?.success) {
@@ -159,11 +193,80 @@ export default function StaffManagement() {
   };
 
   const handleStaffCreated = () => {
-    loadStaff();
+    void loadStaff();
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
     setEditingStaff(null);
   };
+
+  const openCreateRoleModal = () => {
+    setEditingRole(null);
+    setRoleForm({ name: '', description: '' });
+    setIsRoleModalOpen(true);
+  };
+
+  const openEditRoleModal = (role: Role) => {
+    setEditingRole(role);
+    setRoleForm({ name: role.name, description: role.description || '' });
+    setIsRoleModalOpen(true);
+  };
+
+  const handleSaveRole = async () => {
+    const name = roleForm.name.trim();
+    const description = roleForm.description.trim();
+
+    if (!name) {
+      toast.error('Tên role không được để trống');
+      return;
+    }
+
+    setRoleSubmitting(true);
+    try {
+      if (editingRole) {
+        const res = await adminRoleService.updateRole(editingRole.id, { name, description });
+        if (res?.success === false || !res) {
+          toast.error(res?.message || 'Không thể cập nhật role');
+          return;
+        }
+        toast.success('Cập nhật role thành công');
+      } else {
+        const res = await adminRoleService.createRole({ name, description });
+        if (res?.success === false || !res) {
+          toast.error(res?.message || 'Không thể tạo role');
+          return;
+        }
+        toast.success('Tạo role thành công');
+      }
+
+      setIsRoleModalOpen(false);
+      setEditingRole(null);
+      setRoleForm({ name: '', description: '' });
+      await loadRoles();
+    } catch (error) {
+      console.error('Save role error:', error);
+      toast.error('Không thể lưu role');
+    } finally {
+      setRoleSubmitting(false);
+    }
+  };
+
+  const handleDeleteRole = async (role: Role) => {
+    const res = await adminRoleService.deleteRole(role.id);
+    if (res?.success === false || !res) {
+      toast.error(res?.message || 'Không thể xóa role');
+      return;
+    }
+
+    toast.success('Xóa role thành công');
+    setDeletingRole(null);
+    await loadRoles();
+  };
+
+  const filteredRoles = roles.filter((r) => {
+    if (!roleSearchQuery.trim()) return true;
+    const q = roleSearchQuery.toLowerCase();
+    return r.name.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q);
+  });
 
   const getStatusBadge = (status: StaffStatus) => {
     const styles = {
@@ -486,6 +589,90 @@ export default function StaffManagement() {
               ))}
             </div>
           )}
+
+          <div className="bg-white rounded-xl shadow-md p-6 mt-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Quản lý Role</h3>
+                <p className="text-sm text-gray-600">Admin có thể tạo, chỉnh sửa và xóa role tại đây</p>
+              </div>
+              <button
+                onClick={openCreateRoleModal}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm role</span>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm role theo tên hoặc mô tả..."
+                  value={roleSearchQuery}
+                  onChange={(e) => setRoleSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {roleLoading ? (
+              <div className="py-8 text-center text-gray-600">Đang tải danh sách role...</div>
+            ) : filteredRoles.length === 0 ? (
+              <div className="py-8 text-center text-gray-600">Không có role nào phù hợp</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Tên role</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Mô tả</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Trạng thái</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Ngày tạo</th>
+                      <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRoles.map((role) => (
+                      <tr key={role.id} className="border-t border-gray-200">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{role.name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{role.description || '-'}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {role.isSystemRole ? (
+                            <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">System</span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">Custom</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {role.createdAt ? new Date(role.createdAt).toLocaleDateString('vi-VN') : '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => openEditRoleModal(role)}
+                              className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => setDeletingRole(role)}
+                              disabled={role.isSystemRole}
+                              className="px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -541,6 +728,93 @@ export default function StaffManagement() {
               </button>
               <button
                 onClick={() => handleDelete(deletingStaff)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isRoleModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
+            <h3 className="font-bold text-gray-900 text-lg mb-1">{editingRole ? 'Chỉnh sửa role' : 'Tạo role mới'}</h3>
+            <p className="text-sm text-gray-600 mb-5">Nhập thông tin role để lưu vào hệ thống</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tên role</label>
+                <input
+                  type="text"
+                  value={roleForm.name}
+                  onChange={(e) => setRoleForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ví dụ: Content Moderator"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                <textarea
+                  rows={3}
+                  value={roleForm.description}
+                  onChange={(e) => setRoleForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Mô tả quyền và phạm vi sử dụng role"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setIsRoleModalOpen(false);
+                  setEditingRole(null);
+                }}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveRole}
+                disabled={roleSubmitting}
+                className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-60"
+              >
+                {roleSubmitting ? 'Đang lưu...' : 'Lưu role'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deletingRole && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Xác nhận xóa role</h3>
+                <p className="text-gray-600 text-sm">Hành động này không thể hoàn tác</p>
+              </div>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              Bạn có chắc chắn muốn xóa role <strong>{deletingRole.name}</strong>?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeletingRole(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => void handleDeleteRole(deletingRole)}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Xóa
