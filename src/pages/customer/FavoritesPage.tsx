@@ -38,7 +38,7 @@ export default function FavoritesPage() {
           return (b.reviewCount ?? 0) - (a.reviewCount ?? 0);
         });
         if (mounted) setItems(list);
-      } catch {}
+      } catch { }
     };
     window.addEventListener('wishlist-changed', onChange);
     return () => { mounted = false; window.removeEventListener('wishlist-changed', onChange); };

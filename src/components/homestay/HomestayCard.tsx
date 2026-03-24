@@ -37,8 +37,8 @@ export async function fetchReviewSummary(homestayId: string): Promise<ReviewSumm
     const list: PublicReview[] = Array.isArray(res?.data)
       ? res.data
       : Array.isArray(res)
-      ? res
-      : [];
+        ? res
+        : [];
     if (list.length === 0) {
       const empty = { avg: 0, count: 0 };
       reviewCache.set(homestayId, empty);
@@ -186,11 +186,10 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
         <button
           onClick={isBooked ? undefined : (onBook ?? (() => navigate(`/homestays/${homestay.id}`)))}
           disabled={isBooked}
-          className={`w-full px-4 py-2 rounded-lg transition-all text-sm font-medium ${
-            isBooked
+          className={`w-full px-4 py-2 rounded-lg transition-all text-sm font-medium ${isBooked
               ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
-          }`}
+            }`}
         >
           {isBooked ? 'Đã đặt trong khoảng này' : 'Đặt Ngay'}
         </button>
