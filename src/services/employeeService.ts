@@ -22,6 +22,28 @@ const extractList = <T>(res: any): T[] => {
   return (data?.Items ?? data?.items ?? data?.employees ?? []) as T[];
 };
 
+const extractCreatedEmployeeId = (res: any): string | null => {
+  const candidate =
+    res?.data?.id ??
+    res?.result?.id ??
+    res?.id;
+
+  if (!candidate) return null;
+  return String(candidate);
+};
+
+const pickNewestEmployee = (list: Employee[]): Employee | null => {
+  if (list.length === 0) return null;
+
+  const sorted = [...list].sort((a, b) => {
+    const aTime = new Date(a.createdAt || 0).getTime();
+    const bTime = new Date(b.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+
+  return sorted[0] ?? null;
+};
+
 export const employeeService = {
   async getEmployees(): Promise<Employee[]> {
     try {
@@ -48,22 +70,63 @@ export const employeeService = {
     avatarFile: File,
   ): Promise<{ success: boolean; message?: string; data?: Employee } | null> {
     try {
-      const form = new FormData();
-      form.append('username', payload.username);
-      form.append('email', payload.email);
-      form.append('password', payload.password);
-      form.append('fullName', payload.fullName);
-      form.append('phoneNumber', payload.phoneNumber || '');
-      form.append('roleId', payload.roleId);
+      // /api/employees endpoint accepts JSON payload (Swagger), not multipart/form-data.
+      // Create the employee first, then upload avatar via /api/employees/{id}/avatar.
+      const createRes = await this.createEmployee(payload);
 
-      if (payload.avatarUrl) {
-        form.append('avatarUrl', payload.avatarUrl);
+      if (!createRes?.success) {
+        return createRes;
       }
 
-      form.append('avatarFile', avatarFile);
+      let createdId = extractCreatedEmployeeId(createRes);
 
-      const res = await apiService.postForm<any>(apiConfig.endpoints.employees.create, form);
-      return res;
+      // Fallback when create API returns success/message but does not include created employee id.
+      if (!createdId) {
+        const employees = await this.getEmployees();
+        const emailMatch = employees.filter(
+          (emp) => (emp.email || '').toLowerCase() === payload.email.toLowerCase(),
+        );
+
+        if (emailMatch.length > 0) {
+          createdId = pickNewestEmployee(emailMatch)?.id || null;
+        }
+
+        if (!createdId) {
+          const usernameMatch = employees.filter(
+            (emp) => (emp.username || '').toLowerCase() === payload.username.toLowerCase(),
+          );
+          if (usernameMatch.length > 0) {
+            createdId = pickNewestEmployee(usernameMatch)?.id || null;
+          }
+        }
+      }
+
+      if (!createdId) {
+        return {
+          success: true,
+          message:
+            createRes?.message ||
+            'Tạo nhân viên thành công, nhưng chưa xác định được ID để upload avatar.',
+          data: createRes?.data,
+        };
+      }
+
+      const uploadRes = await this.uploadAvatar(createdId, avatarFile);
+      if (!uploadRes?.success) {
+        return {
+          success: true,
+          message:
+            uploadRes?.message ||
+            'Tạo nhân viên thành công, nhưng upload avatar thất bại.',
+          data: createRes?.data,
+        };
+      }
+
+      return {
+        success: true,
+        message: createRes?.message || 'Tạo nhân viên thành công',
+        data: createRes?.data,
+      };
     } catch (error) {
       logDevError('Error creating employee with avatar file:', error);
       return null;

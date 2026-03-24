@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+﻿import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
@@ -12,7 +12,7 @@ import CustomerDashboard from '../pages/customer/CustomerDashboard';
 import CustomerExplorePage from '../pages/customer/ExplorePage';
 import BookingsPage from '../pages/customer/BookingsPage';
 import FavoritesPage from '../pages/customer/FavoritesPage';
-import MessagesPage from '../pages/customer/MessagesPage';
+import SupportPage from '../pages/customer/SupportPage';
 import PaymentResultPage from '../pages/customer/PaymentResultPage';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AmenityManagement from '../pages/admin/AmenityManagement';
@@ -22,11 +22,17 @@ import StaffManagement from '../pages/admin/StaffManagement';
 import BookingManagement from '../pages/admin/BookingManagement';
 import CustomerManagement from '../pages/admin/CustomerManagement';
 import RevenueReport from '../pages/admin/RevenueReport';
-import StaffDashboard from '../pages/staff/StaffDashboard';
+import StaffBookings from '../pages/staff/StaffBookings';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
+import ManagerBookings from '../pages/manager/ManagerBookings';
+import ManagerCustomers from '../pages/manager/ManagerCustomers';
+import ManagerHomestayManagement from '../pages/manager/ManagerHomestayManagement';
+import ManagerHomestayDetailPage from '../pages/manager/ManagerHomestayDetailPage';
 import ProfilePage from '../pages/customer/ProfilePage';
 import MyReviewsPage from '../pages/customer/MyReviewsPage';
+import NotificationsPage from '../pages/customer/NotificationsPage';
 import { authService } from '../services/authService';
+import StaffDashboard from '../pages/staff/StaffDashboard';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -117,7 +123,7 @@ export function AppRoutes() {
         path="/customer/messages"
         element={
           <ProtectedRoute allowedRoles={['customer']}>
-            <MessagesPage />
+            <SupportPage />
           </ProtectedRoute>
         }
       />
@@ -137,6 +143,14 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/customer/notifications"
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <NotificationsPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected Routes - Manager */}
       <Route
@@ -147,6 +161,38 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/manager/bookings"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerBookings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/customers"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerCustomers />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/homestays"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerHomestayManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/homestays/:id"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerHomestayDetailPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected Routes - Staff */}
       <Route
@@ -154,6 +200,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <StaffDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/bookings"
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <StaffBookings />
           </ProtectedRoute>
         }
       />

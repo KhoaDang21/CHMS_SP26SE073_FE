@@ -16,9 +16,9 @@ import {
   X,
   LogOut,
   LayoutDashboard,
+  ClipboardList,
   UserCog,
   TrendingUp,
-  Settings,
   Shield,
   FileText,
   UserCheck,
@@ -31,7 +31,7 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import EditHomestayModal from '../../components/admin/EditHomestayModal';
 
-export default function HomestayDetailPage() {
+export default function ManagerHomestayDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -49,7 +49,7 @@ export default function HomestayDetailPage() {
       loadHomestayDetail(id);
     } else {
       toast.error('ID homestay không hợp lệ');
-      navigate('/admin/homestays');
+      navigate('/manager/homestays');
     }
   }, [id, navigate]);
 
@@ -61,12 +61,12 @@ export default function HomestayDetailPage() {
         setHomestay(data);
       } else {
         toast.error('Không tìm thấy homestay');
-        navigate('/admin/homestays');
+        navigate('/manager/homestays');
       }
     } catch (error) {
       console.error('Error loading homestay:', error);
       toast.error('Không thể tải thông tin homestay');
-      navigate('/admin/homestays');
+      navigate('/manager/homestays');
     } finally {
       setLoading(false);
     }
@@ -149,13 +149,13 @@ export default function HomestayDetailPage() {
   };
 
   const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
+    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
+    { id: 'bookings', label: 'Đơn đặt phòng', icon: Calendar, path: '/manager/bookings' },
+    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
+    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
+    { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
+    { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
+    { id: 'tasks', label: 'Công việc', icon: ClipboardList, path: '/manager/tasks' },
   ];
 
   if (loading) {
@@ -188,8 +188,8 @@ export default function HomestayDetailPage() {
           <div className="flex items-center gap-2">
             <Building2 className="w-8 h-8 text-blue-600" />
             <div>
-              <h1 className="font-bold text-gray-900">CHMS Admin</h1>
-              <p className="text-xs text-gray-500">Management System</p>
+              <h1 className="font-bold text-gray-900">CHMS Manager</h1>
+              <p className="text-xs text-gray-500">Quản lý vận hành</p>
             </div>
           </div>
           <button
@@ -256,7 +256,7 @@ export default function HomestayDetailPage() {
                 <Menu className="w-6 h-6" />
               </button>
               <button
-                onClick={() => navigate('/admin/homestays')}
+                onClick={() => navigate('/manager/homestays')}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />

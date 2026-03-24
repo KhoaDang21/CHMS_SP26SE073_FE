@@ -1,6 +1,7 @@
 import { BrowserRouter } from 'react-router-dom';
 import { AppRoutes } from './routes/AppRoutes';
 import { Toaster } from 'react-hot-toast';
+import AiChatWidget from './components/ai/AiChatWidget';
 
 // Main App Component - Entry point for Figma Make
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
         }}
       />
       <AppRoutes />
+      <AiChatWidget />
     </BrowserRouter>
   );
 }

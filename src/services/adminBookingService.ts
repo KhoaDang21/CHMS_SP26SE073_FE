@@ -42,7 +42,7 @@ const calcNights = (checkIn: string, checkOut: string): number => {
 };
 
 const toBooking = (item: any): Booking => {
-  const id = String(item?.id || item?.bookingId || "");
+  const id = String(item?.id || "");
   const fallbackCode = id ? id.slice(0, 8) : "";
   const checkInDate = toISO(item?.checkInDate || item?.checkIn);
   const checkOutDate = toISO(item?.checkOutDate || item?.checkOut);

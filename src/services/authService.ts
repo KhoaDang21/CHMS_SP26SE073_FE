@@ -33,13 +33,9 @@ export const authService = {
     const tokenPayload = token ? this._parseJwt(token) : null;
 
     return (
-      apiData?.userId ||
       apiData?.id ||
-      apiData?.guid ||
       apiData?.user?.id ||
-      tokenPayload?.userId ||
       tokenPayload?.sub ||
-      tokenPayload?.nameid ||
       tokenPayload?.id ||
       tokenPayload?.[
         "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
@@ -101,6 +97,9 @@ export const authService = {
         if (userData) {
           storage.setItem("userData", JSON.stringify(userData));
         }
+
+        // Notify toàn app biết user đã login
+        window.dispatchEvent(new Event("auth-login"));
 
         return {
           success: true,
@@ -198,6 +197,8 @@ export const authService = {
       sessionStorage.removeItem("authToken");
       sessionStorage.removeItem("userData");
       sessionStorage.removeItem("refreshToken");
+      // Notify toàn app biết user đã logout
+      window.dispatchEvent(new Event("auth-logout"));
     }
   },
 

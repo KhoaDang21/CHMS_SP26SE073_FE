@@ -68,7 +68,7 @@ export interface Homestay {
   reviewCount?: number;
   ownerId?: string;
   ownerName?: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'MAINTENANCE';
+  status: 'ACTIVE' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE' | 'INACTIVE';
   featured?: boolean;
   cancellationPolicy?: string;
   houseRules?: string;
