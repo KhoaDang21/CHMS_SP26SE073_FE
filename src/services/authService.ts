@@ -29,6 +29,23 @@ export interface RegisterData {
 }
 
 export const authService = {
+  _getActiveStorage(): Storage {
+    if (localStorage.getItem("authToken") || localStorage.getItem("refreshToken") || localStorage.getItem("userData")) {
+      return localStorage;
+    }
+    return sessionStorage;
+  },
+
+  clearAuthData(): void {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("userData");
+    sessionStorage.removeItem("refreshToken");
+    window.dispatchEvent(new Event("auth-logout"));
+  },
+
   _extractUserId(apiData: any, token?: string | null): string | undefined {
     const tokenPayload = token ? this._parseJwt(token) : null;
 
@@ -165,9 +182,7 @@ export const authService = {
    */
   async logout(): Promise<void> {
     const token = this.getToken();
-    const refreshToken =
-      localStorage.getItem("refreshToken") ||
-      sessionStorage.getItem("refreshToken");
+    const refreshToken = this.getRefreshToken();
 
     try {
       // Call API logout để invalidate token trên server
@@ -190,15 +205,7 @@ export const authService = {
     } catch (error) {
       console.error("Logout API error:", error);
     } finally {
-      // Xóa tất cả token và userData khỏi storage
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userData");
-      localStorage.removeItem("refreshToken");
-      sessionStorage.removeItem("authToken");
-      sessionStorage.removeItem("userData");
-      sessionStorage.removeItem("refreshToken");
-      // Notify toàn app biết user đã logout
-      window.dispatchEvent(new Event("auth-logout"));
+      this.clearAuthData();
     }
   },
 
@@ -209,6 +216,70 @@ export const authService = {
     return (
       localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
     );
+  },
+
+  getRefreshToken(): string | null {
+    return (
+      localStorage.getItem("refreshToken") ||
+      sessionStorage.getItem("refreshToken")
+    );
+  },
+
+  async refreshAccessToken(): Promise<string | null> {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) return null;
+
+    const currentAccessToken = this.getToken();
+    const candidateBodies: Array<Record<string, string>> = [
+      { refreshToken, accessToken: currentAccessToken || "" },
+      { refreshToken },
+      { token: refreshToken },
+    ];
+
+    for (const body of candidateBodies) {
+      try {
+        const response = await fetch(
+          `${authConfig.api.baseUrl}${authConfig.api.endpoints.refreshToken}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          },
+        );
+
+        if (!response.ok) {
+          continue;
+        }
+
+        const apiResponse = await response.json().catch(() => ({}));
+        const newAccessToken =
+          apiResponse?.data?.accessToken ||
+          apiResponse?.data?.token ||
+          apiResponse?.accessToken ||
+          apiResponse?.token;
+        const newRefreshToken = apiResponse?.data?.refreshToken || apiResponse?.refreshToken;
+
+        if (!newAccessToken) {
+          continue;
+        }
+
+        const storage = this._getActiveStorage();
+        storage.setItem("authToken", newAccessToken);
+        if (newRefreshToken) {
+          storage.setItem("refreshToken", newRefreshToken);
+        }
+
+        window.dispatchEvent(new Event("auth-login"));
+        return newAccessToken;
+      } catch {
+        // Try next payload shape.
+      }
+    }
+
+    this.clearAuthData();
+    return null;
   },
 
   /**
@@ -297,7 +368,7 @@ export const authService = {
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    return this.isTokenValid();
   },
 
   /**

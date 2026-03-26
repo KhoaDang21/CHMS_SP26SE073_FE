@@ -43,24 +43,35 @@ const normalizeType = (value: any, country?: string): CustomerType => {
   return 'international';
 };
 
+const toOptionalText = (value: any): string | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const text = String(value).trim();
+  if (!text || text === '-' || text.toLowerCase() === 'null' || text.toLowerCase() === 'undefined') {
+    return undefined;
+  }
+  return text;
+};
+
 const mapCustomer = (item: any): Customer => {
-  const country = String(item?.country || item?.countryName || 'Việt Nam');
+  const country = toOptionalText(item?.country || item?.countryName) || 'Việt Nam';
+  const city = toOptionalText(item?.city || item?.province || item?.district);
+  const nationality = toOptionalText(item?.nationality) || country;
   const status = normalizeStatus(item?.status ?? (item?.isActive === false ? 'inactive' : 'active'));
   const totalBookings = Number(item?.totalBookings ?? item?.bookingCount ?? 0);
   const totalSpent = Number(item?.totalSpent ?? item?.spentAmount ?? item?.totalAmount ?? 0);
 
   return {
     id: String(item?.id || ''),
-    name: String(item?.name || item?.fullName || item?.username || 'Khách hàng'),
+    name: String(item?.fullName || 'Khách hàng'),
     email: String(item?.email || ''),
-    phone: String(item?.phone || item?.phoneNumber || item?.contactPhone || ''),
+    phone: String(item?.phone || ''),
     status,
     type: normalizeType(item?.type, country),
     avatar: item?.avatar || item?.avatarUrl,
-    city: item?.city || item?.province || item?.district,
+    city,
     country,
-    nationality: item?.nationality || country,
-    address: item?.address,
+    nationality,
+    address: toOptionalText(item?.address),
     dateOfBirth: item?.dateOfBirth,
     identityNumber: item?.identityNumber || item?.identityNo || item?.nationalId,
     passportNumber: item?.passportNumber,
@@ -84,15 +95,16 @@ const normalizeBookingStatus = (value: any): CustomerBookingHistory['status'] =>
 };
 
 const mapCustomerBooking = (item: any): CustomerBookingHistory => {
-  const id = String(item?.id || '');
+  const id = String(item?.bookingId || item?.id || '');
   return {
     id,
-    bookingCode: String(item?.bookingCode || item?.code || (id ? id.slice(0, 8) : 'N/A')),
+    bookingCode: String(item?.bookingCode || item?.code || item?.bookingId || (id ? id.slice(0, 8) : 'N/A')),
     homestayName: String(item?.homestayName || item?.name || item?.propertyName || 'Homestay'),
     checkInDate: toISO(item?.checkInDate || item?.checkIn),
     checkOutDate: toISO(item?.checkOutDate || item?.checkOut),
     totalPrice: Number(item?.totalPrice ?? item?.amount ?? 0),
     status: normalizeBookingStatus(item?.status),
+    createdAt: item?.createdAt ? toISO(item.createdAt) : undefined,
   };
 };
 
