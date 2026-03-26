@@ -119,7 +119,6 @@ export default function ManagerBookings() {
   const handleCancelBooking = async (bookingId: string, reason: string) => {
     const result = await adminBookingService.updateBooking(bookingId, {
       status: 'cancelled',
-      paymentStatus: 'refunded',
       cancellationReason: reason,
     });
     if (result.success) {
@@ -145,15 +144,13 @@ export default function ManagerBookings() {
       checked_out: 'bg-gray-100 text-gray-700',
       cancelled: 'bg-red-100 text-red-700',
     };
-
     const labels: Record<BookingStatus, string> = {
-      pending: 'Chờ xác nhận',
+      pending: 'Chờ thanh toán cọc',
       confirmed: 'Đã xác nhận',
-      checked_in: 'Đã check-in',
+      checked_in: 'Đang lưu trú',
       checked_out: 'Đã check-out',
       cancelled: 'Đã hủy',
     };
-
     return (
       <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status]}`}>
         {labels[status]}
@@ -162,23 +159,14 @@ export default function ManagerBookings() {
   };
 
   const getPaymentStatusBadge = (status: Booking['paymentStatus']) => {
-    const styles = {
-      pending: 'bg-orange-100 text-orange-700',
-      paid: 'bg-green-100 text-green-700',
-      refunded: 'bg-red-100 text-red-700',
+    const map: Record<string, { label: string; cls: string }> = {
+      pending:      { label: 'Chưa thanh toán', cls: 'bg-orange-100 text-orange-700' },
+      deposit_paid: { label: 'Đã cọc',          cls: 'bg-blue-100 text-blue-700' },
+      paid:         { label: 'Đã thanh toán đủ', cls: 'bg-green-100 text-green-700' },
+      refunded:     { label: 'Đã hoàn tiền',     cls: 'bg-red-100 text-red-700' },
     };
-
-    const labels = {
-      pending: 'Chờ thanh toán',
-      paid: 'Đã thanh toán',
-      refunded: 'Đã hoàn tiền',
-    };
-
-    return (
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status]}`}>
-        {labels[status]}
-      </span>
-    );
+    const s = map[status] ?? map.pending;
+    return <span className={`px-3 py-1 rounded-full text-sm font-medium ${s.cls}`}>{s.label}</span>;
   };
 
   const navItems = [
@@ -292,7 +280,7 @@ export default function ManagerBookings() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">Chờ xác nhận</p>
+                  <p className="text-gray-600 text-sm mb-1">Chờ thanh toán cọc</p>
                   <p className="text-3xl font-bold text-gray-900">{stats.pending}</p>
                 </div>
                 <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -348,9 +336,9 @@ export default function ManagerBookings() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">Tất cả trạng thái</option>
-                  <option value="pending">Chờ xác nhận</option>
+                  <option value="pending">Chờ thanh toán cọc</option>
                   <option value="confirmed">Đã xác nhận</option>
-                  <option value="checked_in">Đã check-in</option>
+                  <option value="checked_in">Đang lưu trú</option>
                   <option value="checked_out">Đã check-out</option>
                   <option value="cancelled">Đã hủy</option>
                 </select>
@@ -397,7 +385,7 @@ export default function ManagerBookings() {
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <h3 className="font-bold text-gray-900 text-lg">{booking.homestayName}</h3>
                               {getStatusBadge(booking.status)}
-                              {getPaymentStatusBadge(booking.paymentStatus)}
+                              {booking.status !== 'pending' && getPaymentStatusBadge(booking.paymentStatus)}
                             </div>
                             <p className="text-sm text-gray-600 font-medium">Mã đơn: {booking.bookingCode}</p>
                           </div>
@@ -449,32 +437,23 @@ export default function ManagerBookings() {
                           </div>
 
                           {booking.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => void handleUpdateStatus(booking.id, 'confirmed')}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                                <span>Xác nhận</span>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const reason = window.prompt('Lý do hủy đơn:');
-                                  if (reason) {
-                                    void handleCancelBooking(booking.id, reason);
-                                  }
-                                }}
-                                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                              >
-                                <XCircle className="w-4 h-4" />
-                                <span>Hủy</span>
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => {
+                                const reason = window.prompt('Lý do hủy đơn:');
+                                if (reason) {
+                                  void handleCancelBooking(booking.id, reason);
+                                }
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              <span>Hủy đơn</span>
+                            </button>
                           )}
                           {booking.status === 'confirmed' && (
                             <button
                               onClick={() => void handleUpdateStatus(booking.id, 'checked_in')}
-                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                             >
                               <CheckCircle className="w-4 h-4" />
                               <span>Check-in</span>
@@ -483,7 +462,7 @@ export default function ManagerBookings() {
                           {booking.status === 'checked_in' && (
                             <button
                               onClick={() => void handleUpdateStatus(booking.id, 'checked_out')}
-                              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                             >
                               <CheckCircle className="w-4 h-4" />
                               <span>Check-out</span>
@@ -571,7 +550,25 @@ export default function ManagerBookings() {
               )}
             </div>
 
-            <div className="border-t border-gray-200 p-6 flex justify-end">
+            <div className="border-t border-gray-200 p-6 flex justify-end gap-3">
+              {selectedBooking.status === 'confirmed' && (
+                <button
+                  onClick={() => void handleUpdateStatus(selectedBooking.id, 'checked_in')}
+                  className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Check-in
+                </button>
+              )}
+              {selectedBooking.status === 'checked_in' && (
+                <button
+                  onClick={() => void handleUpdateStatus(selectedBooking.id, 'checked_out')}
+                  className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Check-out
+                </button>
+              )}
               <button
                 onClick={() => setSelectedBooking(null)}
                 className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"

@@ -28,9 +28,10 @@ const normalizeStatus = (value: any): BookingStatus => {
 };
 
 const normalizePaymentStatus = (value: any): PaymentStatus => {
-  const raw = String(value || "").toLowerCase();
-  if (raw === "paid") return "paid";
-  if (raw === "refunded") return "refunded";
+  const raw = String(value || "").toUpperCase();
+  if (raw === "DEPOSIT_PAID") return "deposit_paid";
+  if (raw === "FULLY_PAID" || raw === "PAID") return "paid";
+  if (raw === "REFUNDED") return "refunded";
   return "pending";
 };
 
@@ -124,7 +125,10 @@ export const adminBookingService = {
 
   async getAllBookings(params?: Record<string, any>): Promise<Booking[]> {
     const raw = await this.list<any>(params);
-    return raw.map(toBooking).filter((x) => Boolean(x.id));
+    return raw
+      .map(toBooking)
+      .filter((x) => Boolean(x.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
   async getBookingById(id: string): Promise<Booking | null> {

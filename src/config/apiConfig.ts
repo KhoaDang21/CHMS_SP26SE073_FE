@@ -170,6 +170,11 @@ export const apiConfig = {
       sendMessage: (id: string) => `/api/support/tickets/${id}/messages`,
       close: (id: string) => `/api/support/tickets/${id}/close`,
     },
+    userProfile: {
+      get: "/api/users/profile",
+      update: "/api/users/profile",
+      changePassword: "/api/users/profile/password",
+    },
     ai: {
       chat: "/api/ai/chat",
       chatHistory: "/api/ai/chat/history",

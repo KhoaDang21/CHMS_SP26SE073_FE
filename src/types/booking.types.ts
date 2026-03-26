@@ -1,6 +1,7 @@
 export type BookingStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
 
-export type PaymentStatus = 'pending' | 'paid' | 'refunded';
+// Matches BE PaymentStatus: UNPAID → pending, DEPOSIT_PAID → deposit_paid, FULLY_PAID → paid, REFUNDED → refunded
+export type PaymentStatus = 'pending' | 'deposit_paid' | 'paid' | 'refunded';
 
 export interface Booking {
   id: string;
@@ -41,6 +42,5 @@ export interface BookingStats {
 
 export interface UpdateBookingDTO {
   status: BookingStatus;
-  paymentStatus?: PaymentStatus;
   cancellationReason?: string;
 }

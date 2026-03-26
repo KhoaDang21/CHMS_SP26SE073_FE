@@ -27,7 +27,8 @@ export interface Amenity {
 export interface CreateAmenityDTO {
   name: string;
   category: AmenityCategory;
-  iconUrl: string;
+  iconUrl?: string;
+  iconFile?: File | null;
 }
 
 export interface UpdateAmenityDTO extends Partial<CreateAmenityDTO> {
