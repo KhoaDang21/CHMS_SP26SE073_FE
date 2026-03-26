@@ -6,6 +6,7 @@ export const authConfig = {
     baseUrl: "http://163.227.230.54:8088/api",
     endpoints: {
       login: "/Auth/login",
+      googleLogin: "/Auth/google-login",
       register: "/Auth/register",
       verifyOtp: "/Auth/verify-otp",
       logout: "/Auth/logout",
@@ -33,7 +34,7 @@ export const authConfig = {
   // OAuth providers (for future implementation)
   oauthProviders: {
     google: {
-      enabled: false,
+      enabled: Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID),
       clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
     },
     facebook: {
