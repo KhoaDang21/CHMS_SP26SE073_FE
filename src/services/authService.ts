@@ -28,6 +28,11 @@ export interface RegisterData {
   role: "customer" | "manager";
 }
 
+export interface GoogleLoginPayload {
+  idToken: string;
+  rememberMe?: boolean;
+}
+
 export const authService = {
   _getActiveStorage(): Storage {
     if (localStorage.getItem("authToken") || localStorage.getItem("refreshToken") || localStorage.getItem("userData")) {
@@ -61,6 +66,50 @@ export const authService = {
     );
   },
 
+  _persistAuthSession(apiResponse: any, rememberMe = false): LoginResponse {
+    const storage = rememberMe ? localStorage : sessionStorage;
+
+    const token =
+      apiResponse?.data?.accessToken ||
+      apiResponse?.data?.token ||
+      apiResponse?.token;
+    const refreshToken = apiResponse?.data?.refreshToken;
+    const sourceUser = apiResponse?.data?.user || apiResponse?.data;
+    const resolvedUserId = this._extractUserId(sourceUser, token);
+
+    const userData = sourceUser
+      ? {
+          id: resolvedUserId || sourceUser.email,
+          email: sourceUser.email,
+          name: sourceUser.fullName || sourceUser.name,
+          role: sourceUser.role?.toLowerCase() as
+            | "customer"
+            | "manager"
+            | "staff"
+            | "admin",
+        }
+      : undefined;
+
+    if (token) {
+      storage.setItem("authToken", token);
+    }
+    if (refreshToken) {
+      storage.setItem("refreshToken", refreshToken);
+    }
+    if (userData) {
+      storage.setItem("userData", JSON.stringify(userData));
+    }
+
+    window.dispatchEvent(new Event("auth-login"));
+
+    return {
+      success: true,
+      token,
+      user: userData,
+      message: apiResponse?.message,
+    };
+  },
+
   /**
    * Login user
    */
@@ -83,47 +132,7 @@ export const authService = {
       const apiResponse = await response.json();
 
       if (response.ok && apiResponse.success) {
-        const storage = credentials.rememberMe ? localStorage : sessionStorage;
-
-        const token =
-          apiResponse.data?.accessToken ||
-          apiResponse.data?.token ||
-          apiResponse.token;
-        const refreshToken = apiResponse.data?.refreshToken;
-        const resolvedUserId = this._extractUserId(apiResponse.data, token);
-
-        const userData = apiResponse.data
-          ? {
-              id: resolvedUserId || apiResponse.data.email,
-              email: apiResponse.data.email,
-              name: apiResponse.data.fullName || apiResponse.data.name,
-              role: apiResponse.data.role?.toLowerCase() as
-                | "customer"
-                | "manager"
-                | "staff"
-                | "admin",
-            }
-          : undefined;
-
-        if (token) {
-          storage.setItem("authToken", token);
-        }
-        if (refreshToken) {
-          storage.setItem("refreshToken", refreshToken);
-        }
-        if (userData) {
-          storage.setItem("userData", JSON.stringify(userData));
-        }
-
-        // Notify toàn app biết user đã login
-        window.dispatchEvent(new Event("auth-login"));
-
-        return {
-          success: true,
-          token: token,
-          user: userData,
-          message: apiResponse.message,
-        };
+        return this._persistAuthSession(apiResponse, credentials.rememberMe);
       }
 
       return {
@@ -135,6 +144,38 @@ export const authService = {
       return {
         success: false,
         message: "Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.",
+      };
+    }
+  },
+
+  async googleLogin(payload: GoogleLoginPayload): Promise<LoginResponse> {
+    try {
+      const response = await fetch(
+        `${authConfig.api.baseUrl}${authConfig.api.endpoints.googleLogin}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ idToken: payload.idToken }),
+        },
+      );
+
+      const apiResponse = await response.json().catch(() => ({}));
+
+      if (response.ok && apiResponse?.success) {
+        return this._persistAuthSession(apiResponse, payload.rememberMe);
+      }
+
+      return {
+        success: false,
+        message: apiResponse?.message || "Đăng nhập Google thất bại",
+      };
+    } catch (error) {
+      console.error("Google login error:", error);
+      return {
+        success: false,
+        message: "Đã xảy ra lỗi khi đăng nhập Google. Vui lòng thử lại.",
       };
     }
   },
