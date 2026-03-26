@@ -2,11 +2,13 @@ import { BrowserRouter } from 'react-router-dom';
 import { AppRoutes } from './routes/AppRoutes';
 import { Toaster } from 'react-hot-toast';
 import AiChatWidget from './components/ai/AiChatWidget';
+import { WishlistProvider } from './contexts/WishlistContext';
 
 // Main App Component - Entry point for Figma Make
 export default function App() {
   return (
     <BrowserRouter>
+      <WishlistProvider>
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -33,6 +35,7 @@ export default function App() {
       />
       <AppRoutes />
       <AiChatWidget />
+      </WishlistProvider>
     </BrowserRouter>
   );
 }

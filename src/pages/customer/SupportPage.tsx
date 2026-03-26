@@ -108,7 +108,7 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
 
   useEffect(() => {
     bookingService.getMyBookings().then(list => {
-      setBookings(list.filter(b => b.status === 'COMPLETED'));
+      setBookings(list.filter(b => b.status === 'COMPLETED' || b.status === 'CHECKED_IN'));
       setLoadingBookings(false);
     });
   }, []);

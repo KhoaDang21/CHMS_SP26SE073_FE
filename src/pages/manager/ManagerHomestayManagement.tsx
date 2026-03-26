@@ -19,7 +19,7 @@ import {
   Calendar,
   UserCog,
   TrendingUp,
-  ClipboardList,
+  MessageSquare,
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
@@ -239,7 +239,7 @@ export default function ManagerHomestayManagement() {
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
     { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
     { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
-    { id: 'tasks', label: 'Công việc', icon: ClipboardList, path: '/manager/tasks' },
+    { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
   ];
 
   return (

@@ -12,10 +12,12 @@ import toast from 'react-hot-toast'
 import { apiService } from '../services/apiService'
 import { apiConfig } from '../config/apiConfig'
 import type { Review } from '../services/reviewService'
+import { useWishlist } from '../contexts/WishlistContext'
 
 export default function HomestayDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { favorites, toggle } = useWishlist()
     const [homestay, setHomestay] = useState<Homestay | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -31,6 +33,7 @@ export default function HomestayDetail() {
     const [pendingBooking, setPendingBooking] = useState<{
         id: string; homestayName: string; checkIn: string; checkOut: string;
         totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
+        depositAmount?: number; remainingAmount?: number; paymentLabel?: string;
     } | null>(null)
     const [isBooking, setIsBooking] = useState(false)
     const [reviews, setReviews] = useState<Review[]>([])
@@ -246,7 +249,24 @@ export default function HomestayDetail() {
                                                 <span className="text-xs text-gray-500">({reviews.length})</span>
                                             </div>
                                         )}
-                                        <button className="p-2 rounded-full border hover:bg-gray-50"><Heart className="w-5 h-5 text-gray-600" /></button>
+                                        {authService.isAuthenticated() && (
+                                        <button
+                                            onClick={async () => {
+                                                if (!homestay) return;
+                                                const isFav = favorites.has(homestay.id);
+                                                try {
+                                                    await toggle(homestay.id);
+                                                    toast.success(isFav ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
+                                                } catch {
+                                                    toast.error('Không thể thay đổi trạng thái yêu thích');
+                                                }
+                                            }}
+                                            className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
+                                            title={homestay && favorites.has(homestay.id) ? 'Bỏ thích' : 'Lưu yêu thích'}
+                                        >
+                                            <Heart className={`w-5 h-5 transition-colors ${homestay && favorites.has(homestay.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+                                        </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -464,6 +484,28 @@ export default function HomestayDetail() {
                                             {computedTotal !== undefined ? formatMoney(computedTotal) : (isCalculating ? 'Đang tính...' : '—')}
                                         </span>
                                     </div>
+                                    {computedTotal !== undefined && (
+                                        <div className="mt-3 pt-3 border-t border-dashed border-orange-200 space-y-1.5">
+                                            {(() => {
+                                                const rate = (homestay.depositPercentage ?? 50) / 100;
+                                                const deposit = computedTotal * rate;
+                                                const remaining = computedTotal - deposit;
+                                                const pct = homestay.depositPercentage ?? 50;
+                                                return (
+                                                    <>
+                                                        <div className="flex items-center justify-between text-sm">
+                                                            <span className="text-orange-700 font-medium">Cọc ngay ({pct}%)</span>
+                                                            <span className="font-bold text-orange-600">{formatMoney(deposit)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between text-sm text-gray-500">
+                                                            <span>Còn lại khi nhận phòng</span>
+                                                            <span className="font-medium">{formatMoney(remaining)}</span>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
                                     {calcResult !== null && (
                                         <div className="mt-2 text-xs text-green-600">
                                             ✓ Giá đã được tính chính xác từ hệ thống
@@ -508,6 +550,10 @@ export default function HomestayDetail() {
                                         if (res && res.success && res.data?.id) {
                                             const bookingData = res.data
                                             const totalPrice = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
+                                            // Ưu tiên depositAmount từ BE, fallback tính theo depositPercentage của homestay
+                                            const depositRate = (homestay!.depositPercentage ?? 50) / 100
+                                            const depositAmount = bookingData.depositAmount ?? totalPrice * depositRate
+                                            const remainingAmount = bookingData.remainingAmount ?? totalPrice - depositAmount
                                             setPendingBooking({
                                                 id: bookingData.id,
                                                 homestayName: homestay!.name,
@@ -517,6 +563,9 @@ export default function HomestayDetail() {
                                                 guestsCount: guests,
                                                 pricePerNight: homestay!.pricePerNight,
                                                 totalPrice,
+                                                depositAmount,
+                                                remainingAmount,
+                                                paymentLabel: 'Đặt cọc',
                                             })
                                         } else if (res && !res.success) {
                                             toast.error(res.message || 'Đặt phòng thất bại')

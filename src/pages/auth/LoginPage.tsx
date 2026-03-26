@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -7,16 +7,99 @@ import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { authService } from '../../services/authService';
 import { authConfig } from '../../config/authConfig';
 import { minDelay } from '../../utils/minDelay';
-import toast from 'react-hot-toast'; // 👈 THÊM IMPORT
+import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
+  const isGoogleConfigured = Boolean(authConfig.oauthProviders.google.clientId);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isGoogleConfigured) return;
+
+    let isMounted = true;
+
+    const initializeGoogleButton = () => {
+      if (!isMounted || !googleButtonRef.current) return;
+
+      const googleApi = (window as any)?.google;
+      if (!googleApi?.accounts?.id) return;
+
+      googleApi.accounts.id.initialize({
+        client_id: authConfig.oauthProviders.google.clientId,
+        callback: async (googleResponse: any) => {
+          const idToken = googleResponse?.credential;
+          if (!idToken) {
+            toast.error('Không thể lấy Google token. Vui lòng thử lại.');
+            return;
+          }
+
+          setError('');
+          setIsGoogleLoading(true);
+          try {
+            const response = await minDelay(authService.googleLogin({ idToken, rememberMe }));
+            if (response.success) {
+              toast.success(`Chào mừng ${response.user?.name || 'bạn'}!`);
+              const userRole = response.user?.role || 'customer';
+              const redirectPath = authConfig.redirectPaths[userRole];
+              setTimeout(() => {
+                navigate(redirectPath, { replace: true });
+              }, 500);
+              return;
+            }
+
+            const message = response.message || 'Đăng nhập Google thất bại';
+            setError(message);
+            toast.error(message);
+          } catch (err) {
+            console.error('Google login error:', err);
+            setError('Đăng nhập Google thất bại. Vui lòng thử lại.');
+            toast.error('Đăng nhập Google thất bại. Vui lòng thử lại.');
+          } finally {
+            if (isMounted) {
+              setIsGoogleLoading(false);
+            }
+          }
+        },
+      });
+
+      googleButtonRef.current.innerHTML = '';
+      googleApi.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        shape: 'pill',
+        text: 'continue_with',
+        width: 350,
+      });
+    };
+
+    const existingScript = document.getElementById('google-identity-script') as HTMLScriptElement | null;
+
+    if ((window as any)?.google?.accounts?.id) {
+      initializeGoogleButton();
+    } else if (existingScript) {
+      existingScript.addEventListener('load', initializeGoogleButton, { once: true });
+    } else {
+      const script = document.createElement('script');
+      script.id = 'google-identity-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGoogleButton;
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isGoogleConfigured, navigate, rememberMe]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,7 +250,7 @@ export default function LoginPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isGoogleLoading}
                 className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-2.5 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
@@ -182,6 +265,33 @@ export default function LoginPage() {
                   'Đăng Nhập'
                 )}
               </button>
+
+              <>
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-500">Hoặc</span>
+                  </div>
+                </div>
+
+                {isGoogleConfigured ? (
+                  <div className="flex justify-center">
+                    <div ref={googleButtonRef} />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toast.error('Thiếu cấu hình VITE_GOOGLE_CLIENT_ID nên chưa dùng được Google login.')}
+                    className="w-full border border-gray-300 text-gray-700 py-2.5 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Đăng nhập với Google
+                  </button>
+                )}
+
+                {isGoogleLoading && <p className="text-xs text-center text-gray-500">Đang xác thực Google...</p>}
+              </>
             </form>
 
             {/* Footer */}

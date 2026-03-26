@@ -68,12 +68,14 @@ export interface Homestay {
   reviewCount?: number;
   ownerId?: string;
   ownerName?: string;
-  status: 'ACTIVE' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE' | 'INACTIVE';
+  status: "ACTIVE" | "OCCUPIED" | "CLEANING" | "MAINTENANCE" | "INACTIVE";
   featured?: boolean;
   cancellationPolicy?: string;
   houseRules?: string;
+  depositPercentage?: number; // % cọc theo cấu hình homestay, mặc định 50 từ BE
   createdAt?: string;
   updatedAt?: string;
+  addedAt?: string;
 }
 
 export interface Booking {
@@ -87,8 +89,8 @@ export interface Booking {
   checkOut: string;
   guests: number;
   totalPrice: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  paymentStatus: 'pending' | 'paid' | 'refunded';
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  paymentStatus: "pending" | "paid" | "refunded";
   createdAt: string;
   updatedAt: string;
 }
@@ -102,7 +104,7 @@ export interface Customer {
   totalBookings: number;
   totalSpent: number;
   joinedDate: string;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: "ACTIVE" | "INACTIVE";
 }
 
 export interface Staff {
@@ -110,10 +112,10 @@ export interface Staff {
   name: string;
   email: string;
   phone?: string;
-  role: 'staff' | 'manager';
+  role: "staff" | "manager";
   avatar?: string;
   assignedHomestays: number;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: "ACTIVE" | "INACTIVE";
   joinedDate: string;
 }
 

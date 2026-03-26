@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Star, MapPin, Users } from 'lucide-react';
+import { Star, MapPin, Users, Heart } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { apiService } from '../../services/apiService';
 import { apiConfig } from '../../config/apiConfig';
+import { useWishlist } from '../../contexts/WishlistContext';
+import { authService } from '../../services/authService';
+import toast from 'react-hot-toast';
 import type { Homestay } from '../../types/homestay.types';
 
 interface PublicReview {
@@ -34,8 +37,8 @@ export async function fetchReviewSummary(homestayId: string): Promise<ReviewSumm
     const list: PublicReview[] = Array.isArray(res?.data)
       ? res.data
       : Array.isArray(res)
-      ? res
-      : [];
+        ? res
+        : [];
     if (list.length === 0) {
       const empty = { avg: 0, count: 0 };
       reviewCache.set(homestayId, empty);
@@ -57,11 +60,15 @@ export async function fetchReviewSummary(homestayId: string): Promise<ReviewSumm
 interface Props {
   homestay: Homestay;
   onBook?: () => void;
+  isBooked?: boolean;
 }
 
-export default function HomestayCard({ homestay, onBook }: Props) {
+export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
   const navigate = useNavigate();
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
+  const { favorites, loading: favLoading, toggle } = useWishlist();
+  const isLoggedIn = authService.isAuthenticated();
+  const isFavorite = favLoading ? false : favorites.has(homestay.id);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,8 +94,36 @@ export default function HomestayCard({ homestay, onBook }: Props) {
           <ImageWithFallback
             src={homestay.images?.[0] || ''}
             alt={homestay.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 ${isBooked ? 'brightness-50' : ''}`}
           />
+          {/* Favorite button — chỉ hiện khi đã login */}
+          {isLoggedIn && (
+          <button
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              try {
+                await toggle(homestay.id);
+                toast.success(isFavorite ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
+              } catch (err) {
+                toast.error('Không thể thay đổi trạng thái yêu thích');
+              }
+            }}
+            title={isFavorite ? 'Bỏ thích' : 'Lưu yêu thích'}
+            className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow hover:scale-105 transition-transform"
+            type="button"
+          >
+            <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+          </button>
+          )}
+          {/* Booked overlay */}
+          {isBooked && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg tracking-wide">
+                Đã đặt
+              </span>
+            </div>
+          )}
           {/* Rating badge on image */}
           {avgDisplay && (
             <div className="absolute top-3 left-3 flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm">
@@ -148,10 +183,14 @@ export default function HomestayCard({ homestay, onBook }: Props) {
       {/* Book button — luôn ở đáy */}
       <div className="px-4 pb-4 mt-auto">
         <button
-          onClick={onBook ?? (() => navigate(`/homestays/${homestay.id}`))}
-          className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all text-sm font-medium"
+          onClick={isBooked ? undefined : (onBook ?? (() => navigate(`/homestays/${homestay.id}`)))}
+          disabled={isBooked}
+          className={`w-full px-4 py-2 rounded-lg transition-all text-sm font-medium ${isBooked
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
+            }`}
         >
-          Đặt Ngay
+          {isBooked ? 'Đã đặt trong khoảng này' : 'Đặt Ngay'}
         </button>
       </div>
     </div>

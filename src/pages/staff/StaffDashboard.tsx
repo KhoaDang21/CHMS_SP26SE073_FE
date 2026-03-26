@@ -7,7 +7,6 @@ import {
   Bell,
   Calendar,
   CheckCircle,
-  ClipboardList,
   Clock,
   Home,
   LayoutDashboard,

@@ -150,9 +150,7 @@ export default function AiChatWidget() {
     setLoading(true);
 
     try {
-      const reply = isCustomer
-        ? await aiService.chat(msg)
-        : await aiService.askFaq(msg);
+      const reply = await aiService.chat(msg);
 
       setMessages(prev => [...prev, {
         id: `ai-${Date.now()}`, sender: 'AI',
@@ -163,13 +161,6 @@ export default function AiChatWidget() {
       // Xóa tin nhắn user vừa thêm nếu gửi thất bại, trả lại input
       setMessages(prev => prev.filter(m => m.id !== userMsg.id));
       setInput(msg);
-      setMessages(prev => [...prev, {
-        id: `err-${Date.now()}`, sender: 'AI',
-        message: e?.message === 'Request timeout'
-          ? 'Yêu cầu quá thời gian. Vui lòng thử lại.'
-          : 'Đã có lỗi xảy ra. Vui lòng thử lại.',
-        timestamp: new Date().toISOString(),
-      }]);
     } finally {
       setLoading(false);
     }

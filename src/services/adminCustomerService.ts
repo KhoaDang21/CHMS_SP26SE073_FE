@@ -43,24 +43,78 @@ const normalizeType = (value: any, country?: string): CustomerType => {
   return 'international';
 };
 
+const toOptionalText = (value: any): string | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const text = String(value).trim();
+  if (!text || text === '-' || text.toLowerCase() === 'null' || text.toLowerCase() === 'undefined') {
+    return undefined;
+  }
+  return text;
+};
+
+const toNumber = (value: any): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const normalized = value.replace(/[^\d.-]/g, '');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const mapCustomer = (item: any): Customer => {
-  const country = String(item?.country || item?.countryName || 'Việt Nam');
+  const country = toOptionalText(item?.country || item?.countryName) || 'Việt Nam';
+  const city = toOptionalText(item?.city || item?.province || item?.district);
+  const nationality = toOptionalText(item?.nationality) || country;
   const status = normalizeStatus(item?.status ?? (item?.isActive === false ? 'inactive' : 'active'));
-  const totalBookings = Number(item?.totalBookings ?? item?.bookingCount ?? 0);
-  const totalSpent = Number(item?.totalSpent ?? item?.spentAmount ?? item?.totalAmount ?? 0);
+
+  const rawBookingsList = Array.isArray(item?.bookings)
+    ? item.bookings
+    : Array.isArray(item?.bookingHistory)
+      ? item.bookingHistory
+      : [];
+
+  const totalBookings = toNumber(
+    item?.totalBookings ??
+      item?.bookingCount ??
+      item?.bookingsCount ??
+      item?.totalBooking ??
+      item?.orderCount ??
+      item?.reservationCount ??
+      rawBookingsList.length ??
+      0,
+  );
+
+  const computedSpentFromBookings = rawBookingsList.reduce(
+    (sum: number, booking: any) => sum + toNumber(booking?.totalPrice ?? booking?.amount ?? booking?.totalAmount),
+    0,
+  );
+
+  const totalSpent = toNumber(
+    item?.totalSpent ??
+      item?.spentAmount ??
+      item?.totalAmount ??
+      item?.totalSpending ??
+      item?.totalPayment ??
+      item?.spending ??
+      item?.totalPaid ??
+      computedSpentFromBookings ??
+      0,
+  );
 
   return {
     id: String(item?.id || ''),
-    name: String(item?.name || item?.fullName || item?.username || 'Khách hàng'),
+    name: String(item?.fullName || 'Khách hàng'),
     email: String(item?.email || ''),
-    phone: String(item?.phone || item?.phoneNumber || item?.contactPhone || ''),
+    phone: String(item?.phone || ''),
     status,
     type: normalizeType(item?.type, country),
     avatar: item?.avatar || item?.avatarUrl,
-    city: item?.city || item?.province || item?.district,
+    city,
     country,
-    nationality: item?.nationality || country,
-    address: item?.address,
+    nationality,
+    address: toOptionalText(item?.address),
     dateOfBirth: item?.dateOfBirth,
     identityNumber: item?.identityNumber || item?.identityNo || item?.nationalId,
     passportNumber: item?.passportNumber,
@@ -84,15 +138,16 @@ const normalizeBookingStatus = (value: any): CustomerBookingHistory['status'] =>
 };
 
 const mapCustomerBooking = (item: any): CustomerBookingHistory => {
-  const id = String(item?.id || '');
+  const id = String(item?.bookingId || item?.id || '');
   return {
     id,
-    bookingCode: String(item?.bookingCode || item?.code || (id ? id.slice(0, 8) : 'N/A')),
+    bookingCode: String(item?.bookingCode || item?.code || item?.bookingId || (id ? id.slice(0, 8) : 'N/A')),
     homestayName: String(item?.homestayName || item?.name || item?.propertyName || 'Homestay'),
     checkInDate: toISO(item?.checkInDate || item?.checkIn),
     checkOutDate: toISO(item?.checkOutDate || item?.checkOut),
     totalPrice: Number(item?.totalPrice ?? item?.amount ?? 0),
     status: normalizeBookingStatus(item?.status),
+    createdAt: item?.createdAt ? toISO(item.createdAt) : undefined,
   };
 };
 
@@ -158,9 +213,9 @@ export const adminCustomerService = {
 
   async updateCustomer(customerId: string, payload: UpdateCustomerDTO): Promise<{ success: boolean; message?: string; customer?: Customer | null }> {
     try {
+      // BE UpdateCustomerRequestDTO: { fullName, phone, avatarUrl } — no email field
       const updatePayload: Record<string, any> = {
-        ...(payload.name !== undefined ? { name: payload.name } : {}),
-        ...(payload.email !== undefined ? { email: payload.email } : {}),
+        ...(payload.name !== undefined ? { fullName: payload.name } : {}),
         ...(payload.phone !== undefined ? { phone: payload.phone } : {}),
       };
 

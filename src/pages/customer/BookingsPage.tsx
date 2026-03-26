@@ -20,7 +20,7 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'confirmed' | 'staying' | 'completed' | 'cancelled'>('all');
 
   const [selected, setSelected] = useState<Booking | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -39,6 +39,7 @@ export default function BookingsPage() {
   const [payingBooking, setPayingBooking] = useState<{
     id: string; homestayName: string; checkIn: string; checkOut: string;
     totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
+    paymentLabel?: string;
   } | null>(null);
 
   const [reviewingBooking, setReviewingBooking] = useState<{ id: string; homestayName: string } | null>(null);
@@ -92,9 +93,10 @@ export default function BookingsPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    if (activeTab === 'all') return bookings;
-    if (activeTab === 'pending') return bookings.filter(b => b.status === 'PENDING');
+    if (activeTab === 'all')       return bookings;
+    if (activeTab === 'pending')   return bookings.filter(b => b.status === 'PENDING');
     if (activeTab === 'confirmed') return bookings.filter(b => b.status === 'CONFIRMED');
+    if (activeTab === 'staying')   return bookings.filter(b => b.status === 'CHECKED_IN');
     if (activeTab === 'completed') return bookings.filter(b => b.status === 'COMPLETED');
     if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED' || b.status === 'REJECTED');
     return bookings;
@@ -165,23 +167,25 @@ export default function BookingsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
-      case 'CONFIRMED': return 'bg-green-100 text-green-700 border-green-200';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'CANCELLED': return 'bg-red-100 text-red-700 border-red-200';
-      case 'COMPLETED': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
-      case 'REJECTED': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'CONFIRMED':   return 'bg-green-100 text-green-700 border-green-200';
+      case 'CHECKED_IN':  return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'PENDING':     return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'CANCELLED':   return 'bg-red-100 text-red-700 border-red-200';
+      case 'COMPLETED':   return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+      case 'REJECTED':    return 'bg-red-100 text-red-700 border-red-200';
+      default:            return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status.toUpperCase()) {
-      case 'CONFIRMED': return 'Đã xác nhận';
-      case 'PENDING': return 'Chờ thanh toán';
-      case 'CANCELLED': return 'Đã hủy';
-      case 'COMPLETED': return 'Hoàn thành';
-      case 'REJECTED': return 'Bị từ chối';
-      default: return 'Trạng thái';
+      case 'CONFIRMED':   return 'Đã xác nhận';
+      case 'CHECKED_IN':  return 'Đang lưu trú';
+      case 'PENDING':     return 'Chờ thanh toán cọc';
+      case 'CANCELLED':   return 'Đã hủy';
+      case 'COMPLETED':   return 'Hoàn thành';
+      case 'REJECTED':    return 'Bị từ chối';
+      default:            return 'Trạng thái';
     }
   };
 
@@ -213,11 +217,12 @@ export default function BookingsPage() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 mb-6">
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {([
-                { key: 'all', label: 'Tất cả' },
-                { key: 'pending', label: 'Chờ thanh toán' },
+                { key: 'all',       label: 'Tất cả' },
+                { key: 'pending',   label: 'Chờ thanh toán cọc' },
                 { key: 'confirmed', label: 'Đã xác nhận' },
+                { key: 'staying',   label: 'Đang lưu trú' },
                 { key: 'completed', label: 'Hoàn thành' },
                 { key: 'cancelled', label: 'Đã hủy' },
               ] as const).map(t => (
@@ -275,10 +280,20 @@ export default function BookingsPage() {
                         );
                       })()}
                       {/* Status badge on image */}
-                      <div className="absolute top-3 right-3">
+                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
                         <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
                           {getStatusText(b.status)}
                         </span>
+                        {b.status === 'CONFIRMED' && b.paymentStatus === 'DEPOSIT_PAID' && (
+                          <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm">
+                            Còn lại chưa trả
+                          </span>
+                        )}
+                        {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && b.paymentStatus === 'FULLY_PAID' && (
+                          <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm">
+                            Đã thanh toán đủ
+                          </span>
+                        )}
                       </div>
                       {/* Homestay icon */}
                       <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm">
@@ -515,11 +530,28 @@ export default function BookingsPage() {
                         )}
 
                         {typeof selected.totalPrice === 'number' && (
-                          <div className="mt-4 pt-4 border-t border-blue-200 flex items-center justify-between">
-                            <div className="font-semibold text-gray-900">Tổng tiền</div>
-                            <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
-                              {selected.totalPrice.toLocaleString('vi-VN')}đ
+                          <div className="mt-4 pt-4 border-t border-blue-200 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold text-gray-900">Tổng tiền</div>
+                              <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
+                                {selected.totalPrice.toLocaleString('vi-VN')}đ
+                              </div>
                             </div>
+                            {selected.paymentStatus === 'UNPAID' && typeof selected.depositAmount === 'number' && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-orange-600 font-medium">Cần cọc ngay</span>
+                                <span className="font-bold text-orange-600">{selected.depositAmount.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                            {selected.paymentStatus === 'DEPOSIT_PAID' && typeof selected.remainingAmount === 'number' && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-blue-600 font-medium">Còn lại cần thanh toán</span>
+                                <span className="font-bold text-blue-600">{selected.remainingAmount.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                            {selected.paymentStatus === 'FULLY_PAID' && (
+                              <div className="text-sm text-green-600 font-medium text-right">✓ Đã thanh toán đầy đủ</div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -704,11 +736,15 @@ export default function BookingsPage() {
                       ) : (
                         /* Thao tác - Buttons */
                         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                          {/* Nút Thanh toán - chỉ hiện khi PENDING */}
-                          {selected.status === 'PENDING' && (
+                          {/* Nút Thanh toán — PENDING (chưa cọc) hoặc CONFIRMED + DEPOSIT_PAID (còn lại) */}
+                          {(selected.status === 'PENDING' || (selected.status === 'CONFIRMED' && selected.paymentStatus === 'DEPOSIT_PAID')) && (
                             <button
                               onClick={() => {
                                 const hs = detailHomestay ?? homestayMap[selected.homestayId];
+                                const amountToPay = selected.status === 'PENDING'
+                                  ? (selected.depositAmount ?? selected.totalPrice ?? 0)
+                                  : (selected.remainingAmount ?? 0);
+                                const label = selected.status === 'PENDING' ? 'Đặt cọc' : 'Thanh toán còn lại';
                                 setPayingBooking({
                                   id: selected.id,
                                   homestayName: selected.homestayName || hs?.name || 'Homestay',
@@ -717,19 +753,20 @@ export default function BookingsPage() {
                                   totalNights: selected.totalNights ?? 0,
                                   guestsCount: selected.guestsCount,
                                   pricePerNight: selected.pricePerNight ?? hs?.pricePerNight ?? 0,
-                                  totalPrice: selected.totalPrice ?? 0,
+                                  totalPrice: amountToPay,
+                                  paymentLabel: label,
                                 });
                               }}
                               disabled={saving}
                               className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
                             >
                               <CreditCard className="w-4 h-4" />
-                              Thanh toán ngay
+                              {selected.status === 'PENDING' ? 'Đặt cọc ngay' : 'Thanh toán còn lại'}
                             </button>
                           )}
                           <button
                             onClick={startEdit}
-                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED'}
+                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
                             className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${selected.status !== 'PENDING'
                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 : 'bg-gray-900 hover:bg-black text-white'
@@ -758,7 +795,7 @@ export default function BookingsPage() {
                                 setSaving(false);
                               }
                             }}
-                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED'}
+                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
                             className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${selected.status !== 'PENDING'
                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 : 'bg-red-600 hover:bg-red-700 text-white'

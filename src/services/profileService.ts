@@ -38,7 +38,7 @@ class ProfileService {
   /** GET /api/users/profile — lấy profile của user hiện tại */
   async getProfile(_userId?: string): Promise<ProfileResponse> {
     try {
-      const response = await apiService.get<any>(apiConfig.endpoints.auth.profile);
+      const response = await apiService.get<any>(apiConfig.endpoints.userProfile.get);
 
       if (!response?.success) {
         return {
@@ -91,7 +91,7 @@ class ProfileService {
         phoneNumber: formData.phone ?? '',   // BE field is 'phoneNumber'
         avatarUrl: formData.avatar ?? '',
       };
-      const response = await apiService.put<any>(apiConfig.endpoints.auth.profile, payload);
+      const response = await apiService.put<any>(apiConfig.endpoints.userProfile.update, payload);
       if (!response?.success) {
         return { success: false, message: response?.message || 'Failed to update profile' };
       }
@@ -111,34 +111,13 @@ class ProfileService {
     }
   }
 
-  /** POST /api/employees/{id}/avatar — upload avatar (employee only)
-   * For customer profile avatar, BE doesn't have a dedicated endpoint yet.
-   */
-  async uploadAvatar(_userId: string | undefined, file: File): Promise<ProfileResponse> {
-    try {
-      const form = new FormData();
-      form.append('avatar', file);
-      const response = await apiService.post<any>(`${apiConfig.endpoints.auth.profile}/avatar`, form);
-      if (!response?.success) {
-        return { success: false, message: response?.message || 'Failed to upload avatar' };
-      }
-      return { success: true, message: response.message, avatarUrl: response.data?.avatarUrl ?? response.avatarUrl ?? '' };
-    } catch {
-      return { success: false, message: 'Failed to upload avatar' };
-    }
+  /** Upload avatar — BE không có endpoint riêng cho customer, chưa implement */
+  async uploadAvatar(_userId: string | undefined, _file: File): Promise<ProfileResponse> {
+    return { success: false, message: 'Chức năng upload avatar chưa được hỗ trợ.' };
   }
 
-  async updatePreferences(_userId: string | undefined, preferences: Partial<UserProfile>): Promise<ProfileResponse> {
-    try {
-      const response = await apiService.put<any>(`${apiConfig.endpoints.auth.profile}/preferences`, preferences);
-      if (!response?.success) {
-        return { success: false, message: response?.message || 'Failed to update preferences' };
-      }
-      const data = response.data ?? response.profile ?? response;
-      return { success: true, message: response.message, profile: data as UserProfile };
-    } catch {
-      return { success: false, message: 'Failed to update preferences' };
-    }
+  async updatePreferences(_userId: string | undefined, _preferences: Partial<UserProfile>): Promise<ProfileResponse> {
+    return { success: false, message: 'Chức năng cập nhật preferences chưa được hỗ trợ.' };
   }
 
   /** PUT /api/users/profile/password
@@ -146,7 +125,7 @@ class ProfileService {
    */
   async updatePassword(_userId: string, formData: { currentPassword: string; newPassword: string; confirmPassword: string }): Promise<ProfileResponse> {
     try {
-      const response = await apiService.put<any>(`${apiConfig.endpoints.auth.profile}/password`, {
+      const response = await apiService.put<any>(apiConfig.endpoints.userProfile.changePassword, {
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
         confirmPassword: formData.confirmPassword,

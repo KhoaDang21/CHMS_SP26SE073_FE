@@ -75,11 +75,51 @@ export default function CustomerManagement() {
     filterCustomers();
   }, [customers, searchQuery, statusFilter, typeFilter]);
 
+  useEffect(() => {
+    if (!selectedCustomer && !deletingCustomer) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [selectedCustomer, deletingCustomer]);
+
   const loadCustomers = async () => {
     setLoading(true);
     try {
       const data = await adminCustomerService.getAllCustomers();
-      setCustomers(data);
+
+      const enriched = await Promise.all(
+        data.map(async (customer) => {
+          if ((customer.totalBookings || 0) > 0 || (customer.totalSpent || 0) > 0) {
+            return customer;
+          }
+
+          try {
+            const bookingData = await adminCustomerService.getCustomerBookingHistory(customer.id);
+            const bookingCount = bookingData.bookings.length;
+            const bookingSpent = bookingData.bookings.reduce(
+              (sum, booking) => sum + (Number(booking.totalPrice) || 0),
+              0,
+            );
+
+            if (bookingCount <= 0 && bookingSpent <= 0) {
+              return customer;
+            }
+
+            return {
+              ...customer,
+              totalBookings: bookingCount,
+              totalSpent: bookingSpent,
+            };
+          } catch {
+            return customer;
+          }
+        }),
+      );
+
+      setCustomers(enriched);
     } catch (error) {
       console.error('Error loading customers:', error);
       toast.error('Không thể tải danh sách khách hàng');
@@ -101,8 +141,10 @@ export default function CustomerManagement() {
     try {
       const data = await adminCustomerService.getCustomerBookingHistory(customerId);
       setBookingHistory(data.bookings);
+      return data.bookings;
     } catch (error) {
       console.error('Error loading booking history:', error);
+      return [];
     }
   };
 
@@ -134,7 +176,29 @@ export default function CustomerManagement() {
 
   const handleViewDetails = async (customer: Customer) => {
     setSelectedCustomer(customer);
-    await loadBookingHistory(customer.id);
+
+    const [customerDetail, bookings] = await Promise.all([
+      adminCustomerService.getCustomerById(customer.id),
+      loadBookingHistory(customer.id),
+    ]);
+
+    const safeBookings = Array.isArray(bookings) ? bookings : [];
+    const bookingCount = safeBookings.length;
+    const bookingSpent = safeBookings.reduce((sum, booking) => sum + (Number(booking.totalPrice) || 0), 0);
+
+    const mergedCustomer: Customer = {
+      ...(customerDetail || customer),
+      totalBookings:
+        Number(customerDetail?.totalBookings || customer.totalBookings || 0) > 0
+          ? Number(customerDetail?.totalBookings || customer.totalBookings || 0)
+          : bookingCount,
+      totalSpent:
+        Number(customerDetail?.totalSpent || customer.totalSpent || 0) > 0
+          ? Number(customerDetail?.totalSpent || customer.totalSpent || 0)
+          : bookingSpent,
+    };
+
+    setSelectedCustomer(mergedCustomer);
   };
 
   const handleUpdateStatus = async (customerId: string, newStatus: CustomerStatus) => {
@@ -500,13 +564,7 @@ export default function CustomerManagement() {
                           </div>
                           <div className="flex items-center gap-2 text-gray-600 text-sm">
                             <MapPin className="w-4 h-4 text-gray-400" />
-                            <span>
-                              {customer.city || '-'}, {customer.country || '-'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Globe className="w-4 h-4 text-gray-400" />
-                            <span>{customer.nationality || '-'}</span>
+                            <span>{[customer.city, customer.country].filter(Boolean).join(', ') || 'Chưa cập nhật'}</span>
                           </div>
                         </div>
 
@@ -553,8 +611,8 @@ export default function CustomerManagement() {
       {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-4 max-h-[calc(100vh-2rem)] flex flex-col">
             <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex items-center justify-between text-white rounded-t-2xl">
               <div className="flex items-center gap-4">
                 {selectedCustomer.avatar ? (
@@ -570,7 +628,6 @@ export default function CustomerManagement() {
                 )}
                 <div>
                   <h2 className="text-2xl font-bold">{selectedCustomer.name}</h2>
-                  <p className="text-blue-100 text-sm">ID: {selectedCustomer.id}</p>
                 </div>
               </div>
               <button onClick={() => setSelectedCustomer(null)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
@@ -578,7 +635,7 @@ export default function CustomerManagement() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto">
               <div className="flex items-center gap-4">
                 {getStatusBadge(selectedCustomer.status)}
                 {getTypeBadge(selectedCustomer.type)}
@@ -634,10 +691,12 @@ export default function CustomerManagement() {
                       </p>
                     </div>
                   )}
-                  <div>
-                    <p className="text-sm text-gray-500">Quốc tịch</p>
-                    <p className="font-medium text-gray-900">{selectedCustomer.nationality}</p>
-                  </div>
+                  {(selectedCustomer.nationality || selectedCustomer.country) && (
+                    <div>
+                      <p className="text-sm text-gray-500">Quốc tịch</p>
+                      <p className="font-medium text-gray-900">{selectedCustomer.nationality || selectedCustomer.country}</p>
+                    </div>
+                  )}
                   {selectedCustomer.identityNumber && (
                     <div>
                       <p className="text-sm text-gray-500">CMND/CCCD</p>
@@ -712,8 +771,7 @@ export default function CustomerManagement() {
                       <div key={booking.id} className="bg-gray-50 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div>
-                            <p className="font-medium text-gray-900">{booking.bookingCode}</p>
-                            <p className="text-sm text-blue-600">{booking.homestayName}</p>
+                            <p className="font-medium text-blue-600">{booking.homestayName}</p>
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-green-600">{booking.totalPrice.toLocaleString('vi-VN')} ₫</p>

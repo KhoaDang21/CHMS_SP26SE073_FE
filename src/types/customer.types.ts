@@ -38,6 +38,7 @@ export interface CustomerBookingHistory {
   checkOutDate: string;
   totalPrice: number;
   status: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
+  createdAt?: string;
 }
 
 export interface CustomerStats {

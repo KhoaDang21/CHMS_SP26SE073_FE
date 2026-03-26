@@ -8,7 +8,8 @@ import { apiConfig } from "../config/apiConfig";
 // status ("PENDING"|"CONFIRMED"|"CANCELLED"|"COMPLETED"|"REJECTED"),
 // specialRequests, contactPhone, createdAt
 
-export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REJECTED";
+export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REJECTED" | "CHECKED_IN";
+export type PaymentStatus = "UNPAID" | "DEPOSIT_PAID" | "FULLY_PAID";
 
 export interface Booking {
   id: string;
@@ -24,6 +25,9 @@ export interface Booking {
   subTotal?: number;
   discountAmount?: number;
   totalPrice?: number;
+  depositAmount?: number;
+  remainingAmount?: number;
+  paymentStatus?: PaymentStatus;
   status: BookingStatus;
   specialRequests?: string;
   contactPhone?: string;
@@ -69,6 +73,7 @@ const normalizeStatus = (raw: any): BookingStatus => {
   if (v === "CANCELLED") return "CANCELLED";
   if (v === "COMPLETED") return "COMPLETED";
   if (v === "REJECTED") return "REJECTED";
+  if (v === "CHECKED_IN") return "CHECKED_IN";
   return "PENDING";
 };
 
@@ -92,6 +97,9 @@ const mapBooking = (item: any): Booking => ({
   subTotal: item.subTotal,
   discountAmount: item.discountAmount,
   totalPrice: item.totalPrice,
+  depositAmount: item.depositAmount,
+  remainingAmount: item.remainingAmount,
+  paymentStatus: item.paymentStatus ?? undefined,
   status: normalizeStatus(item.status),
   specialRequests: item.specialRequests ?? undefined,
   contactPhone: item.contactPhone ?? undefined,

@@ -28,7 +28,29 @@ export interface RegisterData {
   role: "customer" | "manager";
 }
 
+export interface GoogleLoginPayload {
+  idToken: string;
+  rememberMe?: boolean;
+}
+
 export const authService = {
+  _getActiveStorage(): Storage {
+    if (localStorage.getItem("authToken") || localStorage.getItem("refreshToken") || localStorage.getItem("userData")) {
+      return localStorage;
+    }
+    return sessionStorage;
+  },
+
+  clearAuthData(): void {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("userData");
+    sessionStorage.removeItem("refreshToken");
+    window.dispatchEvent(new Event("auth-logout"));
+  },
+
   _extractUserId(apiData: any, token?: string | null): string | undefined {
     const tokenPayload = token ? this._parseJwt(token) : null;
 
@@ -42,6 +64,50 @@ export const authService = {
       ] ||
       apiData?.email
     );
+  },
+
+  _persistAuthSession(apiResponse: any, rememberMe = false): LoginResponse {
+    const storage = rememberMe ? localStorage : sessionStorage;
+
+    const token =
+      apiResponse?.data?.accessToken ||
+      apiResponse?.data?.token ||
+      apiResponse?.token;
+    const refreshToken = apiResponse?.data?.refreshToken;
+    const sourceUser = apiResponse?.data?.user || apiResponse?.data;
+    const resolvedUserId = this._extractUserId(sourceUser, token);
+
+    const userData = sourceUser
+      ? {
+          id: resolvedUserId || sourceUser.email,
+          email: sourceUser.email,
+          name: sourceUser.fullName || sourceUser.name,
+          role: sourceUser.role?.toLowerCase() as
+            | "customer"
+            | "manager"
+            | "staff"
+            | "admin",
+        }
+      : undefined;
+
+    if (token) {
+      storage.setItem("authToken", token);
+    }
+    if (refreshToken) {
+      storage.setItem("refreshToken", refreshToken);
+    }
+    if (userData) {
+      storage.setItem("userData", JSON.stringify(userData));
+    }
+
+    window.dispatchEvent(new Event("auth-login"));
+
+    return {
+      success: true,
+      token,
+      user: userData,
+      message: apiResponse?.message,
+    };
   },
 
   /**
@@ -66,47 +132,7 @@ export const authService = {
       const apiResponse = await response.json();
 
       if (response.ok && apiResponse.success) {
-        const storage = credentials.rememberMe ? localStorage : sessionStorage;
-
-        const token =
-          apiResponse.data?.accessToken ||
-          apiResponse.data?.token ||
-          apiResponse.token;
-        const refreshToken = apiResponse.data?.refreshToken;
-        const resolvedUserId = this._extractUserId(apiResponse.data, token);
-
-        const userData = apiResponse.data
-          ? {
-              id: resolvedUserId || apiResponse.data.email,
-              email: apiResponse.data.email,
-              name: apiResponse.data.fullName || apiResponse.data.name,
-              role: apiResponse.data.role?.toLowerCase() as
-                | "customer"
-                | "manager"
-                | "staff"
-                | "admin",
-            }
-          : undefined;
-
-        if (token) {
-          storage.setItem("authToken", token);
-        }
-        if (refreshToken) {
-          storage.setItem("refreshToken", refreshToken);
-        }
-        if (userData) {
-          storage.setItem("userData", JSON.stringify(userData));
-        }
-
-        // Notify toàn app biết user đã login
-        window.dispatchEvent(new Event("auth-login"));
-
-        return {
-          success: true,
-          token: token,
-          user: userData,
-          message: apiResponse.message,
-        };
+        return this._persistAuthSession(apiResponse, credentials.rememberMe);
       }
 
       return {
@@ -118,6 +144,38 @@ export const authService = {
       return {
         success: false,
         message: "Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.",
+      };
+    }
+  },
+
+  async googleLogin(payload: GoogleLoginPayload): Promise<LoginResponse> {
+    try {
+      const response = await fetch(
+        `${authConfig.api.baseUrl}${authConfig.api.endpoints.googleLogin}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ idToken: payload.idToken }),
+        },
+      );
+
+      const apiResponse = await response.json().catch(() => ({}));
+
+      if (response.ok && apiResponse?.success) {
+        return this._persistAuthSession(apiResponse, payload.rememberMe);
+      }
+
+      return {
+        success: false,
+        message: apiResponse?.message || "Đăng nhập Google thất bại",
+      };
+    } catch (error) {
+      console.error("Google login error:", error);
+      return {
+        success: false,
+        message: "Đã xảy ra lỗi khi đăng nhập Google. Vui lòng thử lại.",
       };
     }
   },
@@ -165,9 +223,7 @@ export const authService = {
    */
   async logout(): Promise<void> {
     const token = this.getToken();
-    const refreshToken =
-      localStorage.getItem("refreshToken") ||
-      sessionStorage.getItem("refreshToken");
+    const refreshToken = this.getRefreshToken();
 
     try {
       // Call API logout để invalidate token trên server
@@ -190,15 +246,7 @@ export const authService = {
     } catch (error) {
       console.error("Logout API error:", error);
     } finally {
-      // Xóa tất cả token và userData khỏi storage
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userData");
-      localStorage.removeItem("refreshToken");
-      sessionStorage.removeItem("authToken");
-      sessionStorage.removeItem("userData");
-      sessionStorage.removeItem("refreshToken");
-      // Notify toàn app biết user đã logout
-      window.dispatchEvent(new Event("auth-logout"));
+      this.clearAuthData();
     }
   },
 
@@ -209,6 +257,70 @@ export const authService = {
     return (
       localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
     );
+  },
+
+  getRefreshToken(): string | null {
+    return (
+      localStorage.getItem("refreshToken") ||
+      sessionStorage.getItem("refreshToken")
+    );
+  },
+
+  async refreshAccessToken(): Promise<string | null> {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) return null;
+
+    const currentAccessToken = this.getToken();
+    const candidateBodies: Array<Record<string, string>> = [
+      { refreshToken, accessToken: currentAccessToken || "" },
+      { refreshToken },
+      { token: refreshToken },
+    ];
+
+    for (const body of candidateBodies) {
+      try {
+        const response = await fetch(
+          `${authConfig.api.baseUrl}${authConfig.api.endpoints.refreshToken}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          },
+        );
+
+        if (!response.ok) {
+          continue;
+        }
+
+        const apiResponse = await response.json().catch(() => ({}));
+        const newAccessToken =
+          apiResponse?.data?.accessToken ||
+          apiResponse?.data?.token ||
+          apiResponse?.accessToken ||
+          apiResponse?.token;
+        const newRefreshToken = apiResponse?.data?.refreshToken || apiResponse?.refreshToken;
+
+        if (!newAccessToken) {
+          continue;
+        }
+
+        const storage = this._getActiveStorage();
+        storage.setItem("authToken", newAccessToken);
+        if (newRefreshToken) {
+          storage.setItem("refreshToken", newRefreshToken);
+        }
+
+        window.dispatchEvent(new Event("auth-login"));
+        return newAccessToken;
+      } catch {
+        // Try next payload shape.
+      }
+    }
+
+    this.clearAuthData();
+    return null;
   },
 
   /**
@@ -297,7 +409,7 @@ export const authService = {
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    return this.isTokenValid();
   },
 
   /**

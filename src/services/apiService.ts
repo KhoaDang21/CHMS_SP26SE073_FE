@@ -1,9 +1,11 @@
 import { apiConfig } from "../config/apiConfig";
+import { authService } from './authService';
 
 
 class ApiService {
   private baseURL: string;
   private timeout: number;
+  private refreshPromise: Promise<string | null> | null = null;
 
   constructor() {
     this.baseURL = apiConfig.baseURL;
@@ -12,6 +14,16 @@ class ApiService {
 
   private getToken(): string | null {
     return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  }
+
+  private async refreshTokenWithLock(): Promise<string | null> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = authService.refreshAccessToken().finally(() => {
+        this.refreshPromise = null;
+      });
+    }
+
+    return this.refreshPromise;
   }
 
   private async parseResponseBody<T>(response: Response): Promise<T> {
@@ -31,7 +43,11 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = this.getToken();
+    let token = this.getToken();
+
+    if (token && authService.isTokenExpired()) {
+      token = await this.refreshTokenWithLock();
+    }
     
     const config: RequestInit = {
       ...options,
@@ -46,14 +62,35 @@ class ApiService {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      let response = await fetch(`${this.baseURL}${endpoint}`, {
         ...config,
         signal: controller.signal,
       });
 
+      if (response.status === 401 && this.getToken()) {
+        const refreshedToken = await this.refreshTokenWithLock();
+
+        if (refreshedToken) {
+          const retryHeaders: HeadersInit = {
+            ...(config.headers as Record<string, string>),
+            Authorization: `Bearer ${refreshedToken}`,
+          };
+
+          response = await fetch(`${this.baseURL}${endpoint}`, {
+            ...config,
+            headers: retryHeaders,
+            signal: controller.signal,
+          });
+        }
+      }
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          authService.clearAuthData();
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
         const error = await response.json().catch(() => ({}));
         throw new Error(error.message || `HTTP Error: ${response.status}`);
       }

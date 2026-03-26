@@ -12,6 +12,9 @@ interface BookingInfo {
   guestsCount: number;
   pricePerNight: number;
   totalPrice: number;
+  depositAmount?: number;   // tiền cọc thực tế từ BE (sau khi booking tạo xong)
+  remainingAmount?: number; // còn lại từ BE
+  paymentLabel?: string;
 }
 
 interface PaymentModalProps {
@@ -58,7 +61,7 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">Quay lại</span>
           </button>
-          <h2 className="text-lg font-semibold text-gray-900">Thanh Toán</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{booking.paymentLabel ?? 'Thanh Toán'}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -92,10 +95,37 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
                 <span>{formatMoney(booking.pricePerNight)} × {booking.totalNights} đêm</span>
                 <span>{formatMoney(booking.pricePerNight * booking.totalNights)}</span>
               </div>
+              {/* Tổng tiền */}
               <div className="flex justify-between text-sm font-semibold text-gray-900 pt-1.5 border-t border-blue-100">
-                <span>Tổng thanh toán</span>
-                <span className="text-blue-600 text-base">{formatMoney(booking.totalPrice)}</span>
+                <span>Tổng tiền</span>
+                <span>{formatMoney(booking.totalPrice)}</span>
               </div>
+              {/* Breakdown cọc / còn lại */}
+              {(() => {
+                const deposit = booking.depositAmount ?? booking.totalPrice * 0.5;
+                const remaining = booking.remainingAmount ?? booking.totalPrice - deposit;
+                const isDepositPayment = !booking.paymentLabel || booking.paymentLabel === 'Đặt cọc';
+                return (
+                  <div className="mt-2 pt-2 border-t border-dashed border-orange-200 space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className={`font-semibold ${isDepositPayment ? 'text-orange-600' : 'text-gray-500'}`}>
+                        {isDepositPayment ? '→ Cọc ngay (20%)' : 'Đã cọc'}
+                      </span>
+                      <span className={`font-bold ${isDepositPayment ? 'text-orange-600' : 'text-gray-500'}`}>
+                        {formatMoney(deposit)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className={`${!isDepositPayment ? 'font-semibold text-blue-600' : 'text-gray-500'}`}>
+                        {!isDepositPayment ? '→ Còn lại thanh toán' : 'Còn lại khi nhận phòng'}
+                      </span>
+                      <span className={`font-bold ${!isDepositPayment ? 'text-blue-600' : 'text-gray-500'}`}>
+                        {formatMoney(remaining)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -120,12 +150,13 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
           <button
             onClick={handlePay}
             disabled={isPaying}
-            className="w-full py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isPaying ? (
               <><Loader2 className="w-5 h-5 animate-spin" />Đang xử lý...</>
             ) : (
-              <><ExternalLink className="w-5 h-5" />Thanh toán {formatMoney(booking.totalPrice)}</>
+              <><ExternalLink className="w-5 h-5" />
+                Đặt cọc {formatMoney(booking.depositAmount ?? booking.totalPrice * 0.5)}</>
             )}
           </button>
 

@@ -49,17 +49,32 @@ export const notificationService = {
 
   /** PUT /api/notifications/{id}/read */
   async markAsRead(id: string): Promise<void> {
-    await apiService.put<any>(apiConfig.endpoints.notifications.markRead(id));
+    try {
+      await apiService.put<any>(apiConfig.endpoints.notifications.markRead(id));
+    } catch (e) {
+      console.error('markAsRead error:', e);
+      throw e;
+    }
   },
 
   /** PUT /api/notifications/read-all */
   async markAllAsRead(): Promise<void> {
-    await apiService.put<any>(apiConfig.endpoints.notifications.markAllRead);
+    try {
+      await apiService.put<any>(apiConfig.endpoints.notifications.markAllRead);
+    } catch (e) {
+      console.error('markAllAsRead error:', e);
+      throw e;
+    }
   },
 
   /** DELETE /api/notifications/{id} */
   async delete(id: string): Promise<void> {
-    await apiService.delete<any>(apiConfig.endpoints.notifications.delete(id));
+    try {
+      await apiService.delete<any>(apiConfig.endpoints.notifications.delete(id));
+    } catch (e) {
+      console.error('delete notification error:', e);
+      throw e;
+    }
   },
 
   /** GET /api/notifications/settings */
