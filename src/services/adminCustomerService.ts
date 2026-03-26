@@ -213,9 +213,9 @@ export const adminCustomerService = {
 
   async updateCustomer(customerId: string, payload: UpdateCustomerDTO): Promise<{ success: boolean; message?: string; customer?: Customer | null }> {
     try {
+      // BE UpdateCustomerRequestDTO: { fullName, phone, avatarUrl } — no email field
       const updatePayload: Record<string, any> = {
-        ...(payload.name !== undefined ? { name: payload.name } : {}),
-        ...(payload.email !== undefined ? { email: payload.email } : {}),
+        ...(payload.name !== undefined ? { fullName: payload.name } : {}),
         ...(payload.phone !== undefined ? { phone: payload.phone } : {}),
       };
 

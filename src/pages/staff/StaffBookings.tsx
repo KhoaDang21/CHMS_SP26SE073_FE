@@ -149,34 +149,28 @@ export default function StaffBookings() {
   ];
 
   const filterOptions: { value: FilterStatus; label: string }[] = [
-    { value: 'all', label: 'Tất cả' },
+    { value: 'all',           label: 'Tất cả' },
     { value: 'checkin-today', label: 'Check-in hôm nay' },
-    { value: 'checkout-today', label: 'Check-out hôm nay' },
-    { value: 'confirmed', label: 'Đang lưu trú' },
-    { value: 'completed', label: 'Đã hoàn thành' },
+    { value: 'checkout-today',label: 'Check-out hôm nay' },
+    { value: 'confirmed',     label: 'Đang lưu trú' },
+    { value: 'completed',     label: 'Đã hoàn thành' },
   ];
 
   const getStatusBadge = (status: Booking['status']) => {
     const badges = {
-      pending: { label: 'Chờ xác nhận', class: 'bg-yellow-100 text-yellow-700' },
-      confirmed: { label: 'Đã xác nhận', class: 'bg-blue-100 text-blue-700' },
-      checked_in: { label: 'Đã check-in', class: 'bg-green-100 text-green-700' },
-      checked_out: { label: 'Hoàn thành', class: 'bg-gray-100 text-gray-700' },
-      cancelled: { label: 'Đã hủy', class: 'bg-red-100 text-red-700' },
+      pending:     { label: 'Chờ thanh toán cọc', class: 'bg-yellow-100 text-yellow-700' },
+      confirmed:   { label: 'Đã xác nhận',        class: 'bg-blue-100 text-blue-700' },
+      checked_in:  { label: 'Đang lưu trú',       class: 'bg-green-100 text-green-700' },
+      checked_out: { label: 'Đã check-out',        class: 'bg-gray-100 text-gray-700' },
+      cancelled:   { label: 'Đã hủy',             class: 'bg-red-100 text-red-700' },
     };
-    const badge = badges[status] || badges.pending;
+    const badge = badges[status] ?? badges.pending;
     return <span className={`px-3 py-1 rounded-full text-xs font-medium ${badge.class}`}>{badge.label}</span>;
   };
 
-  const canCheckIn = (booking: Booking) => {
-    const today = new Date().toISOString().split('T')[0];
-    return dateKey(booking.checkInDate) === today && booking.status === 'confirmed';
-  };
-
-  const canCheckOut = (booking: Booking) => {
-    const today = new Date().toISOString().split('T')[0];
-    return dateKey(booking.checkOutDate) === today && (booking.status === 'checked_in' || booking.status === 'confirmed');
-  };
+  // BE không giới hạn ngày — staff có thể check-in/out bất cứ lúc nào khi status đúng
+  const canCheckIn = (booking: Booking) => booking.status === 'confirmed';
+  const canCheckOut = (booking: Booking) => booking.status === 'checked_in';
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

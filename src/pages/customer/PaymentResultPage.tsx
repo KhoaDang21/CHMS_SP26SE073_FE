@@ -105,10 +105,16 @@ export default function PaymentResultPage() {
           {/* SUCCESS */}
           {state === 'success' && (
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-              <div className="bg-gradient-to-r from-green-400 to-emerald-500 p-6 text-center">
+              <div className={`p-6 text-center ${booking?.paymentStatus === 'FULLY_PAID' ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-blue-400 to-cyan-500'}`}>
                 <CheckCircle className="w-16 h-16 text-white mx-auto mb-3" />
-                <h1 className="text-2xl font-bold text-white">Thanh toán thành công!</h1>
-                <p className="text-green-50 mt-1">Booking của bạn đã được xác nhận</p>
+                <h1 className="text-2xl font-bold text-white">
+                  {booking?.paymentStatus === 'FULLY_PAID' ? 'Thanh toán hoàn tất!' : 'Đặt cọc thành công!'}
+                </h1>
+                <p className="text-white/80 mt-1">
+                  {booking?.paymentStatus === 'FULLY_PAID'
+                    ? 'Bạn đã thanh toán đầy đủ cho chuyến đi'
+                    : 'Booking đã được xác nhận, còn lại thanh toán khi nhận phòng'}
+                </p>
               </div>
               {booking && (
                 <div className="p-6 space-y-3">
@@ -227,6 +233,13 @@ function BookingSummary({ booking, formatMoney, formatDate }: {
   formatMoney: (n?: number) => string;
   formatDate: (d?: string) => string;
 }) {
+  const paymentStatusLabel: Record<string, { label: string; cls: string }> = {
+    UNPAID:       { label: 'Chưa thanh toán', cls: 'text-orange-600' },
+    DEPOSIT_PAID: { label: 'Đã cọc',          cls: 'text-blue-600' },
+    FULLY_PAID:   { label: 'Đã thanh toán đủ', cls: 'text-green-600' },
+  };
+  const ps = paymentStatusLabel[booking.paymentStatus] ?? null;
+
   return (
     <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
       {booking.homestayName && (
@@ -246,7 +259,33 @@ function BookingSummary({ booking, formatMoney, formatDate }: {
       {booking.totalPrice != null && (
         <div className="flex justify-between pt-2 border-t border-gray-200">
           <span className="text-gray-700 font-semibold">Tổng tiền</span>
-          <span className="font-bold text-blue-600">{formatMoney(booking.totalPrice)}</span>
+          <span className="font-bold text-gray-900">{formatMoney(booking.totalPrice)}</span>
+        </div>
+      )}
+      {booking.depositAmount != null && booking.paymentStatus === 'UNPAID' && (
+        <div className="flex justify-between">
+          <span className="text-orange-600 font-medium">Cần cọc ngay</span>
+          <span className="font-bold text-orange-600">{formatMoney(booking.depositAmount)}</span>
+        </div>
+      )}
+      {booking.depositAmount != null && booking.paymentStatus === 'DEPOSIT_PAID' && (
+        <>
+          <div className="flex justify-between">
+            <span className="text-blue-600">Đã cọc</span>
+            <span className="font-medium text-blue-600">{formatMoney(booking.depositAmount)}</span>
+          </div>
+          {booking.remainingAmount != null && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Còn lại</span>
+              <span className="font-medium text-gray-900">{formatMoney(booking.remainingAmount)}</span>
+            </div>
+          )}
+        </>
+      )}
+      {ps && (
+        <div className="flex justify-between pt-1">
+          <span className="text-gray-500">Thanh toán</span>
+          <span className={`font-semibold ${ps.cls}`}>{ps.label}</span>
         </div>
       )}
     </div>

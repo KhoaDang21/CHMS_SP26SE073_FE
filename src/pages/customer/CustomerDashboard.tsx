@@ -335,6 +335,8 @@ export default function CustomerDashboard() {
                         </div>
                         <span className={`px-3 py-1 text-xs rounded-full font-medium ${
                           booking.status === 'CONFIRMED'
+                            ? 'bg-blue-100 text-blue-700'
+                            : booking.status === 'CHECKED_IN'
                             ? 'bg-green-100 text-green-700'
                             : booking.status === 'PENDING'
                             ? 'bg-yellow-100 text-yellow-700'
@@ -346,8 +348,10 @@ export default function CustomerDashboard() {
                         }`}>
                           {booking.status === 'CONFIRMED'
                             ? 'Đã Xác Nhận'
+                            : booking.status === 'CHECKED_IN'
+                            ? 'Đang Lưu Trú'
                             : booking.status === 'PENDING'
-                            ? 'Chờ Thanh Toán'
+                            ? 'Chờ Thanh Toán Cọc'
                             : booking.status === 'CANCELLED'
                             ? 'Đã Hủy'
                             : booking.status === 'COMPLETED'

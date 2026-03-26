@@ -72,6 +72,7 @@ export interface Homestay {
   featured?: boolean;
   cancellationPolicy?: string;
   houseRules?: string;
+  depositPercentage?: number; // % cọc theo cấu hình homestay, mặc định 50 từ BE
   createdAt?: string;
   updatedAt?: string;
   addedAt?: string;

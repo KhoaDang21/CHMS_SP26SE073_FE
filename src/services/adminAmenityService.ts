@@ -26,15 +26,21 @@ export const adminAmenityService = {
   },
 
   /**
-   * POST /api/admin/amenities (admin)
+   * POST /api/admin/amenities (admin) — BE uses [FromForm]
    */
   async createAmenity(
     amenityData: CreateAmenityDTO,
   ): Promise<{ success: boolean; message?: string } | null> {
     try {
-      const res = await apiService.post<any>(
+      const formData = new FormData();
+      if (amenityData.name) formData.append('Name', amenityData.name);
+      if (amenityData.category) formData.append('Category', amenityData.category);
+      if (amenityData.iconUrl) formData.append('IconUrl', amenityData.iconUrl);
+      if (amenityData.iconFile) formData.append('IconFile', amenityData.iconFile);
+
+      const res = await apiService.postForm<any>(
         apiConfig.endpoints.adminAmenities.create,
-        amenityData,
+        formData,
       );
       return res;
     } catch (error) {

@@ -32,9 +32,9 @@ export const paymentService = {
   /** POST /api/payment/create-link */
   async createLink(payload: CreatePaymentLinkRequest): Promise<CreatePaymentLinkResponse> {
     const res = await apiService.post<any>(apiConfig.endpoints.payments.createLink, {
-      BookingId: payload.bookingId,
-      CancelUrl: payload.cancelUrl,
-      ReturnUrl: payload.returnUrl,
+      bookingId: payload.bookingId,
+      cancelUrl: payload.cancelUrl,
+      returnUrl: payload.returnUrl,
     });
     // BE: ApiResponse<object>.SuccessResult(data: new { checkoutUrl })
     const checkoutUrl = res?.data?.checkoutUrl ?? res?.checkoutUrl ?? '';

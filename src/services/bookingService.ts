@@ -9,6 +9,7 @@ import { apiConfig } from "../config/apiConfig";
 // specialRequests, contactPhone, createdAt
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REJECTED" | "CHECKED_IN";
+export type PaymentStatus = "UNPAID" | "DEPOSIT_PAID" | "FULLY_PAID";
 
 export interface Booking {
   id: string;
@@ -24,6 +25,9 @@ export interface Booking {
   subTotal?: number;
   discountAmount?: number;
   totalPrice?: number;
+  depositAmount?: number;
+  remainingAmount?: number;
+  paymentStatus?: PaymentStatus;
   status: BookingStatus;
   specialRequests?: string;
   contactPhone?: string;
@@ -93,6 +97,9 @@ const mapBooking = (item: any): Booking => ({
   subTotal: item.subTotal,
   discountAmount: item.discountAmount,
   totalPrice: item.totalPrice,
+  depositAmount: item.depositAmount,
+  remainingAmount: item.remainingAmount,
+  paymentStatus: item.paymentStatus ?? undefined,
   status: normalizeStatus(item.status),
   specialRequests: item.specialRequests ?? undefined,
   contactPhone: item.contactPhone ?? undefined,

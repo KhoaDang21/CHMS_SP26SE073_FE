@@ -33,6 +33,7 @@ export default function HomestayDetail() {
     const [pendingBooking, setPendingBooking] = useState<{
         id: string; homestayName: string; checkIn: string; checkOut: string;
         totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
+        depositAmount?: number; remainingAmount?: number; paymentLabel?: string;
     } | null>(null)
     const [isBooking, setIsBooking] = useState(false)
     const [reviews, setReviews] = useState<Review[]>([])
@@ -483,6 +484,28 @@ export default function HomestayDetail() {
                                             {computedTotal !== undefined ? formatMoney(computedTotal) : (isCalculating ? 'Đang tính...' : '—')}
                                         </span>
                                     </div>
+                                    {computedTotal !== undefined && (
+                                        <div className="mt-3 pt-3 border-t border-dashed border-orange-200 space-y-1.5">
+                                            {(() => {
+                                                const rate = (homestay.depositPercentage ?? 50) / 100;
+                                                const deposit = computedTotal * rate;
+                                                const remaining = computedTotal - deposit;
+                                                const pct = homestay.depositPercentage ?? 50;
+                                                return (
+                                                    <>
+                                                        <div className="flex items-center justify-between text-sm">
+                                                            <span className="text-orange-700 font-medium">Cọc ngay ({pct}%)</span>
+                                                            <span className="font-bold text-orange-600">{formatMoney(deposit)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between text-sm text-gray-500">
+                                                            <span>Còn lại khi nhận phòng</span>
+                                                            <span className="font-medium">{formatMoney(remaining)}</span>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
                                     {calcResult !== null && (
                                         <div className="mt-2 text-xs text-green-600">
                                             ✓ Giá đã được tính chính xác từ hệ thống
@@ -527,6 +550,10 @@ export default function HomestayDetail() {
                                         if (res && res.success && res.data?.id) {
                                             const bookingData = res.data
                                             const totalPrice = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
+                                            // Ưu tiên depositAmount từ BE, fallback tính theo depositPercentage của homestay
+                                            const depositRate = (homestay!.depositPercentage ?? 50) / 100
+                                            const depositAmount = bookingData.depositAmount ?? totalPrice * depositRate
+                                            const remainingAmount = bookingData.remainingAmount ?? totalPrice - depositAmount
                                             setPendingBooking({
                                                 id: bookingData.id,
                                                 homestayName: homestay!.name,
@@ -536,6 +563,9 @@ export default function HomestayDetail() {
                                                 guestsCount: guests,
                                                 pricePerNight: homestay!.pricePerNight,
                                                 totalPrice,
+                                                depositAmount,
+                                                remainingAmount,
+                                                paymentLabel: 'Đặt cọc',
                                             })
                                         } else if (res && !res.success) {
                                             toast.error(res.message || 'Đặt phòng thất bại')
