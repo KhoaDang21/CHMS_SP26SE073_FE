@@ -88,7 +88,37 @@ export default function ManagerCustomers() {
     setLoading(true);
     try {
       const data = await adminCustomerService.getAllCustomers();
-      setCustomers(data);
+
+      const enriched = await Promise.all(
+        data.map(async (customer) => {
+          if ((customer.totalBookings || 0) > 0 || (customer.totalSpent || 0) > 0) {
+            return customer;
+          }
+
+          try {
+            const bookingData = await adminCustomerService.getCustomerBookingHistory(customer.id);
+            const bookingCount = bookingData.bookings.length;
+            const bookingSpent = bookingData.bookings.reduce(
+              (sum, booking) => sum + (Number(booking.totalPrice) || 0),
+              0,
+            );
+
+            if (bookingCount <= 0 && bookingSpent <= 0) {
+              return customer;
+            }
+
+            return {
+              ...customer,
+              totalBookings: bookingCount,
+              totalSpent: bookingSpent,
+            };
+          } catch {
+            return customer;
+          }
+        }),
+      );
+
+      setCustomers(enriched);
     } catch (error) {
       console.error('Error loading customers:', error);
       toast.error('Không thể tải danh sách khách hàng');
@@ -110,8 +140,10 @@ export default function ManagerCustomers() {
     try {
       const data = await adminCustomerService.getCustomerBookingHistory(customerId);
       setBookingHistory(data.bookings);
+      return data.bookings;
     } catch (error) {
       console.error('Error loading booking history:', error);
+      return [];
     }
   };
 
@@ -143,7 +175,29 @@ export default function ManagerCustomers() {
 
   const handleViewDetails = async (customer: Customer) => {
     setSelectedCustomer(customer);
-    await loadBookingHistory(customer.id);
+
+    const [customerDetail, bookings] = await Promise.all([
+      adminCustomerService.getCustomerById(customer.id),
+      loadBookingHistory(customer.id),
+    ]);
+
+    const safeBookings = Array.isArray(bookings) ? bookings : [];
+    const bookingCount = safeBookings.length;
+    const bookingSpent = safeBookings.reduce((sum, booking) => sum + (Number(booking.totalPrice) || 0), 0);
+
+    const mergedCustomer: Customer = {
+      ...(customerDetail || customer),
+      totalBookings:
+        Number(customerDetail?.totalBookings || customer.totalBookings || 0) > 0
+          ? Number(customerDetail?.totalBookings || customer.totalBookings || 0)
+          : bookingCount,
+      totalSpent:
+        Number(customerDetail?.totalSpent || customer.totalSpent || 0) > 0
+          ? Number(customerDetail?.totalSpent || customer.totalSpent || 0)
+          : bookingSpent,
+    };
+
+    setSelectedCustomer(mergedCustomer);
   };
 
   const handleUpdateStatus = async (customerId: string, newStatus: CustomerStatus) => {

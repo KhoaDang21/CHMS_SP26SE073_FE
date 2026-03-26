@@ -52,13 +52,56 @@ const toOptionalText = (value: any): string | undefined => {
   return text;
 };
 
+const toNumber = (value: any): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const normalized = value.replace(/[^\d.-]/g, '');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const mapCustomer = (item: any): Customer => {
   const country = toOptionalText(item?.country || item?.countryName) || 'Việt Nam';
   const city = toOptionalText(item?.city || item?.province || item?.district);
   const nationality = toOptionalText(item?.nationality) || country;
   const status = normalizeStatus(item?.status ?? (item?.isActive === false ? 'inactive' : 'active'));
-  const totalBookings = Number(item?.totalBookings ?? item?.bookingCount ?? 0);
-  const totalSpent = Number(item?.totalSpent ?? item?.spentAmount ?? item?.totalAmount ?? 0);
+
+  const rawBookingsList = Array.isArray(item?.bookings)
+    ? item.bookings
+    : Array.isArray(item?.bookingHistory)
+      ? item.bookingHistory
+      : [];
+
+  const totalBookings = toNumber(
+    item?.totalBookings ??
+      item?.bookingCount ??
+      item?.bookingsCount ??
+      item?.totalBooking ??
+      item?.orderCount ??
+      item?.reservationCount ??
+      rawBookingsList.length ??
+      0,
+  );
+
+  const computedSpentFromBookings = rawBookingsList.reduce(
+    (sum: number, booking: any) => sum + toNumber(booking?.totalPrice ?? booking?.amount ?? booking?.totalAmount),
+    0,
+  );
+
+  const totalSpent = toNumber(
+    item?.totalSpent ??
+      item?.spentAmount ??
+      item?.totalAmount ??
+      item?.totalSpending ??
+      item?.totalPayment ??
+      item?.spending ??
+      item?.totalPaid ??
+      computedSpentFromBookings ??
+      0,
+  );
 
   return {
     id: String(item?.id || ''),
