@@ -12,6 +12,7 @@ import {
   Phone,
   Search,
   StickyNote,
+  Ticket,
   Users,
   X,
   LayoutDashboard,
@@ -148,6 +149,7 @@ export default function StaffBookings() {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
     { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: true },
     { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: false },
+    { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: false },
   ];
 
   const filterOptions: { value: FilterStatus; label: string }[] = [

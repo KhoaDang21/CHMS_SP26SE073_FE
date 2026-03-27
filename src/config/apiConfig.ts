@@ -114,6 +114,12 @@ export const apiConfig = {
       list: "/api/admin/tickets",
       statistics: "/api/admin/tickets/statistics",
     },
+    staffTickets: {
+      list: "/api/staff/tickets",
+      assign: (id: string) => `/api/staff/tickets/${id}/assign`,
+      reply: (id: string) => `/api/staff/tickets/${id}/reply`,
+      updateStatus: (id: string) => `/api/staff/tickets/${id}/status`,
+    },
     adminDashboard: {
       overview: "/api/admin/dashboard/overview",
       today: "/api/admin/dashboard/today",
