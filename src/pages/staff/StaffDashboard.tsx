@@ -32,6 +32,7 @@ interface DashboardStats {
 interface TodayTask {
   id: string;
   bookingId: string;
+  paymentStatus: Booking['paymentStatus'];
   type: 'checkin' | 'checkout' | 'cleaning' | 'maintenance';
   title: string;
   time: string;
@@ -58,14 +59,13 @@ export default function StaffDashboard() {
 
       const today = new Date().toISOString().split('T')[0];
       const checkIns = data.filter((b) => dateKey(b.checkInDate) === today && b.status === 'confirmed');
-      const checkOuts = data.filter(
-        (b) => dateKey(b.checkOutDate) === today && (b.status === 'checked_in' || b.status === 'confirmed'),
-      );
+      const checkOuts = data.filter((b) => dateKey(b.checkOutDate) === today && b.status === 'checked_in');
 
       const tasks: TodayTask[] = [
         ...checkIns.map((b) => ({
           id: `checkin-${b.id}`,
           bookingId: b.id,
+          paymentStatus: b.paymentStatus,
           type: 'checkin' as const,
           title: `Check-in: ${b.customerName}`,
           time: '14:00',
@@ -76,6 +76,7 @@ export default function StaffDashboard() {
         ...checkOuts.map((b) => ({
           id: `checkout-${b.id}`,
           bookingId: b.id,
+          paymentStatus: b.paymentStatus,
           type: 'checkout' as const,
           title: `Check-out: ${b.customerName}`,
           time: '12:00',
@@ -101,9 +102,7 @@ export default function StaffDashboard() {
   const stats = useMemo<DashboardStats>(() => {
     const today = new Date().toISOString().split('T')[0];
     const todayCheckIns = bookings.filter((b) => dateKey(b.checkInDate) === today && b.status === 'confirmed').length;
-    const todayCheckOuts = bookings.filter(
-      (b) => dateKey(b.checkOutDate) === today && (b.status === 'checked_in' || b.status === 'confirmed'),
-    ).length;
+    const todayCheckOuts = bookings.filter((b) => dateKey(b.checkOutDate) === today && b.status === 'checked_in').length;
     const currentOccupancy = bookings.filter((b) => b.status === 'checked_in').length;
     const pendingTasks = todayTasks.filter((t) => t.status === 'pending').length;
     return { todayCheckIns, todayCheckOuts, currentOccupancy, pendingTasks };
@@ -117,7 +116,12 @@ export default function StaffDashboard() {
 
   const handleCompleteTask = async (task: TodayTask) => {
     try {
-      const nextStatus: BookingStatus = task.type === 'checkin' ? 'checked_in' : 'checked_out';
+      if (task.type === 'checkin' && task.paymentStatus !== 'paid') {
+        toast.error('Khách phải thanh toán đủ trước khi check-in');
+        return;
+      }
+
+      const nextStatus: BookingStatus = task.type === 'checkin' ? 'checked_in' : 'completed';
       await adminBookingService.updateBooking(task.bookingId, { status: nextStatus });
 
       setTodayTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, status: 'completed' } : item)));

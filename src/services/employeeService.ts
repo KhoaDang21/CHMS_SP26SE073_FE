@@ -44,6 +44,30 @@ const pickNewestEmployee = (list: Employee[]): Employee | null => {
   return sorted[0] ?? null;
 };
 
+const resolveEmployeeIdFromList = (employees: Employee[], email?: string, username?: string): string | null => {
+  if (email) {
+    const emailMatch = employees.filter(
+      (emp) => (emp.email || '').toLowerCase() === email.toLowerCase(),
+    );
+
+    if (emailMatch.length > 0) {
+      return pickNewestEmployee(emailMatch)?.id || null;
+    }
+  }
+
+  if (username) {
+    const usernameMatch = employees.filter(
+      (emp) => (emp.username || '').toLowerCase() === username.toLowerCase(),
+    );
+
+    if (usernameMatch.length > 0) {
+      return pickNewestEmployee(usernameMatch)?.id || null;
+    }
+  }
+
+  return null;
+};
+
 export const employeeService = {
   async getEmployees(): Promise<Employee[]> {
     try {
@@ -65,6 +89,22 @@ export const employeeService = {
     }
   },
 
+  async resolveCreatedEmployeeId(
+    createRes: { success?: boolean; data?: Employee } | null,
+    payload: Pick<CreateEmployeeDTO, 'email' | 'username'>,
+  ): Promise<string | null> {
+    const directId = extractCreatedEmployeeId(createRes);
+    if (directId) return directId;
+
+    try {
+      const employees = await this.getEmployees();
+      return resolveEmployeeIdFromList(employees, payload.email, payload.username);
+    } catch (error) {
+      logDevError('Error resolving created employee id:', error);
+      return null;
+    }
+  },
+
   async createEmployeeWithAvatarFile(
     payload: CreateEmployeeDTO,
     avatarFile: File,
@@ -78,28 +118,10 @@ export const employeeService = {
         return createRes;
       }
 
-      let createdId = extractCreatedEmployeeId(createRes);
-
-      // Fallback when create API returns success/message but does not include created employee id.
-      if (!createdId) {
-        const employees = await this.getEmployees();
-        const emailMatch = employees.filter(
-          (emp) => (emp.email || '').toLowerCase() === payload.email.toLowerCase(),
-        );
-
-        if (emailMatch.length > 0) {
-          createdId = pickNewestEmployee(emailMatch)?.id || null;
-        }
-
-        if (!createdId) {
-          const usernameMatch = employees.filter(
-            (emp) => (emp.username || '').toLowerCase() === payload.username.toLowerCase(),
-          );
-          if (usernameMatch.length > 0) {
-            createdId = pickNewestEmployee(usernameMatch)?.id || null;
-          }
-        }
-      }
+      const createdId = await this.resolveCreatedEmployeeId(createRes, {
+        email: payload.email,
+        username: payload.username,
+      });
 
       if (!createdId) {
         return {

@@ -30,6 +30,7 @@ import ManagerCustomers from '../pages/manager/ManagerCustomers';
 import ManagerReviews from '../pages/manager/ManagerReviews';
 import ManagerHomestayManagement from '../pages/manager/ManagerHomestayManagement';
 import ManagerHomestayDetailPage from '../pages/manager/ManagerHomestayDetailPage';
+import ManagerStaffManagement from '../pages/manager/ManagerStaffManagement';
 import ProfilePage from '../pages/customer/ProfilePage';
 import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import NotificationsPage from '../pages/customer/NotificationsPage';
@@ -176,6 +177,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['manager']}>
             <ManagerCustomers />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager/staff"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerStaffManagement />
           </ProtectedRoute>
         }
       />
