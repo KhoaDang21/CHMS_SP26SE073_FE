@@ -1,4 +1,5 @@
-export type BookingStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
+// BE flow: pending -> confirmed -> completed; keep checked_in/checked_out for backward compatibility.
+export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'checked_in' | 'checked_out' | 'cancelled';
 
 // Matches BE PaymentStatus: UNPAID → pending, DEPOSIT_PAID → deposit_paid, FULLY_PAID → paid, REFUNDED → refunded
 export type PaymentStatus = 'pending' | 'deposit_paid' | 'paid' | 'refunded';

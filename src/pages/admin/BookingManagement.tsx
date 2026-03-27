@@ -152,6 +152,7 @@ export default function BookingManagement() {
     const styles = {
       pending: 'bg-yellow-100 text-yellow-700',
       confirmed: 'bg-blue-100 text-blue-700',
+      completed: 'bg-gray-100 text-gray-700',
       checked_in: 'bg-green-100 text-green-700',
       checked_out: 'bg-gray-100 text-gray-700',
       cancelled: 'bg-red-100 text-red-700',
@@ -159,8 +160,9 @@ export default function BookingManagement() {
     const labels = {
       pending: 'Chờ thanh toán cọc',
       confirmed: 'Đã xác nhận',
+      completed: 'Hoàn thành',
       checked_in: 'Đang lưu trú',
-      checked_out: 'Đã check-out',
+      checked_out: 'Hoàn thành',
       cancelled: 'Đã hủy',
     };
     return <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status]}`}>{labels[status]}</span>;
@@ -345,8 +347,7 @@ export default function BookingManagement() {
                   <option value="all">Tất cả trạng thái</option>
                   <option value="pending">Chờ thanh toán cọc</option>
                   <option value="confirmed">Đã xác nhận</option>
-                  <option value="checked_in">Đang lưu trú</option>
-                  <option value="checked_out">Đã check-out</option>
+                  <option value="completed">Hoàn thành</option>
                   <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
@@ -451,20 +452,11 @@ export default function BookingManagement() {
                           )}
                           {booking.status === 'confirmed' && (
                             <button
-                              onClick={() => handleUpdateStatus(booking.id, 'checked_in')}
-                              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                              <span>Check-in</span>
-                            </button>
-                          )}
-                          {booking.status === 'checked_in' && (
-                            <button
-                              onClick={() => handleUpdateStatus(booking.id, 'checked_out')}
+                              onClick={() => handleUpdateStatus(booking.id, 'completed')}
                               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                             >
                               <CheckCircle className="w-4 h-4" />
-                              <span>Check-out</span>
+                              <span>Hoàn thành</span>
                             </button>
                           )}
                         </div>
@@ -483,7 +475,7 @@ export default function BookingManagement() {
       )}
 
       {selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/35 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex items-center justify-between text-white">
               <div>

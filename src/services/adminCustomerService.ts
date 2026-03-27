@@ -132,7 +132,8 @@ const normalizeBookingStatus = (value: any): CustomerBookingHistory['status'] =>
   const raw = String(value || '').toUpperCase();
   if (raw === 'CONFIRMED') return 'confirmed';
   if (raw === 'CHECKED_IN' || raw === 'CHECKEDIN' || raw === 'IN_PROGRESS') return 'checked_in';
-  if (raw === 'CHECKED_OUT' || raw === 'CHECKEDOUT' || raw === 'COMPLETED') return 'checked_out';
+  if (raw === 'COMPLETED') return 'completed';
+  if (raw === 'CHECKED_OUT' || raw === 'CHECKEDOUT') return 'checked_out';
   if (raw === 'CANCELLED' || raw === 'REJECTED') return 'cancelled';
   return 'pending';
 };

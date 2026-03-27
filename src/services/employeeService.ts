@@ -202,4 +202,46 @@ export const employeeService = {
       return null;
     }
   },
+
+  /** PUT /api/employees/{id}/assign-province — body is province id (string UUID) */
+  async assignProvince(id: string, provinceId: string): Promise<{ success: boolean; message?: string } | null> {
+    try {
+      // Swagger shows raw string body for this endpoint.
+      const res = await apiService.put<any>(apiConfig.endpoints.employees.assignProvince(id), provinceId);
+      return res;
+    } catch (error) {
+      logDevError('Error assigning province:', error);
+      return null;
+    }
+  },
+
+  /**
+   * PUT /api/employees/{id}/assign-homestays (or /assign-homestay)
+   * Backend variants seen in Swagger: raw string[], or { homestayIds: string[] }.
+   */
+  async assignHomestays(id: string, homestayIds: string[]): Promise<{ success: boolean; message?: string } | null> {
+    const cleanIds = homestayIds.map((x) => String(x)).filter(Boolean);
+
+    try {
+      try {
+        const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestays(id), cleanIds);
+        return res;
+      } catch {
+        // Fallback to singular endpoint variant.
+      }
+
+      try {
+        const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestay(id), { homestayIds: cleanIds });
+        return res;
+      } catch {
+        // Fallback to singular endpoint with raw array.
+      }
+
+      const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestay(id), cleanIds);
+      return res;
+    } catch (error) {
+      logDevError('Error assigning homestays:', error);
+      return null;
+    }
+  },
 };

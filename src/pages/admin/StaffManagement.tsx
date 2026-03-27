@@ -24,16 +24,62 @@ import {
   UserCog,
   TrendingUp,
   Settings,
+  MapPin,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import { employeeService } from '../../services/employeeService';
 import { adminRoleService } from '../../services/adminRoleService';
+import { locationService } from '../../services/locationService';
+import { districtService } from '../../services/districtService';
+import { homestayService } from '../../services/homestayService';
 import type { Staff, StaffRole, StaffStatus } from '../../types/staff.types';
 import type { Role } from '../../types/role.types';
+import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { CreateStaffModal } from '../../components/admin/CreateStaffModal';
 import { EditStaffModal } from '../../components/admin/EditStaffModal';
+
+type ProvinceOption = {
+  id: string;
+  name: string;
+};
+
+type HomestayOption = {
+  id: string;
+  name: string;
+  provinceName?: string;
+};
+
+const normalizeText = (value?: string) => String(value || '').trim().toLowerCase();
+
+const toArray = (value: unknown): any[] => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const raw = value.trim();
+    if (!raw) return [];
+    if (raw.includes(',')) {
+      return raw
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean);
+    }
+    return [raw];
+  }
+  if (value && typeof value === 'object') return [value];
+  return [];
+};
+
+const uniqueStrings = (values: string[]) => {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const key = value.trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 const normalizeStatus = (value?: string): StaffStatus => {
   const raw = (value || '').toLowerCase();
@@ -51,6 +97,54 @@ const normalizeRole = (value?: string): StaffRole => {
 
 const mapEmployeeToStaff = (item: any): Staff => {
   const role = normalizeRole(item.role || item.roleName);
+  const assignedHomestaySource = [
+    ...toArray(item.assignedHomestays),
+    ...toArray(item.managedHomestays),
+    ...toArray(item.homestays),
+    ...toArray(item.assignedHomestayIds),
+    ...toArray(item.managedHomestayIds),
+    ...toArray(item.homestayIds),
+    ...toArray(item.assignedHomestayId),
+    ...toArray(item.managedHomestayId),
+    ...toArray(item.homestayId),
+    ...toArray(item.homestayAssignments),
+    ...toArray(item.assignments),
+  ];
+
+  const assignedHomestayNameSource = [
+    ...toArray(item.assignedHomestayNames),
+    ...toArray(item.managedHomestayNames),
+    ...toArray(item.homestayNames),
+    ...toArray(item.homestaysName),
+  ];
+
+  const assignedHomestays = uniqueStrings(
+    assignedHomestaySource
+    .map((x: any) => String(x?.homestayId || x?.id || x?.homestay?.id || x))
+    .filter(Boolean),
+  );
+
+  const assignedHomestayNames = uniqueStrings(
+    [...assignedHomestaySource, ...assignedHomestayNameSource]
+      .map((x: any) => String(x?.homestayName || x?.name || x?.homestay?.name || x || '').trim())
+      .filter(Boolean),
+  );
+
+  const assignedProvinceId =
+    item.managedProvinceId ||
+    item.assignedProvinceId ||
+    item.managedProvince?.id ||
+    item.assignedProvince?.id ||
+    item.provinceId;
+  const assignedProvinceName =
+    item.managedProvinceName ||
+    item.assignedProvinceName ||
+    item.managedProvince?.name ||
+    item.assignedProvince?.name ||
+    item.provinceName ||
+    item.assignedProvince ||
+    item.province?.name;
+
   return {
     id: String(item.id || item.userId || ''),
     name: String(item.fullName || item.name || item.username || 'Unknown'),
@@ -62,9 +156,10 @@ const mapEmployeeToStaff = (item: any): Staff => {
     position: String(item.position || (role === 'manager' ? 'Quản lý' : 'Nhân viên')),
     hireDate: String(item.hireDate || item.createdAt || new Date().toISOString()),
     avatar: item.avatarUrl || item.avatar,
-    assignedHomestays: Array.isArray(item.assignedHomestays)
-      ? item.assignedHomestays.map((x: any) => String(x))
-      : [],
+    assignedProvinceId: assignedProvinceId ? String(assignedProvinceId) : undefined,
+    assignedProvinceName: assignedProvinceName ? String(assignedProvinceName) : undefined,
+    assignedHomestays,
+    assignedHomestayNames,
   };
 };
 
@@ -76,6 +171,25 @@ const mapRoleItem = (item: any): Role => ({
   createdAt: item?.createdAt,
   updatedAt: item?.updatedAt,
 });
+
+const enrichStaffAssignments = (staffList: Staff[], homestayList: HomestayOption[]): Staff[] => {
+  if (!homestayList.length) return staffList;
+
+  return staffList.map((member) => {
+    if (member.role !== 'staff') return member;
+
+    const namesFromIds = (member.assignedHomestays || [])
+      .map((id) => homestayList.find((h) => h.id === id)?.name)
+      .filter((name): name is string => Boolean(name));
+
+    const allNames = uniqueStrings([...(member.assignedHomestayNames || []), ...namesFromIds]);
+
+    return {
+      ...member,
+      assignedHomestayNames: allNames,
+    };
+  });
+};
 
 export default function StaffManagement() {
   const navigate = useNavigate();
@@ -98,6 +212,14 @@ export default function StaffManagement() {
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
   const [roleForm, setRoleForm] = useState({ name: '', description: '' });
   const [roleSubmitting, setRoleSubmitting] = useState(false);
+  const [provinceOptions, setProvinceOptions] = useState<ProvinceOption[]>([]);
+  const [homestayOptions, setHomestayOptions] = useState<HomestayOption[]>([]);
+  const [assigningStaff, setAssigningStaff] = useState<Staff | null>(null);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedHomestayIds, setSelectedHomestayIds] = useState<string[]>([]);
+  const [assigningSubmitting, setAssigningSubmitting] = useState(false);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -112,6 +234,7 @@ export default function StaffManagement() {
   useEffect(() => {
     void loadStaff();
     void loadRoles();
+    void loadAssignmentData();
   }, []);
 
   useEffect(() => {
@@ -145,14 +268,15 @@ export default function StaffManagement() {
     try {
       const employees = await employeeService.getEmployees();
       const mapped = employees.map(mapEmployeeToStaff).filter((x) => Boolean(x.id));
-      setStaff(mapped);
+      const enriched = enrichStaffAssignments(mapped, homestayOptions);
+      setStaff(enriched);
       setStats({
-        total: mapped.length,
-        active: mapped.filter((s) => s.status === 'active').length,
-        onLeave: mapped.filter((s) => s.status === 'on_leave').length,
-        inactive: mapped.filter((s) => s.status === 'inactive').length,
-        managers: mapped.filter((s) => s.role === 'manager' || s.role === 'admin').length,
-        staff: mapped.filter((s) => s.role === 'staff').length,
+        total: enriched.length,
+        active: enriched.filter((s) => s.status === 'active').length,
+        onLeave: enriched.filter((s) => s.status === 'on_leave').length,
+        inactive: enriched.filter((s) => s.status === 'inactive').length,
+        managers: enriched.filter((s) => s.role === 'manager' || s.role === 'admin').length,
+        staff: enriched.filter((s) => s.role === 'staff').length,
       });
     } catch (error) {
       console.error('Error loading staff:', error);
@@ -173,6 +297,157 @@ export default function StaffManagement() {
       toast.error('Không thể tải danh sách role');
     } finally {
       setRoleLoading(false);
+    }
+  };
+
+  const loadAssignmentData = async () => {
+    setAssignmentLoading(true);
+    try {
+      const [provinces, homestays, districts] = await Promise.all([
+        locationService.getProvinces(),
+        homestayService.getAllAdminHomestays(),
+        districtService.getAllDistricts(),
+      ]);
+
+      const provinceList = provinces
+        .map((p) => ({ id: String(p.id), name: p.name }))
+        .filter((p) => p.id && p.name);
+      setProvinceOptions(provinceList);
+
+      const districtToProvince = new Map(
+        districts
+          .filter((d) => d.id && d.provinceName)
+          .map((d) => [String(d.id), String(d.provinceName)]),
+      );
+
+      const mappedHomestays: HomestayOption[] = (homestays as Homestay[])
+        .map((h) => ({
+          id: String(h.id || ''),
+          name: String(h.name || 'Homestay'),
+          provinceName: h.provinceName || districtToProvince.get(String(h.districtId || '')) || h.city,
+        }))
+        .filter((h) => Boolean(h.id));
+
+      setHomestayOptions(mappedHomestays);
+      setStaff((prev) => enrichStaffAssignments(prev, mappedHomestays));
+    } catch (error) {
+      console.error('Error loading assignment data:', error);
+      toast.error('Không thể tải dữ liệu phân công tỉnh/homestay');
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  const homestaysByProvince = (() => {
+    if (!selectedProvinceId) return [];
+    const selectedProvince = provinceOptions.find((p) => p.id === selectedProvinceId);
+    if (!selectedProvince) return [];
+    const provinceName = normalizeText(selectedProvince.name);
+    return homestayOptions.filter((h) => normalizeText(h.provinceName) === provinceName);
+  })();
+
+  const openAssignModal = (staffMember: Staff) => {
+    const inferredProvinceIdFromHomestay = (staffMember.assignedHomestays || [])
+      .map((id) => homestayOptions.find((h) => h.id === id))
+      .find((h) => h?.provinceName)
+      ? provinceOptions.find(
+          (p) =>
+            normalizeText(p.name) ===
+            normalizeText(
+              (staffMember.assignedHomestays || [])
+                .map((id) => homestayOptions.find((h) => h.id === id)?.provinceName)
+                .find(Boolean),
+            ),
+        )?.id
+      : '';
+
+    const preselectedProvinceId =
+      staffMember.assignedProvinceId ||
+      provinceOptions.find((p) => normalizeText(p.name) === normalizeText(staffMember.assignedProvinceName))?.id ||
+      inferredProvinceIdFromHomestay ||
+      '';
+
+    setAssigningStaff(staffMember);
+    setSelectedProvinceId(preselectedProvinceId);
+    setSelectedHomestayIds(staffMember.role === 'staff' ? staffMember.assignedHomestays || [] : []);
+    setIsAssignModalOpen(true);
+  };
+
+  const handleToggleHomestay = (homestayId: string) => {
+    setSelectedHomestayIds((prev) => {
+      if (prev.includes(homestayId)) {
+        return prev.filter((id) => id !== homestayId);
+      }
+      return [...prev, homestayId];
+    });
+  };
+
+  const handleSaveAssignment = async () => {
+    if (!assigningStaff) return;
+
+    const isManagerRole = assigningStaff.role === 'manager' || assigningStaff.role === 'admin';
+    const isStaffRole = assigningStaff.role === 'staff';
+
+    if (!selectedProvinceId) {
+      toast.error(isManagerRole ? 'Vui lòng chọn tỉnh phụ trách' : 'Vui lòng chọn tỉnh để lọc homestay');
+      return;
+    }
+
+    const allowedIds = new Set(homestaysByProvince.map((h) => h.id));
+    const homestayIds = selectedHomestayIds.filter((id) => allowedIds.has(id));
+    const homestayNames = homestayIds
+      .map((id) => homestayOptions.find((h) => h.id === id)?.name)
+      .filter((name): name is string => Boolean(name));
+
+    if (isStaffRole && homestayIds.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 homestay cho nhân viên');
+      return;
+    }
+
+    setAssigningSubmitting(true);
+    try {
+      if (isManagerRole) {
+        const provinceRes = await employeeService.assignProvince(assigningStaff.id, selectedProvinceId);
+        if (!provinceRes?.success) {
+          toast.error(provinceRes?.message || 'Không thể phân công tỉnh');
+          return;
+        }
+      }
+
+      if (isStaffRole) {
+        const homestayRes = await employeeService.assignHomestays(assigningStaff.id, homestayIds);
+        if (!homestayRes?.success) {
+          toast.error(homestayRes?.message || 'Không thể phân công homestay');
+          return;
+        }
+      }
+
+      const selectedProvince = provinceOptions.find((p) => p.id === selectedProvinceId);
+      setStaff((prev) =>
+        prev.map((item) =>
+          item.id === assigningStaff.id
+            ? {
+                ...item,
+                assignedProvinceId: isManagerRole ? selectedProvinceId : item.assignedProvinceId,
+                assignedProvinceName: isManagerRole
+                  ? selectedProvince?.name || item.assignedProvinceName
+                  : item.assignedProvinceName,
+                assignedHomestays: isStaffRole ? homestayIds : item.assignedHomestays,
+                assignedHomestayNames: isStaffRole ? homestayNames : item.assignedHomestayNames,
+              }
+            : item,
+        ),
+      );
+
+      toast.success(isManagerRole ? 'Phân công tỉnh thành công' : 'Phân công homestay thành công');
+      setIsAssignModalOpen(false);
+      setAssigningStaff(null);
+      void loadStaff();
+    } catch (error) {
+      console.error('Save assignment error:', error);
+      toast.error('Không thể lưu phân công');
+    } finally {
+      setAssigningSubmitting(false);
     }
   };
 
@@ -310,6 +585,118 @@ export default function StaffManagement() {
     { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
     { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
   ];
+
+  const managerAccounts = filteredStaff.filter((s) => s.role === 'manager' || s.role === 'admin');
+  const staffAccounts = filteredStaff.filter((s) => s.role === 'staff');
+
+  const renderStaffGrid = (items: Staff[]) => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {items.map((staffMember) => (
+        <div key={staffMember.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                {staffMember.avatar ? (
+                  <img
+                    src={staffMember.avatar}
+                    alt={staffMember.name}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-blue-200"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-xl">
+                    {staffMember.name.charAt(0)}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-lg">{staffMember.name}</h3>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {getRoleBadge(staffMember.role)}
+                    {getStatusBadge(staffMember.status)}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 mb-4">
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Building2 className="w-4 h-4 text-gray-400" />
+                    <span>{staffMember.department}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <span className="truncate">{staffMember.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <span>{staffMember.phone}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <span>Vào làm: {new Date(staffMember.hireDate).toLocaleDateString('vi-VN')}</span>
+                  </div>
+                  {(staffMember.role === 'manager' || staffMember.role === 'admin') && (
+                    <div className="flex items-center gap-2 text-gray-600 text-sm">
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      <span>Tỉnh phụ trách: {staffMember.assignedProvinceName || 'Chưa phân công'}</span>
+                    </div>
+                  )}
+                  {staffMember.role === 'staff' && (
+                    <>
+                      <div className="flex items-center gap-2 text-gray-600 text-sm">
+                        <Home className="w-4 h-4 text-gray-400" />
+                        <span>
+                          Phụ trách {Math.max(staffMember.assignedHomestays.length, staffMember.assignedHomestayNames?.length || 0)} homestay
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2 text-gray-600 text-sm">
+                        <Home className="w-4 h-4 text-gray-400 mt-0.5" />
+                        <span className="line-clamp-2">
+                          Homestay phụ trách:{' '}
+                          {staffMember.assignedHomestayNames && staffMember.assignedHomestayNames.length > 0
+                            ? staffMember.assignedHomestayNames.join(', ')
+                            : 'Chưa phân công'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => openAssignModal(staffMember)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    <span>Phân công</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingStaff(staffMember);
+                      setIsEditModalOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span>Sửa</span>
+                  </button>
+                  <button
+                    onClick={() => setDeletingStaff(staffMember)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Xóa</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
@@ -510,83 +897,38 @@ export default function StaffManagement() {
               <p className="text-gray-600">Không tìm thấy nhân viên nào</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredStaff.map((staffMember) => (
-                <div key={staffMember.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden">
-                  <div className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0">
-                        {staffMember.avatar ? (
-                          <img
-                            src={staffMember.avatar}
-                            alt={staffMember.name}
-                            className="w-16 h-16 rounded-full object-cover border-2 border-blue-200"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-xl">
-                            {staffMember.name.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="font-bold text-gray-900 text-lg">{staffMember.name}</h3>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            {getRoleBadge(staffMember.role)}
-                            {getStatusBadge(staffMember.status)}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-2 mb-4">
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Building2 className="w-4 h-4 text-gray-400" />
-                            <span>{staffMember.department}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            <span className="truncate">{staffMember.email}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span>{staffMember.phone}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span>Vào làm: {new Date(staffMember.hireDate).toLocaleDateString('vi-VN')}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Home className="w-4 h-4 text-gray-400" />
-                            <span>Quản lý {staffMember.assignedHomestays.length} homestay</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingStaff(staffMember);
-                              setIsEditModalOpen(true);
-                            }}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                          >
-                            <Edit className="w-4 h-4" />
-                            <span>Sửa</span>
-                          </button>
-                          <button
-                            onClick={() => setDeletingStaff(staffMember)}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            <span>Xóa</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            <div className="space-y-8">
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="w-2 h-2 rounded-full bg-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Tài khoản quản lý ({managerAccounts.length})
+                  </h3>
                 </div>
-              ))}
+                {managerAccounts.length > 0 ? (
+                  renderStaffGrid(managerAccounts)
+                ) : (
+                  <div className="bg-white rounded-xl border border-dashed border-gray-300 p-6 text-sm text-gray-500">
+                    Không có tài khoản quản lý theo bộ lọc hiện tại.
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Tài khoản nhân viên ({staffAccounts.length})
+                  </h3>
+                </div>
+                {staffAccounts.length > 0 ? (
+                  renderStaffGrid(staffAccounts)
+                ) : (
+                  <div className="bg-white rounded-xl border border-dashed border-gray-300 p-6 text-sm text-gray-500">
+                    Không có tài khoản nhân viên theo bộ lọc hiện tại.
+                  </div>
+                )}
+              </section>
             </div>
           )}
 
@@ -700,6 +1042,114 @@ export default function StaffManagement() {
           }}
           onSuccess={handleStaffCreated}
         />
+      )}
+
+      {isAssignModalOpen && assigningStaff && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="font-bold text-gray-900 text-xl mb-1">Phân công khu vực cho nhân viên</h3>
+            <p className="text-sm text-gray-600 mb-5">
+              Nhân viên: <span className="font-semibold">{assigningStaff.name}</span>
+            </p>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {assigningStaff.role === 'staff' ? 'Chọn tỉnh để lọc homestay' : 'Tỉnh phụ trách'}
+                </label>
+                <select
+                  value={selectedProvinceId}
+                  onChange={(e) => {
+                    const nextProvinceId = e.target.value;
+                    setSelectedProvinceId(nextProvinceId);
+                    const selectedProvince = provinceOptions.find((p) => p.id === nextProvinceId);
+                    const provinceName = normalizeText(selectedProvince?.name);
+
+                    setSelectedHomestayIds((prev) =>
+                      prev.filter((id) => {
+                        const found = homestayOptions.find((h) => h.id === id);
+                        return found ? normalizeText(found.provinceName) === provinceName : false;
+                      }),
+                    );
+                  }}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={assignmentLoading || assigningSubmitting}
+                >
+                  <option value="">Chọn tỉnh</option>
+                  {provinceOptions.map((province) => (
+                    <option key={province.id} value={province.id}>
+                      {province.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {assigningStaff.role === 'staff' && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Homestay phụ trách (chọn nhiều)</label>
+                  <span className="text-xs text-gray-500">Đã chọn: {selectedHomestayIds.length}</span>
+                </div>
+
+                {!selectedProvinceId ? (
+                  <div className="px-4 py-6 rounded-lg border border-dashed border-gray-300 text-sm text-gray-500 text-center">
+                    Vui lòng chọn tỉnh trước khi chọn homestay.
+                  </div>
+                ) : homestaysByProvince.length === 0 ? (
+                  <div className="px-4 py-6 rounded-lg border border-dashed border-gray-300 text-sm text-gray-500 text-center">
+                    Không có homestay nào thuộc tỉnh đã chọn.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-72 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                    {homestaysByProvince.map((homestay) => {
+                      const isSelected = selectedHomestayIds.includes(homestay.id);
+                      return (
+                        <button
+                          type="button"
+                          key={homestay.id}
+                          onClick={() => handleToggleHomestay(homestay.id)}
+                          className={`flex items-center justify-between text-left px-3 py-2 rounded-lg border transition-colors ${
+                            isSelected
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                              : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{homestay.name}</span>
+                          {isSelected && <Check className="w-4 h-4" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setIsAssignModalOpen(false);
+                  setAssigningStaff(null);
+                }}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={assigningSubmitting}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => void handleSaveAssignment()}
+                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                disabled={assignmentLoading || assigningSubmitting}
+              >
+                {assigningSubmitting
+                  ? 'Đang lưu...'
+                  : assigningStaff.role === 'staff'
+                    ? 'Lưu phân công homestay'
+                    : 'Lưu phân công tỉnh'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deletingStaff && (
