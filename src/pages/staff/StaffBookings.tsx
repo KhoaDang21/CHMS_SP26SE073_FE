@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   Bell,
   Calendar,
-  CheckCircle,
   Home,
   LogOut,
   Menu,
@@ -64,13 +63,11 @@ export default function StaffBookings() {
       if (filterStatus === 'checkin-today') {
         filtered = filtered.filter((b) => dateKey(b.checkInDate) === today && b.status === 'confirmed');
       } else if (filterStatus === 'checkout-today') {
-        filtered = filtered.filter(
-          (b) => dateKey(b.checkOutDate) === today && (b.status === 'checked_in' || b.status === 'confirmed'),
-        );
+        filtered = filtered.filter((b) => dateKey(b.checkOutDate) === today && b.status === 'confirmed');
       } else if (filterStatus === 'confirmed') {
-        filtered = filtered.filter((b) => b.status === 'checked_in' || b.status === 'confirmed');
+        filtered = filtered.filter((b) => b.status === 'confirmed');
       } else {
-        filtered = filtered.filter((b) => b.status === 'checked_out');
+        filtered = filtered.filter((b) => b.status === 'completed' || b.status === 'checked_out');
       }
     }
 
@@ -88,25 +85,14 @@ export default function StaffBookings() {
     return filtered;
   }, [bookings, searchTerm, filterStatus]);
 
-  const handleCheckIn = async (booking: Booking) => {
+  const handleComplete = async (booking: Booking) => {
     try {
-      await adminBookingService.updateBooking(booking.id, { status: 'checked_in' });
-      toast.success(`Check-in thành công: ${booking.customerName}`);
+      await adminBookingService.updateBooking(booking.id, { status: 'completed' });
+      toast.success(`Đã hoàn thành đơn: ${booking.customerName}`);
       await loadBookings();
     } catch (error) {
-      console.error('Check-in error:', error);
-      toast.error('Không thể check-in');
-    }
-  };
-
-  const handleCheckOut = async (booking: Booking) => {
-    try {
-      await adminBookingService.updateBooking(booking.id, { status: 'checked_out' });
-      toast.success(`Check-out thành công: ${booking.customerName}`);
-      await loadBookings();
-    } catch (error) {
-      console.error('Check-out error:', error);
-      toast.error('Không thể check-out');
+      console.error('Complete booking error:', error);
+      toast.error('Không thể cập nhật hoàn thành');
     }
   };
 
@@ -160,17 +146,17 @@ export default function StaffBookings() {
     const badges = {
       pending:     { label: 'Chờ thanh toán cọc', class: 'bg-yellow-100 text-yellow-700' },
       confirmed:   { label: 'Đã xác nhận',        class: 'bg-blue-100 text-blue-700' },
+      completed:   { label: 'Hoàn thành',         class: 'bg-gray-100 text-gray-700' },
       checked_in:  { label: 'Đang lưu trú',       class: 'bg-green-100 text-green-700' },
-      checked_out: { label: 'Đã check-out',        class: 'bg-gray-100 text-gray-700' },
+      checked_out: { label: 'Hoàn thành',         class: 'bg-gray-100 text-gray-700' },
       cancelled:   { label: 'Đã hủy',             class: 'bg-red-100 text-red-700' },
     };
     const badge = badges[status] ?? badges.pending;
     return <span className={`px-3 py-1 rounded-full text-xs font-medium ${badge.class}`}>{badge.label}</span>;
   };
 
-  // BE không giới hạn ngày — staff có thể check-in/out bất cứ lúc nào khi status đúng
-  const canCheckIn = (booking: Booking) => booking.status === 'confirmed';
-  const canCheckOut = (booking: Booking) => booking.status === 'checked_in';
+  // Theo flow BE: sau khi đã CONFIRMED, staff cập nhật COMPLETED khi khách trả phòng.
+  const canComplete = (booking: Booking) => booking.status === 'confirmed';
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -319,7 +305,6 @@ export default function StaffBookings() {
                               {booking.customerName}
                             </p>
                           </div>
-                          <p className="text-sm text-gray-500">#{booking.bookingCode}</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
@@ -353,24 +338,14 @@ export default function StaffBookings() {
                       </div>
 
                       <div className="flex flex-col gap-2 lg:w-48">
-                        {canCheckIn(booking) && (
+                        {canComplete(booking) && (
                           <button
-                            onClick={() => handleCheckIn(booking)}
-                            type="button"
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Check-in
-                          </button>
-                        )}
-                        {canCheckOut(booking) && (
-                          <button
-                            onClick={() => handleCheckOut(booking)}
+                            onClick={() => handleComplete(booking)}
                             type="button"
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
                           >
                             <ArrowUpRight className="w-4 h-4" />
-                            Check-out
+                            Hoàn thành
                           </button>
                         )}
                         <button
@@ -396,7 +371,6 @@ export default function StaffBookings() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-900">Thêm ghi chú</h3>
-              <p className="text-sm text-gray-500 mt-1">Booking #{selectedBooking.bookingCode}</p>
             </div>
             <div className="p-6">
               <textarea

@@ -71,6 +71,9 @@ export const apiConfig = {
       updateStatus: (id: string) => `/api/employees/${id}/status`,
       uploadAvatar: (id: string) => `/api/employees/${id}/avatar`,
       changeRole: (id: string) => `/api/employees/${id}/role`,
+      assignProvince: (id: string) => `/api/employees/${id}/assign-province`,
+      assignHomestay: (id: string) => `/api/employees/${id}/assign-homestay`,
+      assignHomestays: (id: string) => `/api/employees/${id}/assign-homestays`,
     },
     payments: {
       createLink: "/api/payment/create-link",

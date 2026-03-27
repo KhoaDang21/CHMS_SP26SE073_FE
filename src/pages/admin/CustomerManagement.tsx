@@ -777,15 +777,15 @@ export default function CustomerManagement() {
                             <p className="font-bold text-green-600">{booking.totalPrice.toLocaleString('vi-VN')} ₫</p>
                             <span
                               className={`px-2 py-1 rounded-full text-xs ${
-                                booking.status === 'checked_out'
+                                booking.status === 'completed' || booking.status === 'checked_out'
                                   ? 'bg-gray-100 text-gray-700'
                                   : booking.status === 'confirmed'
                                     ? 'bg-blue-100 text-blue-700'
                                     : 'bg-yellow-100 text-yellow-700'
                               }`}
                             >
-                              {booking.status === 'checked_out'
-                                ? 'Đã check-out'
+                              {booking.status === 'completed' || booking.status === 'checked_out'
+                                ? 'Hoàn thành'
                                 : booking.status === 'confirmed'
                                   ? 'Đã xác nhận'
                                   : 'Chờ xác nhận'}
