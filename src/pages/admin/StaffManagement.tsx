@@ -191,8 +191,14 @@ const enrichStaffAssignments = (staffList: Staff[], homestayList: HomestayOption
   });
 };
 
-export default function StaffManagement() {
+type StaffManagementProps = {
+  mode?: 'admin' | 'manager';
+};
+
+export default function StaffManagement({ mode = 'admin' }: StaffManagementProps) {
   const navigate = useNavigate();
+  const isManagerMode = mode === 'manager';
+  const isAdminMode = mode === 'admin';
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [filteredStaff, setFilteredStaff] = useState<Staff[]>([]);
@@ -220,25 +226,40 @@ export default function StaffManagement() {
   const [selectedHomestayIds, setSelectedHomestayIds] = useState<string[]>([]);
   const [assigningSubmitting, setAssigningSubmitting] = useState(false);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    active: 0,
-    onLeave: 0,
-    inactive: 0,
-    managers: 0,
-    staff: 0,
-  });
+  const [managerScopeProvinceName, setManagerScopeProvinceName] = useState('');
 
   const user = authService.getCurrentUser();
 
   useEffect(() => {
     void loadStaff();
-    void loadRoles();
+    if (isAdminMode) {
+      void loadRoles();
+    }
     void loadAssignmentData();
-  }, []);
+  }, [isAdminMode]);
 
   useEffect(() => {
     let filtered = [...staff];
+
+    if (isManagerMode) {
+      filtered = filtered.filter((s) => s.role === 'staff');
+
+      const scopeProvince = normalizeText(managerScopeProvinceName);
+      if (!scopeProvince) {
+        filtered = [];
+      } else {
+        filtered = filtered.filter((s) => {
+          const hasSameAssignedProvince = normalizeText(s.assignedProvinceName) === scopeProvince;
+
+          const hasSameHomestayProvince = (s.assignedHomestays || []).some((id) => {
+            const homestay = homestayOptions.find((h) => h.id === id);
+            return normalizeText(homestay?.provinceName) === scopeProvince;
+          });
+
+          return hasSameAssignedProvince || hasSameHomestayProvince;
+        });
+      }
+    }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -261,7 +282,22 @@ export default function StaffManagement() {
     }
 
     setFilteredStaff(filtered);
-  }, [staff, searchQuery, roleFilter, statusFilter]);
+  }, [staff, searchQuery, roleFilter, statusFilter, isManagerMode, managerScopeProvinceName, homestayOptions]);
+
+  const getManagerScopedStaff = (list: Staff[]) => {
+    let scoped = [...list].filter((s) => s.role === 'staff');
+    const scopeProvince = normalizeText(managerScopeProvinceName);
+    if (!scopeProvince) return [];
+
+    return scoped.filter((s) => {
+      const hasSameAssignedProvince = normalizeText(s.assignedProvinceName) === scopeProvince;
+      const hasSameHomestayProvince = (s.assignedHomestays || []).some((id) => {
+        const homestay = homestayOptions.find((h) => h.id === id);
+        return normalizeText(homestay?.provinceName) === scopeProvince;
+      });
+      return hasSameAssignedProvince || hasSameHomestayProvince;
+    });
+  };
 
   const loadStaff = async () => {
     setLoading(true);
@@ -269,15 +305,21 @@ export default function StaffManagement() {
       const employees = await employeeService.getEmployees();
       const mapped = employees.map(mapEmployeeToStaff).filter((x) => Boolean(x.id));
       const enriched = enrichStaffAssignments(mapped, homestayOptions);
+
+      if (isManagerMode) {
+        const currentUserId = String(user?.id || '').toLowerCase();
+        const currentUserEmail = String(user?.email || '').toLowerCase();
+
+        const me = enriched.find(
+          (item) =>
+            (item.role === 'manager' || item.role === 'admin') &&
+            (String(item.id || '').toLowerCase() === currentUserId || String(item.email || '').toLowerCase() === currentUserEmail),
+        );
+
+        setManagerScopeProvinceName(me?.assignedProvinceName || '');
+      }
+
       setStaff(enriched);
-      setStats({
-        total: enriched.length,
-        active: enriched.filter((s) => s.status === 'active').length,
-        onLeave: enriched.filter((s) => s.status === 'on_leave').length,
-        inactive: enriched.filter((s) => s.status === 'inactive').length,
-        managers: enriched.filter((s) => s.role === 'manager' || s.role === 'admin').length,
-        staff: enriched.filter((s) => s.role === 'staff').length,
-      });
     } catch (error) {
       console.error('Error loading staff:', error);
       toast.error('Không thể tải danh sách nhân viên');
@@ -347,6 +389,11 @@ export default function StaffManagement() {
   })();
 
   const openAssignModal = (staffMember: Staff) => {
+    if (isManagerMode && staffMember.role !== 'staff') {
+      toast.error('Manager chỉ được phân công cho tài khoản nhân viên');
+      return;
+    }
+
     const inferredProvinceIdFromHomestay = (staffMember.assignedHomestays || [])
       .map((id) => homestayOptions.find((h) => h.id === id))
       .find((h) => h?.provinceName)
@@ -384,6 +431,11 @@ export default function StaffManagement() {
 
   const handleSaveAssignment = async () => {
     if (!assigningStaff) return;
+
+    if (isManagerMode && assigningStaff.role !== 'staff') {
+      toast.error('Manager không có quyền phân công tài khoản quản lý');
+      return;
+    }
 
     const isManagerRole = assigningStaff.role === 'manager' || assigningStaff.role === 'admin';
     const isStaffRole = assigningStaff.role === 'staff';
@@ -575,19 +627,37 @@ export default function StaffManagement() {
     return <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[role]}`}>{labels[role]}</span>;
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
-  ];
+  const navItems = isAdminMode
+    ? [
+        { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
+        { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
+        { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
+        { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
+        { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
+        { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
+        { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
+        { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
+      ]
+    : [
+        { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
+        { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/manager/bookings' },
+        { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
+        { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
+        { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
+        { id: 'revenue', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
+      ];
 
   const managerAccounts = filteredStaff.filter((s) => s.role === 'manager' || s.role === 'admin');
   const staffAccounts = filteredStaff.filter((s) => s.role === 'staff');
+  const staffForStats = isManagerMode ? getManagerScopedStaff(staff) : staff;
+  const displayStats = {
+    total: staffForStats.length,
+    active: staffForStats.filter((s) => s.status === 'active').length,
+    onLeave: staffForStats.filter((s) => s.status === 'on_leave').length,
+    inactive: staffForStats.filter((s) => s.status === 'inactive').length,
+    managers: staffForStats.filter((s) => s.role === 'manager' || s.role === 'admin').length,
+    staff: staffForStats.filter((s) => s.role === 'staff').length,
+  };
 
   const renderStaffGrid = (items: Staff[]) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -667,10 +737,11 @@ export default function StaffManagement() {
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => openAssignModal(staffMember)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors"
+                    disabled={isManagerMode && staffMember.role !== 'staff'}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <MapPin className="w-4 h-4" />
-                    <span>Phân công</span>
+                    <span>{isManagerMode && staffMember.role !== 'staff' ? 'Không thể phân công' : 'Phân công'}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -707,8 +778,8 @@ export default function StaffManagement() {
           <div className="flex items-center gap-2">
             <Building2 className="w-8 h-8 text-blue-600" />
             <div>
-              <h1 className="font-bold text-gray-900">CHMS Admin</h1>
-              <p className="text-xs text-gray-500">Management System</p>
+              <h1 className="font-bold text-gray-900">{isAdminMode ? 'CHMS Admin' : 'CHMS Manager'}</h1>
+              <p className="text-xs text-gray-500">{isAdminMode ? 'Management System' : 'Quản lý vận hành'}</p>
             </div>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-500 hover:text-gray-700">
@@ -762,7 +833,9 @@ export default function StaffManagement() {
               </button>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Quản lý Nhân viên</h2>
-                <p className="text-gray-600 text-sm">Quản lý thông tin nhân viên và phân quyền</p>
+                <p className="text-gray-600 text-sm">
+                  {isAdminMode ? 'Quản lý thông tin nhân viên và phân quyền' : 'Quản lý nhân viên trực thuộc (Manager chỉ tạo được Staff)'}
+                </p>
               </div>
             </div>
             <button
@@ -773,18 +846,25 @@ export default function StaffManagement() {
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg"
             >
               <Plus className="w-5 h-5" />
-              <span>Thêm nhân viên</span>
+              <span>{isManagerMode ? 'Thêm nhân viên Staff' : 'Thêm nhân viên'}</span>
             </button>
           </div>
         </header>
 
         <div className="p-6">
+          {isManagerMode && (
+            <div className="mb-4 rounded-lg bg-cyan-50 border border-cyan-200 px-4 py-3 text-sm text-cyan-800">
+              Phạm vi hiển thị: nhân viên thuộc tỉnh phụ trách{' '}
+              <span className="font-semibold">{managerScopeProvinceName || 'chưa xác định'}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Tổng nhân viên</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                  <p className="text-3xl font-bold text-gray-900">{displayStats.total}</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Users className="w-6 h-6 text-blue-600" />
@@ -796,7 +876,7 @@ export default function StaffManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Đang làm việc</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.active}</p>
+                  <p className="text-3xl font-bold text-gray-900">{displayStats.active}</p>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <UserCheck className="w-6 h-6 text-green-600" />
@@ -808,7 +888,7 @@ export default function StaffManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Nghỉ phép</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.onLeave}</p>
+                  <p className="text-3xl font-bold text-gray-900">{displayStats.onLeave}</p>
                 </div>
                 <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-6 h-6 text-orange-600" />
@@ -819,8 +899,8 @@ export default function StaffManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">Quản lý</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.managers}</p>
+                  <p className="text-gray-600 text-sm mb-1">{isManagerMode ? 'Nhân viên Staff' : 'Quản lý'}</p>
+                  <p className="text-3xl font-bold text-gray-900">{isManagerMode ? displayStats.staff : displayStats.managers}</p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <UserCog className="w-6 h-6 text-purple-600" />
@@ -851,8 +931,8 @@ export default function StaffManagement() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">Tất cả vai trò</option>
-                  <option value="admin">Quản trị viên</option>
-                  <option value="manager">Quản lý</option>
+                  {!isManagerMode && <option value="admin">Quản trị viên</option>}
+                  {!isManagerMode && <option value="manager">Quản lý</option>}
                   <option value="staff">Nhân viên</option>
                 </select>
               </div>
@@ -881,7 +961,7 @@ export default function StaffManagement() {
                 <span>Nhập Excel</span>
               </button>
               <div className="ml-auto text-sm text-gray-600">
-                Hiển thị <span className="font-semibold">{filteredStaff.length}</span> / {stats.total} nhân viên
+                Hiển thị <span className="font-semibold">{filteredStaff.length}</span> / {displayStats.total} nhân viên
               </div>
             </div>
           </div>
@@ -898,6 +978,7 @@ export default function StaffManagement() {
             </div>
           ) : (
             <div className="space-y-8">
+              {isAdminMode && (
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <span className="w-2 h-2 rounded-full bg-blue-600" />
@@ -913,12 +994,13 @@ export default function StaffManagement() {
                   </div>
                 )}
               </section>
+              )}
 
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <span className="w-2 h-2 rounded-full bg-emerald-600" />
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Tài khoản nhân viên ({staffAccounts.length})
+                    {isManagerMode ? `Nhân viên thuộc tỉnh phụ trách (${staffAccounts.length})` : `Tài khoản nhân viên (${staffAccounts.length})`}
                   </h3>
                 </div>
                 {staffAccounts.length > 0 ? (
@@ -932,6 +1014,7 @@ export default function StaffManagement() {
             </div>
           )}
 
+          {isAdminMode && (
           <div className="bg-white rounded-xl shadow-md p-6 mt-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
               <div>
@@ -1015,6 +1098,7 @@ export default function StaffManagement() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 
@@ -1029,6 +1113,15 @@ export default function StaffManagement() {
             setIsCreateModalOpen(false);
           }}
           onSuccess={handleStaffCreated}
+          allowedRoleNames={isManagerMode ? ['staff'] : ['manager', 'staff']}
+          availableHomestays={homestayOptions}
+          isManagerMode={isManagerMode}
+          managerProvinceId={
+            isManagerMode
+              ? provinceOptions.find((p) => normalizeText(p.name) === normalizeText(managerScopeProvinceName))
+                  ?.name || ''
+              : ''
+          }
         />
       )}
 
@@ -1187,7 +1280,7 @@ export default function StaffManagement() {
         </div>
       )}
 
-      {isRoleModalOpen && (
+      {isAdminMode && isRoleModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
             <h3 className="font-bold text-gray-900 text-lg mb-1">{editingRole ? 'Chỉnh sửa role' : 'Tạo role mới'}</h3>
@@ -1239,7 +1332,7 @@ export default function StaffManagement() {
         </div>
       )}
 
-      {deletingRole && (
+      {isAdminMode && deletingRole && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center gap-4 mb-4">

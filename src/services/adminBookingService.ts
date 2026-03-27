@@ -91,8 +91,7 @@ const toBooking = (item: any): Booking => {
 const toBackendStatus = (status: BookingStatus): string => {
   if (status === "confirmed") return "CONFIRMED";
   if (status === "completed" || status === "checked_out") return "COMPLETED";
-  // Legacy FE action "check-in" now maps to confirmed in BE flow.
-  if (status === "checked_in") return "CONFIRMED";
+  if (status === "checked_in") return "CHECKED_IN";
   if (status === "cancelled") return "CANCELLED";
   return "PENDING";
 };
