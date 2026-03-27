@@ -22,8 +22,10 @@ import StaffManagement from '../pages/admin/StaffManagement';
 import BookingManagement from '../pages/admin/BookingManagement';
 import CustomerManagement from '../pages/admin/CustomerManagement';
 import RevenueReport from '../pages/admin/RevenueReport';
+import TicketManagement from '../pages/admin/TicketManagement';
 import StaffBookings from '../pages/staff/StaffBookings';
 import StaffReviews from '../pages/staff/StaffReviews';
+import StaffTickets from '../pages/staff/StaffTickets';
 import ManagerDashboard from '../pages/manager/ManagerDashboard';
 import ManagerBookings from '../pages/manager/ManagerBookings';
 import ManagerCustomers from '../pages/manager/ManagerCustomers';
@@ -238,6 +240,14 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/staff/tickets"
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <StaffTickets />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected Routes - Admin */}
       <Route
@@ -301,6 +311,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <RevenueReport />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/tickets"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <TicketManagement />
           </ProtectedRoute>
         }
       />

@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Search,
   Star,
+  Ticket,
   User,
   X,
   XCircle,
@@ -103,6 +104,7 @@ export default function StaffReviews() {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
     { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: false },
     { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: true },
+    { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: false },
   ];
 
   const loadReviews = async () => {

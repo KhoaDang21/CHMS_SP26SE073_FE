@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Ticket,
   Users,
   X,
 } from 'lucide-react';
@@ -137,6 +138,7 @@ export default function StaffDashboard() {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: true },
     { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: false },
     { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: false },
+    { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: false },
   ];
 
   const getTaskIcon = (type: TodayTask['type']) => {
