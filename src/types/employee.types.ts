@@ -10,6 +10,20 @@ export interface Employee {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  managedProvinceId?: string | null;
+  managedProvinceName?: string | null;
+  assignedProvinceId?: string | null;
+  assignedProvinceName?: string | null;
+  assignedHomestayIds?: string[];
+  assignedHomestays?: Array<
+    | string
+    | {
+        id?: string;
+        homestayId?: string;
+        name?: string;
+        homestayName?: string;
+      }
+  >;
 }
 
 export interface CreateEmployeeDTO {

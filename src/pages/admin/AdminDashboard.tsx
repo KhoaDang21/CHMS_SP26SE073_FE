@@ -7,7 +7,7 @@ import {
   Users,
   UserCog,
   TrendingUp,
-  Settings,
+  MessageSquare,
   LogOut,
   Menu,
   X,
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
     { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
     { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
+    { id: 'tickets', label: 'Tickets', icon: MessageSquare, path: '/admin/tickets' },
   ];
 
   if (loading) {

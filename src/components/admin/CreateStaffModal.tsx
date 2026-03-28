@@ -1,16 +1,26 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
-import { X } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { employeeService } from '../../services/employeeService';
 import type { Staff, StaffStatus } from '../../types/staff.types';
 import { adminRoleService } from '../../services/adminRoleService';
 import type { Role } from '../../types/role.types';
 
+interface HomestayOption {
+  id: string;
+  name: string;
+  provinceName?: string;
+}
+
 interface CreateStaffModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   editingStaff?: Staff | null;
+  allowedRoleNames?: string[];
+  availableHomestays?: HomestayOption[];
+  isManagerMode?: boolean;
+  managerProvinceId?: string;
 }
 
 interface StaffFormState {
@@ -22,6 +32,7 @@ interface StaffFormState {
   avatarUrl: string;
   status: StaffStatus;
   roleId: string;
+  homestayIds: string[];
 }
 
 const initialState: StaffFormState = {
@@ -33,9 +44,19 @@ const initialState: StaffFormState = {
   avatarUrl: '',
   status: 'active',
   roleId: '',
+  homestayIds: [],
 };
 
-export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: CreateStaffModalProps) {
+export function CreateStaffModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  editingStaff,
+  allowedRoleNames = ['manager', 'staff'],
+  availableHomestays = [],
+  isManagerMode = false,
+  managerProvinceId = '',
+}: CreateStaffModalProps) {
   const [form, setForm] = useState<StaffFormState>(initialState);
   const [submitting, setSubmitting] = useState(false);
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
@@ -47,16 +68,17 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
 
     const loadRoles = async () => {
       const roles = await adminRoleService.getRoles();
+      const allowed = new Set(allowedRoleNames.map((x) => x.toLowerCase()));
       const filtered = roles.filter((role) => {
         const name = (role.name || '').toLowerCase();
-        return name === 'manager' || name === 'staff';
+        return allowed.has(name);
       });
 
       setAvailableRoles(filtered);
     };
 
     loadRoles();
-  }, [isOpen, editingStaff]);
+  }, [isOpen, editingStaff, allowedRoleNames]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -75,6 +97,7 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
         avatarUrl: editingStaff.avatar || '',
         status: editingStaff.status || 'active',
         roleId: matchedRole?.id || '',
+        homestayIds: editingStaff.assignedHomestays || [],
       });
       setSelectedAvatarFile(null);
       setAvatarPreview(editingStaff.avatar || '');
@@ -98,6 +121,10 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
   }, [selectedAvatarFile]);
 
   if (!isOpen) return null;
+
+  const normalizeText = (value?: string) => String(value || '').trim().toLowerCase();
+  const selectedRole = availableRoles.find((r) => r.id === form.roleId);
+  const isStaffRole = selectedRole && (selectedRole.name || '').toLowerCase() === 'staff';
 
   const handleAvatarFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -124,7 +151,12 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
     }
 
     if (!editingStaff && !form.roleId) {
-      toast.error('Vui lòng chọn vai trò (Manager hoặc Staff)');
+      toast.error('Vui lòng chọn vai trò nhân viên');
+      return;
+    }
+
+    if (!editingStaff && isStaffRole && form.homestayIds.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 homestay cho nhân viên');
       return;
     }
 
@@ -169,7 +201,30 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
           return;
         }
 
-        toast.success('Tạo nhân viên thành công');
+        // Assign homestays after creation if this is a Staff role
+        if (isStaffRole && form.homestayIds.length > 0) {
+          try {
+            const createdEmployeeId = await employeeService.resolveCreatedEmployeeId(createRes, {
+              email: createPayload.email,
+              username: createPayload.username,
+            });
+            if (createdEmployeeId) {
+              const assignRes = await employeeService.assignHomestays(createdEmployeeId, form.homestayIds);
+              if (!assignRes?.success) {
+                toast.warning('Tạo nhân viên thành công nhưng không thể phân công homestay. Vui lòng phân công thủ công.');
+              } else {
+                toast.success('Tạo nhân viên và phân công homestay thành công');
+              }
+            } else {
+              toast.success('Tạo nhân viên thành công. Vui lòng phân công homestay sau.');
+            }
+          } catch (error) {
+            console.error('Assign homestay error:', error);
+            toast.warning('Tạo nhân viên thành công nhưng có lỗi khi phân công homestay.');
+          }
+        } else {
+          toast.success('Tạo nhân viên thành công');
+        }
       }
 
       onSuccess();
@@ -181,10 +236,28 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
     }
   };
 
+  const handleToggleHomestay = (homestayId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      homestayIds: prev.homestayIds.includes(homestayId)
+        ? prev.homestayIds.filter((id) => id !== homestayId)
+        : [...prev.homestayIds, homestayId],
+    }));
+  };
+
+  const availableHomestaysForForm = (() => {
+    if (isManagerMode && managerProvinceId) {
+      return availableHomestays.filter(
+        (h) => normalizeText(h.provinceName) === normalizeText(managerProvinceId),
+      );
+    }
+    return availableHomestays;
+  })();
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
           <h3 className="text-xl font-bold text-gray-900">
             {editingStaff ? 'Chỉnh sửa nhân viên' : 'Thêm nhân viên mới'}
           </h3>
@@ -336,9 +409,46 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess, editingStaff }: C
               </select>
             </div>
           )}
+
+          {((!editingStaff && isStaffRole) || (editingStaff && isStaffRole)) && availableHomestaysForForm.length > 0 && (
+            <div>
+              <label className="block text-sm text-gray-700 mb-3">
+                Phân công Homestay {!editingStaff && <span className="text-red-600">*</span>}
+              </label>
+              <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                {availableHomestaysForForm.length === 0 ? (
+                  <p className="text-gray-500 text-sm py-2">Không có homestay khả dụng</p>
+                ) : (
+                  availableHomestaysForForm.map((homestay) => (
+                    <label
+                      key={homestay.id}
+                      className="flex items-center gap-3 p-2 hover:bg-white rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.homestayIds.includes(homestay.id)}
+                        onChange={() => handleToggleHomestay(homestay.id)}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-2"
+                      />
+                      <span className="flex-1 text-sm text-gray-800">{homestay.name}</span>
+                      {form.homestayIds.includes(homestay.id) && (
+                        <Check className="w-4 h-4 text-green-600" />
+                      )}
+                    </label>
+                  ))
+                )}
+              </div>
+              {!editingStaff && isStaffRole && form.homestayIds.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">Vui lòng chọn ít nhất 1 homestay</p>
+              )}
+              {form.homestayIds.length > 0 && (
+                <p className="text-xs text-gray-600 mt-1">Đã chọn {form.homestayIds.length} homestay</p>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 sticky bottom-0 bg-white">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"

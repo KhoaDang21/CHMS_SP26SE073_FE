@@ -8,7 +8,13 @@ import { apiConfig } from "../config/apiConfig";
 // status ("PENDING"|"CONFIRMED"|"CANCELLED"|"COMPLETED"|"REJECTED"),
 // specialRequests, contactPhone, createdAt
 
-export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REJECTED" | "CHECKED_IN";
+export type BookingStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "CANCELLED"
+  | "COMPLETED"
+  | "REJECTED"
+  | "CHECKED_IN";
 export type PaymentStatus = "UNPAID" | "DEPOSIT_PAID" | "FULLY_PAID";
 
 export interface Booking {
@@ -27,6 +33,7 @@ export interface Booking {
   totalPrice?: number;
   depositAmount?: number;
   remainingAmount?: number;
+  depositPercentage?: number; // Deposit percentage from homestay (e.g., 50 for 50%)
   paymentStatus?: PaymentStatus;
   status: BookingStatus;
   specialRequests?: string;
@@ -36,8 +43,8 @@ export interface Booking {
 
 export interface CreateBookingRequest {
   homestayId: string;
-  checkIn: string;   // "YYYY-MM-DD"
-  checkOut: string;  // "YYYY-MM-DD"
+  checkIn: string; // "YYYY-MM-DD"
+  checkOut: string; // "YYYY-MM-DD"
   guestsCount: number;
   specialRequests?: string;
   contactPhone?: string;
@@ -99,6 +106,7 @@ const mapBooking = (item: any): Booking => ({
   totalPrice: item.totalPrice,
   depositAmount: item.depositAmount,
   remainingAmount: item.remainingAmount,
+  depositPercentage: item.depositPercentage ?? 50, // Default 50% nếu BE không gửi
   paymentStatus: item.paymentStatus ?? undefined,
   status: normalizeStatus(item.status),
   specialRequests: item.specialRequests ?? undefined,
@@ -110,12 +118,14 @@ export const bookingService = {
   /** GET /api/bookings — danh sách booking của user */
   async getMyBookings(): Promise<Booking[]> {
     try {
-      const response = await apiService.get<any>(apiConfig.endpoints.bookings.list);
+      const response = await apiService.get<any>(
+        apiConfig.endpoints.bookings.list,
+      );
       const rawList: any[] = Array.isArray(response?.data)
         ? response.data
         : Array.isArray(response)
-        ? response
-        : [];
+          ? response
+          : [];
       return rawList.map(mapBooking);
     } catch (error) {
       console.error("Get my bookings error:", error);
@@ -126,7 +136,9 @@ export const bookingService = {
   /** GET /api/bookings/:id — chi tiết booking */
   async getBookingDetail(id: string): Promise<Booking | null> {
     try {
-      const response = await apiService.get<any>(apiConfig.endpoints.bookings.detail(id));
+      const response = await apiService.get<any>(
+        apiConfig.endpoints.bookings.detail(id),
+      );
       const raw = response?.data ?? response;
       if (!raw?.id) return null;
       return mapBooking(raw);
@@ -141,7 +153,10 @@ export const bookingService = {
     data: CreateBookingRequest,
   ): Promise<{ success: boolean; message: string; data?: Booking }> {
     try {
-      const response = await apiService.post<any>(apiConfig.endpoints.bookings.create, data);
+      const response = await apiService.post<any>(
+        apiConfig.endpoints.bookings.create,
+        data,
+      );
       // BE: ApiResponse<object>.SuccessResult(bookingResponseDTO, "Đặt phòng thành công!")
       const bookingData = response?.data ?? null;
       return {
@@ -153,15 +168,22 @@ export const bookingService = {
       console.error("Create booking error:", error);
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Đã xảy ra lỗi khi đặt phòng",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Đã xảy ra lỗi khi đặt phòng",
       };
     }
   },
 
   /** POST /api/bookings/:id/cancel — hủy booking */
-  async cancelBooking(id: string): Promise<{ success: boolean; message: string }> {
+  async cancelBooking(
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiService.post<any>(apiConfig.endpoints.bookings.cancel(id));
+      const response = await apiService.post<any>(
+        apiConfig.endpoints.bookings.cancel(id),
+      );
       return {
         success: response?.success ?? true,
         message: response?.message ?? "Đã hủy đơn đặt phòng thành công.",
@@ -170,7 +192,10 @@ export const bookingService = {
       console.error("Cancel booking error:", error);
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Đã xảy ra lỗi khi hủy booking",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Đã xảy ra lỗi khi hủy booking",
       };
     }
   },
@@ -178,7 +203,10 @@ export const bookingService = {
   /** POST /api/bookings/calculate — tính giá trước khi đặt */
   async calculate(data: CalculateBookingRequest): Promise<number | null> {
     try {
-      const response = await apiService.post<any>(apiConfig.endpoints.bookings.calculate, data);
+      const response = await apiService.post<any>(
+        apiConfig.endpoints.bookings.calculate,
+        data,
+      );
       // BE: ApiResponse<decimal>.SuccessResult(price)
       const price = response?.data ?? response;
       return typeof price === "number" ? price : null;
@@ -194,7 +222,10 @@ export const bookingService = {
     data: ModifyBookingRequest,
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiService.put<any>(apiConfig.endpoints.bookings.modify(id), data);
+      const response = await apiService.put<any>(
+        apiConfig.endpoints.bookings.modify(id),
+        data,
+      );
       return {
         success: response?.success ?? true,
         message: response?.message ?? "Cập nhật booking thành công!",
@@ -203,15 +234,22 @@ export const bookingService = {
       console.error("Modify booking error:", error);
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Đã xảy ra lỗi khi sửa booking",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Đã xảy ra lỗi khi sửa booking",
       };
     }
   },
 
   /** GET /api/bookings/:id/cancellation-policy */
-  async getCancellationPolicy(id: string): Promise<CancellationPolicyResponse | null> {
+  async getCancellationPolicy(
+    id: string,
+  ): Promise<CancellationPolicyResponse | null> {
     try {
-      const response = await apiService.get<any>(apiConfig.endpoints.bookings.cancellationPolicy(id));
+      const response = await apiService.get<any>(
+        apiConfig.endpoints.bookings.cancellationPolicy(id),
+      );
       // BE: ApiResponse<object>.SuccessResult(new { Policy = policy })
       return response?.data ?? response;
     } catch (error) {
@@ -239,7 +277,10 @@ export const bookingService = {
       console.error("Update special requests error:", error);
       return {
         success: false,
-        message: error instanceof Error ? error.message : "Đã xảy ra lỗi khi cập nhật yêu cầu đặc biệt",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Đã xảy ra lỗi khi cập nhật yêu cầu đặc biệt",
       };
     }
   },

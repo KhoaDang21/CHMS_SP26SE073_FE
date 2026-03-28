@@ -1,6 +1,15 @@
 import { apiService } from "./apiService";
 import { apiConfig } from "../config/apiConfig";
+import { homestayService } from "./homestayService";
 import type { Booking, BookingStats, BookingStatus, PaymentStatus, UpdateBookingDTO } from "../types/booking.types";
+import type { Homestay } from "../types/homestay.types";
+
+const homestayImageCache = new Map<string, string>();
+
+const resolveHomestayImage = (homestay?: Homestay | null): string | undefined => {
+  if (!homestay) return undefined;
+  return homestay.imageUrls?.[0] || homestay.images?.[0] || undefined;
+};
 
 const extractList = <T>(res: any): T[] => {
   if (Array.isArray(res)) return res as T[];
@@ -21,8 +30,8 @@ const toISO = (value: any): string => {
 const normalizeStatus = (value: any): BookingStatus => {
   const raw = String(value || "").toUpperCase();
   if (raw === "CONFIRMED") return "confirmed";
+  if (raw === "COMPLETED" || raw === "CHECKED_OUT" || raw === "CHECKEDOUT") return "completed";
   if (raw === "CHECKED_IN" || raw === "CHECKEDIN" || raw === "IN_PROGRESS") return "checked_in";
-  if (raw === "CHECKED_OUT" || raw === "CHECKEDOUT" || raw === "COMPLETED") return "checked_out";
   if (raw === "CANCELLED" || raw === "REJECTED") return "cancelled";
   return "pending";
 };
@@ -81,8 +90,8 @@ const toBooking = (item: any): Booking => {
 
 const toBackendStatus = (status: BookingStatus): string => {
   if (status === "confirmed") return "CONFIRMED";
+  if (status === "completed" || status === "checked_out") return "COMPLETED";
   if (status === "checked_in") return "CHECKED_IN";
-  if (status === "checked_out") return "COMPLETED";
   if (status === "cancelled") return "CANCELLED";
   return "PENDING";
 };
@@ -92,7 +101,7 @@ const toStats = (bookings: Booking[]): BookingStats => {
   const pending = bookings.filter((b) => b.status === "pending").length;
   const confirmed = bookings.filter((b) => b.status === "confirmed").length;
   const checkedIn = bookings.filter((b) => b.status === "checked_in").length;
-  const checkedOut = bookings.filter((b) => b.status === "checked_out").length;
+  const checkedOut = bookings.filter((b) => b.status === "completed" || b.status === "checked_out").length;
   const cancelled = bookings.filter((b) => b.status === "cancelled").length;
   const totalRevenue = bookings.reduce((sum, b) => sum + (Number(b.totalPrice) || 0), 0);
 
@@ -125,10 +134,51 @@ export const adminBookingService = {
 
   async getAllBookings(params?: Record<string, any>): Promise<Booking[]> {
     const raw = await this.list<any>(params);
-    return raw
+    const bookings = raw
       .map(toBooking)
       .filter((x) => Boolean(x.id))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const missingImageBookings = bookings.filter(
+      (booking) => !booking.homestayImage && booking.homestayId,
+    );
+
+    if (missingImageBookings.length === 0) {
+      return bookings;
+    }
+
+    try {
+      const homestays = await homestayService.getAllAdminHomestays();
+      const homestayById = new Map<string, Homestay>();
+
+      homestays.forEach((homestay) => {
+        if (!homestay?.id) return;
+        homestayById.set(String(homestay.id), homestay);
+
+        const image = resolveHomestayImage(homestay);
+        if (image) {
+          homestayImageCache.set(String(homestay.id), image);
+        }
+      });
+
+      return bookings.map((booking) => {
+        if (booking.homestayImage || !booking.homestayId) return booking;
+
+        const fromCache = homestayImageCache.get(String(booking.homestayId));
+        if (fromCache) {
+          return { ...booking, homestayImage: fromCache };
+        }
+
+        const homestay = homestayById.get(String(booking.homestayId));
+        const resolvedImage = resolveHomestayImage(homestay);
+        if (!resolvedImage) return booking;
+
+        homestayImageCache.set(String(booking.homestayId), resolvedImage);
+        return { ...booking, homestayImage: resolvedImage };
+      });
+    } catch {
+      return bookings;
+    }
   },
 
   async getBookingById(id: string): Promise<Booking | null> {

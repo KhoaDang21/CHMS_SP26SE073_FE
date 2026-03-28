@@ -105,6 +105,12 @@ export default function ManagerBookings() {
   };
 
   const handleUpdateStatus = async (bookingId: string, newStatus: BookingStatus) => {
+    const booking = bookings.find((b) => b.id === bookingId) ?? (selectedBooking?.id === bookingId ? selectedBooking : null);
+    if (newStatus === 'checked_in' && booking && booking.paymentStatus !== 'paid') {
+      toast.error('Khách phải thanh toán đủ trước khi check-in/hoàn thành đơn');
+      return;
+    }
+
     const result = await adminBookingService.updateBooking(bookingId, { status: newStatus });
     if (result.success) {
       toast.success('Cập nhật trạng thái thành công!');
@@ -140,15 +146,17 @@ export default function ManagerBookings() {
     const styles: Record<BookingStatus, string> = {
       pending: 'bg-yellow-100 text-yellow-700',
       confirmed: 'bg-blue-100 text-blue-700',
+      completed: 'bg-gray-100 text-gray-700',
       checked_in: 'bg-green-100 text-green-700',
       checked_out: 'bg-gray-100 text-gray-700',
       cancelled: 'bg-red-100 text-red-700',
     };
     const labels: Record<BookingStatus, string> = {
       pending: 'Chờ thanh toán cọc',
-      confirmed: 'Đã xác nhận',
-      checked_in: 'Đang lưu trú',
-      checked_out: 'Đã check-out',
+      confirmed: 'Đã chấp nhận đặt phòng',
+      completed: 'Hoàn thành',
+      checked_in: 'Đã check-in',
+      checked_out: 'Hoàn thành',
       cancelled: 'Đã hủy',
     };
     return (
@@ -338,8 +346,7 @@ export default function ManagerBookings() {
                   <option value="all">Tất cả trạng thái</option>
                   <option value="pending">Chờ thanh toán cọc</option>
                   <option value="confirmed">Đã xác nhận</option>
-                  <option value="checked_in">Đang lưu trú</option>
-                  <option value="checked_out">Đã check-out</option>
+                  <option value="completed">Hoàn thành</option>
                   <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
@@ -434,6 +441,9 @@ export default function ManagerBookings() {
                             <p className="text-2xl font-bold text-gray-900">
                               {booking.totalPrice.toLocaleString('vi-VN')} ₫
                             </p>
+                            {booking.status === 'confirmed' && booking.paymentStatus !== 'paid' && (
+                              <p className="text-xs text-orange-600 mt-1">Cần thanh toán đủ trước khi check-in/hoàn thành</p>
+                            )}
                           </div>
 
                           {booking.status === 'pending' && (
@@ -453,19 +463,20 @@ export default function ManagerBookings() {
                           {booking.status === 'confirmed' && (
                             <button
                               onClick={() => void handleUpdateStatus(booking.id, 'checked_in')}
-                              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                              disabled={booking.paymentStatus !== 'paid'}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <CheckCircle className="w-4 h-4" />
-                              <span>Check-in</span>
+                              <span>{booking.paymentStatus === 'paid' ? 'Check-in' : 'Chờ thanh toán đủ'}</span>
                             </button>
                           )}
                           {booking.status === 'checked_in' && (
                             <button
-                              onClick={() => void handleUpdateStatus(booking.id, 'checked_out')}
-                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                              onClick={() => void handleUpdateStatus(booking.id, 'completed')}
+                              className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
                             >
                               <CheckCircle className="w-4 h-4" />
-                              <span>Check-out</span>
+                              <span>Hoàn thành</span>
                             </button>
                           )}
                         </div>
@@ -554,19 +565,20 @@ export default function ManagerBookings() {
               {selectedBooking.status === 'confirmed' && (
                 <button
                   onClick={() => void handleUpdateStatus(selectedBooking.id, 'checked_in')}
-                  className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+                  disabled={selectedBooking.paymentStatus !== 'paid'}
+                  className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  Check-in
+                  {selectedBooking.paymentStatus === 'paid' ? 'Check-in' : 'Chờ thanh toán đủ'}
                 </button>
               )}
               {selectedBooking.status === 'checked_in' && (
                 <button
-                  onClick={() => void handleUpdateStatus(selectedBooking.id, 'checked_out')}
-                  className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+                  onClick={() => void handleUpdateStatus(selectedBooking.id, 'completed')}
+                  className="px-5 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium flex items-center gap-2"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  Check-out
+                  Hoàn thành
                 </button>
               )}
               <button

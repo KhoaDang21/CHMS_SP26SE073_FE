@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus, Send, X, ChevronRight, Clock, CheckCircle2,
   AlertCircle, Loader2, MessageSquare, Tag, Inbox,
-  Headphones, BookOpen,
+  Headphones, BookOpen, ArrowLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
@@ -17,10 +17,10 @@ import { bookingService, type Booking } from '../../services/bookingService';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; color: string; border: string; icon: React.ReactNode }> = {
-  OPEN:        { label: 'Mở',           color: 'bg-blue-100 text-blue-700',    border: 'border-l-blue-500',   icon: <AlertCircle className="w-3 h-3" /> },
-  IN_PROGRESS: { label: 'Đang xử lý',  color: 'bg-yellow-100 text-yellow-700', border: 'border-l-yellow-400', icon: <Clock className="w-3 h-3" /> },
-  RESOLVED:    { label: 'Đã giải quyết', color: 'bg-green-100 text-green-700', border: 'border-l-green-500',  icon: <CheckCircle2 className="w-3 h-3" /> },
-  CLOSED:      { label: 'Đã đóng',      color: 'bg-gray-100 text-gray-500',    border: 'border-l-gray-400',   icon: <CheckCircle2 className="w-3 h-3" /> },
+  OPEN:        { label: 'Mở',             color: 'bg-blue-100 text-blue-700',    border: 'border-l-blue-500',   icon: <AlertCircle className="w-3 h-3" /> },
+  IN_PROGRESS: { label: 'Đang xử lý',    color: 'bg-yellow-100 text-yellow-700', border: 'border-l-yellow-400', icon: <Clock className="w-3 h-3" /> },
+  RESOLVED:    { label: 'Đã giải quyết', color: 'bg-green-100 text-green-700',  border: 'border-l-green-500',  icon: <CheckCircle2 className="w-3 h-3" /> },
+  CLOSED:      { label: 'Đã đóng',       color: 'bg-gray-100 text-gray-500',    border: 'border-l-gray-400',   icon: <CheckCircle2 className="w-3 h-3" /> },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
@@ -30,11 +30,11 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const QUICK_CATEGORIES = [
-  { label: 'Vệ sinh phòng',   icon: '🧹' },
-  { label: 'Tiện nghi hỏng',  icon: '🔧' },
-  { label: 'Thái độ nhân viên', icon: '👤' },
-  { label: 'Yêu cầu hoàn tiền', icon: '💰' },
-  { label: 'Khác',             icon: '💬' },
+  { label: 'Vệ sinh phòng',      icon: '🧹' },
+  { label: 'Tiện nghi hỏng',     icon: '🔧' },
+  { label: 'Thái độ nhân viên',  icon: '👤' },
+  { label: 'Yêu cầu hoàn tiền',  icon: '💰' },
+  { label: 'Khác',               icon: '💬' },
 ];
 
 const FILTER_TABS = [
@@ -60,11 +60,10 @@ function formatTime(dateStr: string) {
 // ─── Status Timeline ──────────────────────────────────────────────────────────
 function StatusTimeline({ status }: { status: string }) {
   const steps = [
-    { key: 'OPEN',        label: 'Đã gửi',      icon: <Send className="w-3.5 h-3.5" /> },
-    { key: 'IN_PROGRESS', label: 'Đang xử lý',  icon: <Clock className="w-3.5 h-3.5" /> },
+    { key: 'OPEN',        label: 'Đã gửi',        icon: <Send className="w-3.5 h-3.5" /> },
+    { key: 'IN_PROGRESS', label: 'Đang xử lý',    icon: <Clock className="w-3.5 h-3.5" /> },
     { key: 'RESOLVED',    label: 'Đã giải quyết', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   ];
-
   const ORDER: Record<string, number> = { OPEN: 0, IN_PROGRESS: 1, RESOLVED: 2, CLOSED: 2 };
   const currentIdx = ORDER[status] ?? 0;
 
@@ -100,7 +99,7 @@ function StatusTimeline({ status }: { status: string }) {
 
 // ─── Create Ticket Modal ──────────────────────────────────────────────────────
 function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [step, setStep] = useState<1 | 2>(1); // step 1: chọn booking, step 2: điền form
+  const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<CreateTicketRequest>({ title: '', description: '', priority: 'NORMAL' });
   const [submitting, setSubmitting] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -151,7 +150,6 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* Step indicator */}
             <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">
               <span className={`w-6 h-6 rounded-full flex items-center justify-center font-semibold text-[11px]
                 ${step === 1 ? 'bg-blue-500 text-white' : 'bg-green-100 text-green-600'}`}>
@@ -180,9 +178,9 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
               <BookOpen className="w-10 h-10 text-gray-300" />
             </div>
             <div>
-              <p className="text-base font-semibold text-gray-700">Chưa có lượt ở nào hoàn thành</p>
+              <p className="text-base font-semibold text-gray-700">Chưa có lượt ở nào phù hợp</p>
               <p className="text-sm text-gray-400 mt-1.5 leading-relaxed max-w-sm">
-                Bạn chỉ có thể gửi khiếu nại sau khi hoàn thành lượt ở tại homestay.
+                Bạn chỉ có thể gửi khiếu nại cho các lượt ở đang diễn ra hoặc đã hoàn thành.
               </p>
             </div>
             <button onClick={onClose}
@@ -191,11 +189,10 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </button>
           </div>
         ) : step === 1 ? (
-          /* ── STEP 1: Booking cards ── */
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="px-7 pt-5 pb-2 flex-shrink-0">
               <p className="text-sm font-medium text-gray-700">Chọn lượt ở bạn muốn khiếu nại</p>
-              <p className="text-xs text-gray-400 mt-0.5">Chỉ hiển thị các lượt ở đã hoàn thành</p>
+              <p className="text-xs text-gray-400 mt-0.5">Hiển thị các lượt ở đang diễn ra và đã hoàn thành</p>
             </div>
             <div className="flex-1 overflow-y-auto px-7 py-4 space-y-3">
               {bookings.map(b => (
@@ -224,8 +221,9 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
                               {b.totalNights} đêm
                             </span>
                           )}
-                          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-600 rounded-full font-medium">
-                            Đã hoàn thành
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium
+                            ${b.status === 'CHECKED_IN' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                            {b.status === 'CHECKED_IN' ? 'Đang ở' : 'Đã hoàn thành'}
                           </span>
                         </div>
                         {b.totalPrice && (
@@ -248,11 +246,10 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </div>
           </div>
         ) : (
-          /* ── STEP 2: Form ── */
           <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
             <div className="flex-1 overflow-y-auto px-7 py-5 space-y-5">
 
-              {/* Selected booking summary — clickable to go back */}
+              {/* Selected booking summary */}
               <button
                 type="button"
                 onClick={() => setStep(1)}
@@ -260,7 +257,7 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
                   hover:bg-blue-100 transition-colors text-left group"
               >
                 <div className="w-9 h-9 rounded-lg bg-white border border-blue-200 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-4.5 h-4.5 text-blue-500" />
+                  <BookOpen className="w-4 h-4 text-blue-500" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-blue-800 truncate">{selectedBooking?.homestayName}</p>
@@ -330,9 +327,9 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
                 <div className="grid grid-cols-3 gap-2">
                   {(['LOW', 'NORMAL', 'HIGH'] as const).map(p => {
                     const colors = {
-                      LOW: { active: 'border-gray-400 bg-gray-50 text-gray-700', dot: 'bg-gray-400' },
-                      NORMAL: { active: 'border-blue-400 bg-blue-50 text-blue-700', dot: 'bg-blue-400' },
-                      HIGH: { active: 'border-red-400 bg-red-50 text-red-700', dot: 'bg-red-400' },
+                      LOW:    { active: 'border-gray-400 bg-gray-50 text-gray-700',  dot: 'bg-gray-400' },
+                      NORMAL: { active: 'border-blue-400 bg-blue-50 text-blue-700',  dot: 'bg-blue-400' },
+                      HIGH:   { active: 'border-red-400 bg-red-50 text-red-700',     dot: 'bg-red-400' },
                     };
                     const isActive = form.priority === p;
                     return (
@@ -375,11 +372,11 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
 
 // ─── Ticket Detail Panel ──────────────────────────────────────────────────────
 function TicketDetailPanel({
-  ticketId, currentUserId, onClose, onClosed,
+  ticketId, currentUserId, onBack, onClosed,
 }: {
   ticketId: string;
   currentUserId: string;
-  onClose: () => void;
+  onBack: () => void;
   onClosed: () => void;
 }) {
   const [detail, setDetail] = useState<TicketDetail | null>(null);
@@ -388,6 +385,7 @@ function TicketDetailPanel({
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -397,7 +395,13 @@ function TicketDetailPanel({
   }, [ticketId]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [detail?.replies]);
+
+  useEffect(() => {
+    if (!loading && messagesContainerRef.current && detail?.replies && detail.replies.length > 0) {
+      // Scroll only inside the messages container, never the window
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  }, [detail?.replies, loading]);
 
   const sendMessage = async () => {
     const msg = message.trim();
@@ -433,9 +437,15 @@ function TicketDetailPanel({
     <div className="flex flex-col h-full">
       {/* Panel header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0">
-        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors lg:hidden">
-          <ChevronRight className="w-5 h-5 text-gray-500 rotate-180" />
+        {/* Back button — always visible on mobile, hidden on lg+ */}
+        <button
+          onClick={onBack}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors lg:hidden flex-shrink-0"
+          aria-label="Quay lại danh sách"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-500" />
         </button>
+
         {loading ? (
           <div className="flex-1 h-5 bg-gray-100 rounded animate-pulse" />
         ) : (
@@ -456,9 +466,12 @@ function TicketDetailPanel({
               </div>
             </div>
             {!isClosed && (
-              <button onClick={closeTicket} disabled={closing}
+              <button
+                onClick={closeTicket}
+                disabled={closing}
                 className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600
-                  hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+                  hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              >
                 {closing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                 Đóng ticket
               </button>
@@ -492,7 +505,7 @@ function TicketDetailPanel({
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
             {detail.replies.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
                 <MessageSquare className="w-10 h-10 text-gray-200" />
@@ -520,7 +533,7 @@ function TicketDetailPanel({
                 </div>
               );
             })}
-            <div ref={bottomRef} />
+            <div ref={bottomRef} className="h-px" />
           </div>
 
           {/* Input */}
@@ -539,10 +552,13 @@ function TicketDetailPanel({
                   className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none outline-none max-h-24 leading-relaxed"
                   style={{ minHeight: 24 }}
                 />
-                <button onClick={sendMessage} disabled={!message.trim() || sending}
+                <button
+                  onClick={sendMessage}
+                  disabled={!message.trim() || sending}
                   className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white
                     flex items-center justify-center flex-shrink-0
-                    disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity">
+                    disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                >
                   {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 </button>
               </div>
@@ -612,9 +628,7 @@ function StatsBar({ tickets, filterStatus, onFilter }: {
             key={f.key}
             onClick={() => onFilter(f.key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all
-              ${active
-                ? 'bg-blue-500 text-white shadow-sm'
-                : 'text-gray-500 hover:bg-gray-100'}`}
+              ${active ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
           >
             {f.label}
             {count > 0 && (
@@ -631,7 +645,7 @@ function StatsBar({ tickets, filterStatus, onFilter }: {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function MessagesPage() {
+export default function SupportPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -658,12 +672,15 @@ export default function MessagesPage() {
     loadTickets();
   };
 
-  const handleClosed = () => {
+  // After closing a ticket, reload list and keep the detail panel open to show updated status
+  const handleClosed = useCallback(() => {
     loadTickets();
-    const id = selectedId;
-    setSelectedId(null);
-    setTimeout(() => setSelectedId(id), 50);
-  };
+  }, [loadTickets]);
+
+  // On mobile: show list when no ticket selected, show detail when selected
+  // On desktop (lg+): always show both panels side by side
+  const showList = !selectedId;   // mobile: hide list when detail is open
+  const showDetail = !!selectedId; // mobile: hide detail when nothing selected
 
   return (
     <MainLayout>
@@ -685,24 +702,28 @@ export default function MessagesPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500
               text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-sm shadow-blue-200"
           >
-            <Headphones className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
             Gửi khiếu nại
           </button>
         </div>
 
         {/* Main layout: list + detail */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-          style={{ height: 'calc(100vh - 220px)', minHeight: 500 }}>
+        <div
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          style={{ height: 'calc(100vh - 220px)', minHeight: 500 }}
+        >
           <div className="flex h-full">
 
             {/* ── Ticket list ── */}
-            <div className={`flex flex-col border-r border-gray-100 flex-shrink-0
-              ${selectedId ? 'hidden lg:flex lg:w-80 xl:w-96' : 'flex w-full lg:w-80 xl:w-96'}`}>
-
-              {/* Stats / filter bar */}
+            {/* Mobile: full width, hidden when a ticket is selected */}
+            {/* Desktop (lg+): fixed sidebar, always visible */}
+            <div className={`
+              flex flex-col border-r border-gray-100 flex-shrink-0
+              w-full lg:w-80 xl:w-96
+              ${showList ? 'flex' : 'hidden'} lg:flex
+            `}>
               <StatsBar tickets={tickets} filterStatus={filterStatus} onFilter={setFilterStatus} />
 
-              {/* List */}
               <div className="flex-1 overflow-y-auto">
                 {loadingList ? (
                   <div className="flex items-center justify-center h-32">
@@ -755,13 +776,18 @@ export default function MessagesPage() {
             </div>
 
             {/* ── Detail panel ── */}
-            <div className={`flex-1 flex flex-col ${selectedId ? 'flex' : 'hidden lg:flex'}`}>
+            {/* Mobile: full width, only shown when a ticket is selected */}
+            {/* Desktop (lg+): flex-1, always visible */}
+            <div className={`
+              flex-1 flex flex-col
+              ${showDetail ? 'flex' : 'hidden'} lg:flex
+            `}>
               {selectedId ? (
                 <TicketDetailPanel
                   key={selectedId}
                   ticketId={selectedId}
                   currentUserId={currentUser?.id ?? ''}
-                  onClose={() => setSelectedId(null)}
+                  onBack={() => setSelectedId(null)}
                   onClosed={handleClosed}
                 />
               ) : (
@@ -784,6 +810,7 @@ export default function MessagesPage() {
                 </div>
               )}
             </div>
+
           </div>
         </div>
       </div>
