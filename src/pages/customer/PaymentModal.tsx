@@ -11,10 +11,12 @@ interface BookingInfo {
   totalNights: number;
   guestsCount: number;
   pricePerNight: number;
-  totalPrice: number;
-  depositAmount?: number;   // tiền cọc thực tế từ BE (sau khi booking tạo xong)
-  remainingAmount?: number; // còn lại từ BE
-  paymentLabel?: string;
+  bookingTotal: number;    // tổng tiền booking gốc (pricePerNight * nights)
+  amountDue: number;       // số tiền thực cần thanh toán lần này (cọc hoặc còn lại)
+  depositAmount?: number;  // tiền cọc từ BE
+  remainingAmount?: number;// tiền còn lại từ BE
+  depositPercentage?: number; // Percentage từ Homestay (e.g., 20, 30, 50)
+  paymentLabel?: string;   // "Đặt cọc" | "Thanh toán còn lại"
 }
 
 interface PaymentModalProps {
@@ -93,23 +95,25 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
             <div className="mt-4 pt-3 border-t border-blue-100 space-y-1.5">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>{formatMoney(booking.pricePerNight)} × {booking.totalNights} đêm</span>
-                <span>{formatMoney(booking.pricePerNight * booking.totalNights)}</span>
+                <span>{formatMoney(booking.bookingTotal)}</span>
               </div>
               {/* Tổng tiền */}
               <div className="flex justify-between text-sm font-semibold text-gray-900 pt-1.5 border-t border-blue-100">
-                <span>Tổng tiền</span>
-                <span>{formatMoney(booking.totalPrice)}</span>
+                <span>Tổng tiền booking</span>
+                <span>{formatMoney(booking.bookingTotal)}</span>
               </div>
               {/* Breakdown cọc / còn lại */}
               {(() => {
-                const deposit = booking.depositAmount ?? booking.totalPrice * 0.5;
-                const remaining = booking.remainingAmount ?? booking.totalPrice - deposit;
                 const isDepositPayment = !booking.paymentLabel || booking.paymentLabel === 'Đặt cọc';
+                // Ưu tiên: depositAmount từ BE → nếu không có, dùng depositPercentage → fallback 50%
+                const depositPercent = booking.depositPercentage ?? 50;
+                const deposit = booking.depositAmount ?? (booking.bookingTotal * depositPercent / 100);
+                const remaining = booking.remainingAmount ?? (booking.bookingTotal - deposit);
                 return (
                   <div className="mt-2 pt-2 border-t border-dashed border-orange-200 space-y-1.5">
                     <div className="flex justify-between text-sm">
                       <span className={`font-semibold ${isDepositPayment ? 'text-orange-600' : 'text-gray-500'}`}>
-                        {isDepositPayment ? '→ Cọc ngay (20%)' : 'Đã cọc'}
+                        {isDepositPayment ? '→ Cọc ngay' : 'Đã cọc'} ({depositPercent}%)
                       </span>
                       <span className={`font-bold ${isDepositPayment ? 'text-orange-600' : 'text-gray-500'}`}>
                         {formatMoney(deposit)}
@@ -117,7 +121,7 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className={`${!isDepositPayment ? 'font-semibold text-blue-600' : 'text-gray-500'}`}>
-                        {!isDepositPayment ? '→ Còn lại thanh toán' : 'Còn lại khi nhận phòng'}
+                        {!isDepositPayment ? '→ Còn lại thanh toán' : 'Còn lại khi nhận phòng'} ({100 - depositPercent}%)
                       </span>
                       <span className={`font-bold ${!isDepositPayment ? 'text-blue-600' : 'text-gray-500'}`}>
                         {formatMoney(remaining)}
@@ -126,6 +130,11 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
                   </div>
                 );
               })()}
+              {/* Số tiền cần trả lần này — highlight rõ */}
+              <div className="flex justify-between text-base font-bold pt-2 border-t border-blue-200">
+                <span className="text-gray-900">Thanh toán ngay</span>
+                <span className="text-orange-600">{formatMoney(booking.amountDue)}</span>
+              </div>
             </div>
           </div>
 
@@ -156,7 +165,7 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
               <><Loader2 className="w-5 h-5 animate-spin" />Đang xử lý...</>
             ) : (
               <><ExternalLink className="w-5 h-5" />
-                Đặt cọc {formatMoney(booking.depositAmount ?? booking.totalPrice * 0.5)}</>
+                {booking.paymentLabel ?? 'Thanh toán'} {formatMoney(booking.amountDue)}</>
             )}
           </button>
 

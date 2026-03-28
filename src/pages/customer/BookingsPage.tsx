@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star } from 'lucide-react';
+import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star, AlertCircle, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
@@ -38,8 +38,9 @@ export default function BookingsPage() {
   const [homestayMap, setHomestayMap] = useState<Record<string, Homestay>>({});
   const [payingBooking, setPayingBooking] = useState<{
     id: string; homestayName: string; checkIn: string; checkOut: string;
-    totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
-    paymentLabel?: string;
+    totalNights: number; guestsCount: number; pricePerNight: number;
+    bookingTotal: number; amountDue: number;
+    depositAmount?: number; remainingAmount?: number; depositPercentage?: number; paymentLabel?: string;
   } | null>(null);
 
   const [reviewingBooking, setReviewingBooking] = useState<{ id: string; homestayName: string } | null>(null);
@@ -93,10 +94,10 @@ export default function BookingsPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    if (activeTab === 'all')       return bookings;
-    if (activeTab === 'pending')   return bookings.filter(b => b.status === 'PENDING');
+    if (activeTab === 'all') return bookings;
+    if (activeTab === 'pending') return bookings.filter(b => b.status === 'PENDING');
     if (activeTab === 'confirmed') return bookings.filter(b => b.status === 'CONFIRMED');
-    if (activeTab === 'staying')   return bookings.filter(b => b.status === 'CHECKED_IN');
+    if (activeTab === 'staying') return bookings.filter(b => b.status === 'CHECKED_IN');
     if (activeTab === 'completed') return bookings.filter(b => b.status === 'COMPLETED');
     if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED' || b.status === 'REJECTED');
     return bookings;
@@ -167,25 +168,25 @@ export default function BookingsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
-      case 'CONFIRMED':   return 'bg-green-100 text-green-700 border-green-200';
-      case 'CHECKED_IN':  return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'PENDING':     return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'CANCELLED':   return 'bg-red-100 text-red-700 border-red-200';
-      case 'COMPLETED':   return 'bg-cyan-100 text-cyan-700 border-cyan-200';
-      case 'REJECTED':    return 'bg-red-100 text-red-700 border-red-200';
-      default:            return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'CONFIRMED': return 'bg-green-100 text-green-700 border-green-200';
+      case 'CHECKED_IN': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'CANCELLED': return 'bg-red-100 text-red-700 border-red-200';
+      case 'COMPLETED': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+      case 'REJECTED': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status.toUpperCase()) {
-      case 'CONFIRMED':   return 'Đã xác nhận';
-      case 'CHECKED_IN':  return 'Đang lưu trú';
-      case 'PENDING':     return 'Chờ thanh toán cọc';
-      case 'CANCELLED':   return 'Đã hủy';
-      case 'COMPLETED':   return 'Hoàn thành';
-      case 'REJECTED':    return 'Bị từ chối';
-      default:            return 'Trạng thái';
+      case 'CONFIRMED': return 'Đã xác nhận';
+      case 'CHECKED_IN': return 'Đang lưu trú';
+      case 'PENDING': return 'Chờ thanh toán cọc';
+      case 'CANCELLED': return 'Đã hủy';
+      case 'COMPLETED': return 'Hoàn thành';
+      case 'REJECTED': return 'Bị từ chối';
+      default: return 'Trạng thái';
     }
   };
 
@@ -219,10 +220,10 @@ export default function BookingsPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 mb-6">
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {([
-                { key: 'all',       label: 'Tất cả' },
-                { key: 'pending',   label: 'Chờ thanh toán cọc' },
+                { key: 'all', label: 'Tất cả' },
+                { key: 'pending', label: 'Chờ thanh toán cọc' },
                 { key: 'confirmed', label: 'Đã xác nhận' },
-                { key: 'staying',   label: 'Đang lưu trú' },
+                { key: 'staying', label: 'Đang lưu trú' },
                 { key: 'completed', label: 'Hoàn thành' },
                 { key: 'cancelled', label: 'Đã hủy' },
               ] as const).map(t => (
@@ -284,14 +285,20 @@ export default function BookingsPage() {
                         <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
                           {getStatusText(b.status)}
                         </span>
+                        {/* Payment status badges */}
+                        {b.status === 'PENDING' && b.paymentStatus === 'UNPAID' && typeof b.depositAmount === 'number' && b.depositAmount > 0 && (
+                          <span title={`Cọc ${b.depositPercentage || 50}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                            Cọc: {b.depositAmount.toLocaleString('vi-VN')}đ
+                          </span>
+                        )}
                         {b.status === 'CONFIRMED' && b.paymentStatus === 'DEPOSIT_PAID' && (
-                          <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm">
-                            Còn lại chưa trả
+                          <span title={`Còn lại: ${(b.remainingAmount || 0).toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                            Còn lại: {(b.remainingAmount || 0).toLocaleString('vi-VN')}đ
                           </span>
                         )}
                         {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && b.paymentStatus === 'FULLY_PAID' && (
-                          <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm">
-                            Đã thanh toán đủ
+                          <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Thanh toán đủ
                           </span>
                         )}
                       </div>
@@ -537,20 +544,33 @@ export default function BookingsPage() {
                                 {selected.totalPrice.toLocaleString('vi-VN')}đ
                               </div>
                             </div>
+                            {/* Breakdown cọc / còn lại */}
+                            {selected.totalPrice && (
+                              <div className="text-xs text-gray-500 mt-2 space-y-1">
+                                <div className="flex justify-between">
+                                  <span>Cọc ({selected.depositPercentage || 50}%)</span>
+                                  <span className="font-medium">{(selected.depositAmount || 0).toLocaleString('vi-VN')}đ</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Còn lại ({100 - (selected.depositPercentage || 50)}%)</span>
+                                  <span className="font-medium">{(selected.remainingAmount || 0).toLocaleString('vi-VN')}đ</span>
+                                </div>
+                              </div>
+                            )}
                             {selected.paymentStatus === 'UNPAID' && typeof selected.depositAmount === 'number' && (
-                              <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-100">
                                 <span className="text-orange-600 font-medium">Cần cọc ngay</span>
                                 <span className="font-bold text-orange-600">{selected.depositAmount.toLocaleString('vi-VN')}đ</span>
                               </div>
                             )}
                             {selected.paymentStatus === 'DEPOSIT_PAID' && typeof selected.remainingAmount === 'number' && (
-                              <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center justify-between text-sm pt-2 border-t border-blue-100">
                                 <span className="text-blue-600 font-medium">Còn lại cần thanh toán</span>
                                 <span className="font-bold text-blue-600">{selected.remainingAmount.toLocaleString('vi-VN')}đ</span>
                               </div>
                             )}
                             {selected.paymentStatus === 'FULLY_PAID' && (
-                              <div className="text-sm text-green-600 font-medium text-right">✓ Đã thanh toán đầy đủ</div>
+                              <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ Đã thanh toán đầy đủ</div>
                             )}
                           </div>
                         )}
@@ -735,16 +755,17 @@ export default function BookingsPage() {
                         </div>
                       ) : (
                         /* Thao tác - Buttons */
-                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                        <div className="flex flex-col gap-4 pt-2">
                           {/* Nút Thanh toán — PENDING (chưa cọc) hoặc CONFIRMED + DEPOSIT_PAID (còn lại) */}
                           {(selected.status === 'PENDING' || (selected.status === 'CONFIRMED' && selected.paymentStatus === 'DEPOSIT_PAID')) && (
                             <button
                               onClick={() => {
                                 const hs = detailHomestay ?? homestayMap[selected.homestayId];
-                                const amountToPay = selected.status === 'PENDING'
-                                  ? (selected.depositAmount ?? selected.totalPrice ?? 0)
+                                const isDeposit = selected.status === 'PENDING';
+                                // amountDue: số tiền thực cần trả lần này — lấy từ BE, không tính lại
+                                const amountDue = isDeposit
+                                  ? (selected.depositAmount ?? 0)
                                   : (selected.remainingAmount ?? 0);
-                                const label = selected.status === 'PENDING' ? 'Đặt cọc' : 'Thanh toán còn lại';
                                 setPayingBooking({
                                   id: selected.id,
                                   homestayName: selected.homestayName || hs?.name || 'Homestay',
@@ -753,57 +774,120 @@ export default function BookingsPage() {
                                   totalNights: selected.totalNights ?? 0,
                                   guestsCount: selected.guestsCount,
                                   pricePerNight: selected.pricePerNight ?? hs?.pricePerNight ?? 0,
-                                  totalPrice: amountToPay,
-                                  paymentLabel: label,
+                                  bookingTotal: selected.totalPrice ?? 0,
+                                  amountDue,
+                                  depositAmount: selected.depositAmount,
+                                  remainingAmount: selected.remainingAmount,
+                                  depositPercentage: selected.depositPercentage,
+                                  paymentLabel: isDeposit ? 'Đặt cọc' : 'Thanh toán còn lại',
                                 });
                               }}
                               disabled={saving}
-                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+                              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white disabled:from-gray-400 disabled:to-gray-500"
                             >
                               <CreditCard className="w-4 h-4" />
-                              {selected.status === 'PENDING' ? 'Đặt cọc ngay' : 'Thanh toán còn lại'}
+                              {selected.status === 'PENDING' ? `Đặt cọc ngay (${(selected.depositAmount ?? 0).toLocaleString('vi-VN')}đ)` : `Thanh toán còn lại (${(selected.remainingAmount ?? 0).toLocaleString('vi-VN')}đ)`}
                             </button>
                           )}
-                          <button
-                            onClick={startEdit}
-                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
-                            className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${selected.status !== 'PENDING'
+
+                          {/* Booking Status Timeline Info */}
+                          <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
+                            <div className="text-sm font-semibold text-blue-900 mb-3">Trạng thái booking</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${selected.status === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>
+                                  {selected.status === 'PENDING' ? '1' : <Check className="w-4 h-4" />}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-gray-900">Đặt phòng</div>
+                                  <div className="text-gray-600 text-xs">Đã tạo lúc {new Date(selected.createdAt || '').toLocaleDateString('vi-VN')}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(selected.status) ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                                  {['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(selected.status) ? <Check className="w-4 h-4" /> : '2'}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-gray-900">Thanh toán cọc</div>
+                                  {selected.paymentStatus !== 'UNPAID' && <div className="text-gray-600 text-xs">Đã thanh toán {(selected.depositAmount ?? 0).toLocaleString('vi-VN')}đ</div>}
+                                  {selected.paymentStatus === 'UNPAID' && <div className="text-orange-600 text-xs font-medium">Chưa thanh toán</div>}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${selected.paymentStatus === 'FULLY_PAID' ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                                  {selected.paymentStatus === 'FULLY_PAID' ? <Check className="w-4 h-4" /> : '3'}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-gray-900">Thanh toán còn lại</div>
+                                  {selected.paymentStatus === 'FULLY_PAID' && <div className="text-gray-600 text-xs">Đã thanh toán {(selected.remainingAmount ?? 0).toLocaleString('vi-VN')}đ</div>}
+                                  {selected.paymentStatus !== 'FULLY_PAID' && <div className="text-orange-600 text-xs font-medium">Thanh toán trước check-in</div>}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${selected.status === 'CHECKED_IN' ? 'bg-blue-200 text-blue-800' : selected.status === 'COMPLETED' ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                                  {selected.status === 'COMPLETED' ? <Check className="w-4 h-4" /> : '4'}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-gray-900">Check-in & Lưu trú</div>
+                                  {selected.status === 'CHECKED_IN' ? <div className="text-blue-600 text-xs font-medium">Đang lưu trú</div> : selected.status === 'COMPLETED' ? <div className="text-gray-600 text-xs">Đã hoàn thành</div> : <div className="text-gray-600 text-xs">Chờ đến ngày check-in</div>}
+                                </div>
+                              </div>
+                              {selected.status === 'CHECKED_IN' && (
+                                <div className="mt-3 pt-3 border-t border-blue-100 flex items-start gap-2 bg-white rounded p-2">
+                                  <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                  <div className="text-xs text-blue-700">
+                                    <strong>Check-in được xử lý bởi nhân viên.</strong> Họ sẽ cập nhật trạng thái khi bạn đến phòng.
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Edit và Cancel buttons */}
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              onClick={startEdit}
+                              disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
+                              title={selected.status !== 'PENDING' ? 'Chỉ có thể sửa booking khi chưa thanh toán cọc' : ''}
+                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status !== 'PENDING'
                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 : 'bg-gray-900 hover:bg-black text-white'
-                              }`}
-                          >
-                            <Pencil className="w-4 h-4" />
-                            Sửa booking
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!selected) return;
-                              setSaving(true);
-                              try {
-                                const res = await bookingService.cancelBooking(selected.id);
-                                if (res?.success) {
-                                  toast.success(res.message || 'Đã hủy booking');
-                                  await load();
-                                  setSelected(null);
-                                } else {
-                                  toast.error(res?.message || 'Hủy booking thất bại');
+                                }`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                              Sửa booking
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!selected) return;
+                                setSaving(true);
+                                try {
+                                  const res = await bookingService.cancelBooking(selected.id);
+                                  if (res?.success) {
+                                    toast.success(res.message || 'Đã hủy booking');
+                                    await load();
+                                    setSelected(null);
+                                  } else {
+                                    toast.error(res?.message || 'Hủy booking thất bại');
+                                  }
+                                } catch (e) {
+                                  console.error(e);
+                                  toast.error('Đã xảy ra lỗi khi hủy booking');
+                                } finally {
+                                  setSaving(false);
                                 }
-                              } catch (e) {
-                                console.error(e);
-                                toast.error('Đã xảy ra lỗi khi hủy booking');
-                              } finally {
-                                setSaving(false);
-                              }
-                            }}
-                            disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
-                            className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${selected.status !== 'PENDING'
+                              }}
+                              disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
+                              title={selected.status !== 'PENDING' ? 'Chỉ có thể hủy booking khi chưa thanh toán cọc' : ''}
+                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status !== 'PENDING'
                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 : 'bg-red-600 hover:bg-red-700 text-white'
-                              }`}
-                          >
-                            <XCircle className="w-4 h-4" />
-                            Hủy booking
-                          </button>
+                                }`}
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Hủy booking
+                            </button>
+                          </div>
                         </div>
                       )}
                     </>

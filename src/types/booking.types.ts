@@ -1,8 +1,14 @@
 // BE flow: pending -> confirmed -> completed; keep checked_in/checked_out for backward compatibility.
-export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'checked_in' | 'checked_out' | 'cancelled';
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "completed"
+  | "checked_in"
+  | "checked_out"
+  | "cancelled";
 
 // Matches BE PaymentStatus: UNPAID → pending, DEPOSIT_PAID → deposit_paid, FULLY_PAID → paid, REFUNDED → refunded
-export type PaymentStatus = 'pending' | 'deposit_paid' | 'paid' | 'refunded';
+export type PaymentStatus = "pending" | "deposit_paid" | "paid" | "refunded";
 
 export interface Booking {
   id: string;
@@ -28,6 +34,9 @@ export interface Booking {
   createdAt: string;
   confirmedAt?: string;
   cancelledAt?: string;
+  depositAmount?: number; // Amount of deposit payment
+  remainingAmount?: number; // Remaining balance after deposit
+  depositPercentage?: number; // Deposit percentage (e.g., 50 for 50%)
 }
 
 export interface BookingStats {

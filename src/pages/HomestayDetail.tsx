@@ -32,7 +32,8 @@ export default function HomestayDetail() {
     const [calcResult, setCalcResult] = useState<number | null>(null)
     const [pendingBooking, setPendingBooking] = useState<{
         id: string; homestayName: string; checkIn: string; checkOut: string;
-        totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
+        totalNights: number; guestsCount: number; pricePerNight: number;
+        bookingTotal: number; amountDue: number;
         depositAmount?: number; remainingAmount?: number; paymentLabel?: string;
     } | null>(null)
     const [isBooking, setIsBooking] = useState(false)
@@ -557,11 +558,11 @@ export default function HomestayDetail() {
                                         const res = await bookingService.createBooking(payload)
                                         if (res && res.success && res.data?.id) {
                                             const bookingData = res.data
-                                            const totalPrice = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
-                                            // Ưu tiên depositAmount từ BE, fallback tính theo depositPercentage của homestay
+                                            const bookingTotal = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
+                                            // depositAmount và remainingAmount từ BE — không tính lại FE
                                             const depositRate = (homestay!.depositPercentage ?? 50) / 100
-                                            const depositAmount = bookingData.depositAmount ?? totalPrice * depositRate
-                                            const remainingAmount = bookingData.remainingAmount ?? totalPrice - depositAmount
+                                            const depositAmount = bookingData.depositAmount ?? bookingTotal * depositRate
+                                            const remainingAmount = bookingData.remainingAmount ?? bookingTotal - depositAmount
                                             setPendingBooking({
                                                 id: bookingData.id,
                                                 homestayName: homestay!.name,
@@ -570,7 +571,8 @@ export default function HomestayDetail() {
                                                 totalNights: nights,
                                                 guestsCount: guests,
                                                 pricePerNight: homestay!.pricePerNight,
-                                                totalPrice,
+                                                bookingTotal,
+                                                amountDue: depositAmount,  // lần đầu luôn là cọc
                                                 depositAmount,
                                                 remainingAmount,
                                                 paymentLabel: 'Đặt cọc',
