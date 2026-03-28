@@ -32,7 +32,8 @@ export default function HomestayDetail() {
     const [calcResult, setCalcResult] = useState<number | null>(null)
     const [pendingBooking, setPendingBooking] = useState<{
         id: string; homestayName: string; checkIn: string; checkOut: string;
-        totalNights: number; guestsCount: number; pricePerNight: number; totalPrice: number;
+        totalNights: number; guestsCount: number; pricePerNight: number;
+        bookingTotal: number; amountDue: number;
         depositAmount?: number; remainingAmount?: number; paymentLabel?: string;
     } | null>(null)
     const [isBooking, setIsBooking] = useState(false)
@@ -443,12 +444,12 @@ export default function HomestayDetail() {
                                 <div className="mt-4">
                                     <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                         <Phone className="w-4 h-4 text-gray-500" />
-                                        Số điện thoại liên hệ (tuỳ chọn)
+                                        Số điện thoại liên hệ <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         value={contactPhone}
                                         onChange={(e) => setContactPhone(e.target.value)}
-                                        placeholder="VD: 090xxxxxxx"
+                                        placeholder="VD: 0901234567"
                                         className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                                     />
                                 </div>
@@ -534,6 +535,14 @@ export default function HomestayDetail() {
                                         toast.error('Ngày trả phải sau ngày nhận');
                                         return
                                     }
+                                    if (!contactPhone.trim()) {
+                                        toast.error('Vui lòng nhập số điện thoại liên hệ');
+                                        return
+                                    }
+                                    if (!/^0\d{9}$/.test(contactPhone.trim())) {
+                                        toast.error('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)');
+                                        return
+                                    }
 
                                     setIsBooking(true)
                                     try {
@@ -542,18 +551,18 @@ export default function HomestayDetail() {
                                             checkIn: checkIn,
                                             checkOut: checkOut,
                                             guestsCount: guests,
+                                            contactPhone: contactPhone.trim(),
                                             ...(specialRequests ? { specialRequests } : {}),
-                                            ...(contactPhone ? { contactPhone } : {}),
                                         } as any
 
                                         const res = await bookingService.createBooking(payload)
                                         if (res && res.success && res.data?.id) {
                                             const bookingData = res.data
-                                            const totalPrice = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
-                                            // Ưu tiên depositAmount từ BE, fallback tính theo depositPercentage của homestay
+                                            const bookingTotal = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
+                                            // depositAmount và remainingAmount từ BE — không tính lại FE
                                             const depositRate = (homestay!.depositPercentage ?? 50) / 100
-                                            const depositAmount = bookingData.depositAmount ?? totalPrice * depositRate
-                                            const remainingAmount = bookingData.remainingAmount ?? totalPrice - depositAmount
+                                            const depositAmount = bookingData.depositAmount ?? bookingTotal * depositRate
+                                            const remainingAmount = bookingData.remainingAmount ?? bookingTotal - depositAmount
                                             setPendingBooking({
                                                 id: bookingData.id,
                                                 homestayName: homestay!.name,
@@ -562,7 +571,8 @@ export default function HomestayDetail() {
                                                 totalNights: nights,
                                                 guestsCount: guests,
                                                 pricePerNight: homestay!.pricePerNight,
-                                                totalPrice,
+                                                bookingTotal,
+                                                amountDue: depositAmount,  // lần đầu luôn là cọc
                                                 depositAmount,
                                                 remainingAmount,
                                                 paymentLabel: 'Đặt cọc',
@@ -578,7 +588,7 @@ export default function HomestayDetail() {
                                     } finally {
                                         setIsBooking(false)
                                     }
-                                }} disabled={isCalculating || isBooking || !checkIn || !checkOut || nights <= 0} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
+                                }} disabled={isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim()} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
                                     {isBooking ? (
                                         <>
                                             <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
