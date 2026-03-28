@@ -103,6 +103,9 @@ export const apiConfig = {
       detail: (id: string) => `/api/admin/bookings/${id}`,
       update: (id: string) => `/api/admin/bookings/${id}`,
     },
+    staffBookings: {
+      confirmPayment: (id: string) => `/api/staff/bookings/${id}/payment`,
+    },
     adminCustomers: {
       list: "/api/admin/customers",
       detail: (id: string) => `/api/admin/customers/${id}`,
