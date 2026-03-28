@@ -44,6 +44,30 @@ const pickNewestEmployee = (list: Employee[]): Employee | null => {
   return sorted[0] ?? null;
 };
 
+const resolveEmployeeIdFromList = (employees: Employee[], email?: string, username?: string): string | null => {
+  if (email) {
+    const emailMatch = employees.filter(
+      (emp) => (emp.email || '').toLowerCase() === email.toLowerCase(),
+    );
+
+    if (emailMatch.length > 0) {
+      return pickNewestEmployee(emailMatch)?.id || null;
+    }
+  }
+
+  if (username) {
+    const usernameMatch = employees.filter(
+      (emp) => (emp.username || '').toLowerCase() === username.toLowerCase(),
+    );
+
+    if (usernameMatch.length > 0) {
+      return pickNewestEmployee(usernameMatch)?.id || null;
+    }
+  }
+
+  return null;
+};
+
 export const employeeService = {
   async getEmployees(): Promise<Employee[]> {
     try {
@@ -65,6 +89,22 @@ export const employeeService = {
     }
   },
 
+  async resolveCreatedEmployeeId(
+    createRes: { success?: boolean; data?: Employee } | null,
+    payload: Pick<CreateEmployeeDTO, 'email' | 'username'>,
+  ): Promise<string | null> {
+    const directId = extractCreatedEmployeeId(createRes);
+    if (directId) return directId;
+
+    try {
+      const employees = await this.getEmployees();
+      return resolveEmployeeIdFromList(employees, payload.email, payload.username);
+    } catch (error) {
+      logDevError('Error resolving created employee id:', error);
+      return null;
+    }
+  },
+
   async createEmployeeWithAvatarFile(
     payload: CreateEmployeeDTO,
     avatarFile: File,
@@ -78,28 +118,10 @@ export const employeeService = {
         return createRes;
       }
 
-      let createdId = extractCreatedEmployeeId(createRes);
-
-      // Fallback when create API returns success/message but does not include created employee id.
-      if (!createdId) {
-        const employees = await this.getEmployees();
-        const emailMatch = employees.filter(
-          (emp) => (emp.email || '').toLowerCase() === payload.email.toLowerCase(),
-        );
-
-        if (emailMatch.length > 0) {
-          createdId = pickNewestEmployee(emailMatch)?.id || null;
-        }
-
-        if (!createdId) {
-          const usernameMatch = employees.filter(
-            (emp) => (emp.username || '').toLowerCase() === payload.username.toLowerCase(),
-          );
-          if (usernameMatch.length > 0) {
-            createdId = pickNewestEmployee(usernameMatch)?.id || null;
-          }
-        }
-      }
+      const createdId = await this.resolveCreatedEmployeeId(createRes, {
+        email: payload.email,
+        username: payload.username,
+      });
 
       if (!createdId) {
         return {
@@ -199,6 +221,48 @@ export const employeeService = {
       return res;
     } catch (error) {
       logDevError('Error changing employee role:', error);
+      return null;
+    }
+  },
+
+  /** PUT /api/employees/{id}/assign-province — body is province id (string UUID) */
+  async assignProvince(id: string, provinceId: string): Promise<{ success: boolean; message?: string } | null> {
+    try {
+      // Swagger shows raw string body for this endpoint.
+      const res = await apiService.put<any>(apiConfig.endpoints.employees.assignProvince(id), provinceId);
+      return res;
+    } catch (error) {
+      logDevError('Error assigning province:', error);
+      return null;
+    }
+  },
+
+  /**
+   * PUT /api/employees/{id}/assign-homestays (or /assign-homestay)
+   * Backend variants seen in Swagger: raw string[], or { homestayIds: string[] }.
+   */
+  async assignHomestays(id: string, homestayIds: string[]): Promise<{ success: boolean; message?: string } | null> {
+    const cleanIds = homestayIds.map((x) => String(x)).filter(Boolean);
+
+    try {
+      try {
+        const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestays(id), cleanIds);
+        return res;
+      } catch {
+        // Fallback to singular endpoint variant.
+      }
+
+      try {
+        const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestay(id), { homestayIds: cleanIds });
+        return res;
+      } catch {
+        // Fallback to singular endpoint with raw array.
+      }
+
+      const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestay(id), cleanIds);
+      return res;
+    } catch (error) {
+      logDevError('Error assigning homestays:', error);
       return null;
     }
   },

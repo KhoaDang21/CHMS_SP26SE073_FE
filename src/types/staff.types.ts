@@ -12,7 +12,10 @@ export interface Staff {
   position: string;
   hireDate: string;
   avatar?: string;
+  assignedProvinceId?: string;
+  assignedProvinceName?: string;
   assignedHomestays: string[];
+  assignedHomestayNames?: string[];
 }
 
 export interface CreateStaffDTO {
