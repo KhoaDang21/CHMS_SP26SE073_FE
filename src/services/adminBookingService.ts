@@ -220,4 +220,22 @@ export const adminBookingService = {
       status,
     );
   },
+
+  async confirmPayment(id: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const res = await apiService.patch<any>(
+        apiConfig.endpoints.staffBookings.confirmPayment(id),
+        { paymentStatus: 'paid' },
+      );
+      return {
+        success: res?.success ?? true,
+        message: res?.message ?? 'Xác nhận thanh toán thành công',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Không thể xác nhận thanh toán',
+      };
+    }
+  },
 };
