@@ -48,7 +48,9 @@ const FILTER_TABS = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatTime(dateStr: string) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
+  // BE trả về UTC nhưng không có 'Z' suffix → ép thành UTC để parse đúng
+  const normalized = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+  const d = new Date(normalized);
   const now = new Date();
   const diff = Math.floor((now.getTime() - d.getTime()) / 60000);
   if (diff < 1) return 'Vừa xong';
