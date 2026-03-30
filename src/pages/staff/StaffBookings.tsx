@@ -113,6 +113,21 @@ export default function StaffBookings() {
     }
   };
 
+  const handleConfirmPayment = async (booking: Booking) => {
+    try {
+      const result = await adminBookingService.confirmPayment(booking.id);
+      if (result.success) {
+        toast.success(`Xác nhận thanh toán thành công: ${booking.customerName}`);
+        await loadBookings();
+      } else {
+        toast.error(result.message || 'Không thể xác nhận thanh toán');
+      }
+    } catch (error) {
+      console.error('Confirm payment error:', error);
+      toast.error('Không thể xác nhận thanh toán');
+    }
+  };
+
   const handleAddNote = (booking: Booking) => {
     setSelectedBooking(booking);
     setNote(booking.notes || booking.specialRequests || '');
@@ -357,10 +372,16 @@ export default function StaffBookings() {
                       </div>
 
                       <div className="flex flex-col gap-2 lg:w-48">
-                        {booking.status === 'confirmed' && booking.paymentStatus !== 'paid' && (
-                          <div className="px-3 py-2 rounded-lg bg-orange-50 text-orange-700 text-xs font-medium text-center">
-                            Chờ khách thanh toán đủ
-                          </div>
+                        {booking.status === 'confirmed' && booking.paymentStatus === 'deposit_paid' && (
+                          <button
+                            disabled
+                            title="Chức năng đang được phát triển trên BE"
+                            type="button"
+                            className="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60 text-sm font-medium flex items-center justify-center gap-2"
+                          >
+                            <ArrowUpRight className="w-4 h-4" />
+                            Xác nhận thanh toán tiền mặt
+                          </button>
                         )}
                         {canCheckIn(booking) && (
                           <button
@@ -381,6 +402,11 @@ export default function StaffBookings() {
                             <ArrowUpRight className="w-4 h-4" />
                             Check-out
                           </button>
+                        )}
+                        {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && (
+                          <div className="px-3 py-2 rounded-lg bg-red-50 text-red-700 text-xs font-medium text-center">
+                            Chờ khách thanh toán cọc
+                          </div>
                         )}
                         <button
                           onClick={() => handleAddNote(booking)}

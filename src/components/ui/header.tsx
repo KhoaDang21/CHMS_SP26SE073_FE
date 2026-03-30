@@ -31,7 +31,9 @@ const authenticatedNavigationItems = [
 
 function formatTime(dateStr: string): string {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
+  // BE trả về UTC không có 'Z' suffix → ép thành UTC để parse đúng
+  const normalized = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+  const date = new Date(normalized);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
