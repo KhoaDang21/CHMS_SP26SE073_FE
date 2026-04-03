@@ -4,15 +4,18 @@ import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText }
 import MainLayout from '../layouts/MainLayout'
 import { publicHomestayService } from '../services/publicHomestayService'
 import { ImageWithFallback } from '../components/figma/ImageWithFallback'
+import PromotionPicker from '../components/customer/PromotionPicker'
 import type { Homestay } from '../types/homestay.types'
 import { bookingService } from '../services/bookingService'
 import { authService } from '../services/authService'
+import { promotionService } from '../services/promotionService'
 import PaymentModal from './customer/PaymentModal'
 import toast from 'react-hot-toast'
 import { apiService } from '../services/apiService'
 import { apiConfig } from '../config/apiConfig'
 import type { Review } from '../services/reviewService'
 import { useWishlist } from '../contexts/WishlistContext'
+import type { Promotion } from '../types/promotion.types'
 
 export default function HomestayDetail() {
     const { id } = useParams()
@@ -28,6 +31,9 @@ export default function HomestayDetail() {
     const [guests, setGuests] = useState(1)
     const [contactPhone, setContactPhone] = useState('')
     const [specialRequests, setSpecialRequests] = useState('')
+    const [availablePromotions, setAvailablePromotions] = useState<Promotion[]>([])
+    const [promotionsLoading, setPromotionsLoading] = useState(false)
+    const [selectedPromotionId, setSelectedPromotionId] = useState<string | null>(null)
     const [isCalculating, setIsCalculating] = useState(false)
     const [calcResult, setCalcResult] = useState<number | null>(null)
     const [pendingBooking, setPendingBooking] = useState<{
@@ -76,6 +82,39 @@ export default function HomestayDetail() {
         const max = homestay.maxGuests ?? 1
         setGuests((g) => Math.min(g, Math.max(1, max)))
     }, [homestay])
+
+    useEffect(() => {
+        let mounted = true
+
+        const loadPromotions = async () => {
+            setPromotionsLoading(true)
+            try {
+                const response = await promotionService.getActiveForCustomer()
+                if (!mounted) return
+                const raw = response as any
+                const list: Promotion[] = Array.isArray(raw?.data)
+                    ? raw.data
+                    : Array.isArray(raw)
+                        ? raw
+                        : Array.isArray(raw?.items)
+                            ? raw.items
+                            : Array.isArray(raw?.Items)
+                                ? raw.Items
+                                : []
+                setAvailablePromotions(list)
+            } catch (error) {
+                console.error('Load promotions error', error)
+                if (mounted) setAvailablePromotions([])
+            } finally {
+                if (mounted) setPromotionsLoading(false)
+            }
+        }
+
+        loadPromotions()
+        return () => {
+            mounted = false
+        }
+    }, [])
 
     // Fetch public reviews
     useEffect(() => {
@@ -141,6 +180,7 @@ export default function HomestayDetail() {
                     checkIn,
                     checkOut,
                     guestsCount: guests,
+                    promotionId: selectedPromotionId ?? undefined,
                 })
                 if (!alive) return
                 setCalcResult(res)
@@ -154,7 +194,7 @@ export default function HomestayDetail() {
         }
         run()
         return () => { alive = false }
-    }, [homestay?.id, checkIn, checkOut, guests, nights, specialRequests, contactPhone])
+    }, [homestay?.id, checkIn, checkOut, guests, nights, selectedPromotionId])
 
     const avgRating = useMemo(() => {
         if (reviews.length === 0) return null
@@ -185,6 +225,17 @@ export default function HomestayDetail() {
         if (typeof price === 'number' && nights > 0) return price * nights
         return undefined
     }, [calcResult, homestay, nights])
+
+    const baseBookingTotal = useMemo(() => {
+        const price = homestay?.pricePerNight
+        if (typeof price === 'number' && nights > 0) return price * nights
+        return undefined
+    }, [homestay?.pricePerNight, nights])
+
+    const selectedPromotion = useMemo(
+        () => availablePromotions.find((promotion) => promotion.id === selectedPromotionId) ?? null,
+        [availablePromotions, selectedPromotionId],
+    )
 
     return (
         <>
@@ -468,6 +519,16 @@ export default function HomestayDetail() {
                                     />
                                 </div>
 
+                                <div className="mt-4">
+                                    <PromotionPicker
+                                        promotions={availablePromotions}
+                                        loading={promotionsLoading}
+                                        selectedPromotionId={selectedPromotionId}
+                                        bookingTotal={baseBookingTotal}
+                                        onSelectPromotion={setSelectedPromotionId}
+                                    />
+                                </div>
+
                                 <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
                                     <div className="flex items-center justify-between text-sm text-gray-700">
                                         <span>{nights > 0 ? `${homestay.pricePerNight?.toLocaleString('vi-VN')}đ × ${nights} đêm` : 'Chọn ngày để tính giá'}</span>
@@ -485,6 +546,11 @@ export default function HomestayDetail() {
                                             {computedTotal !== undefined ? formatMoney(computedTotal) : (isCalculating ? 'Đang tính...' : '—')}
                                         </span>
                                     </div>
+                                    {selectedPromotion && (
+                                        <div className="mt-3 rounded-lg bg-cyan-50 border border-cyan-100 px-3 py-2 text-sm text-cyan-900">
+                                            Đang áp dụng mã <span className="font-semibold">{selectedPromotion.code}</span>
+                                        </div>
+                                    )}
                                     {computedTotal !== undefined && (
                                         <div className="mt-3 pt-3 border-t border-dashed border-orange-200 space-y-1.5">
                                             {(() => {
@@ -543,6 +609,13 @@ export default function HomestayDetail() {
                                         toast.error('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)');
                                         return
                                     }
+                                    if (selectedPromotion && baseBookingTotal !== undefined) {
+                                        const minBookingAmount = selectedPromotion.minBookingAmount ?? selectedPromotion.minBookingValue ?? 0
+                                        if (minBookingAmount > 0 && baseBookingTotal < minBookingAmount) {
+                                            toast.error('Mã giảm giá chưa đạt điều kiện tối thiểu cho booking này')
+                                            return
+                                        }
+                                    }
 
                                     setIsBooking(true)
                                     try {
@@ -552,6 +625,7 @@ export default function HomestayDetail() {
                                             checkOut: checkOut,
                                             guestsCount: guests,
                                             contactPhone: contactPhone.trim(),
+                                            ...(selectedPromotionId ? { promotionId: selectedPromotionId } : {}),
                                             ...(specialRequests ? { specialRequests } : {}),
                                         } as any
 
