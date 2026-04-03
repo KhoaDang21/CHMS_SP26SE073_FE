@@ -1,28 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TrendingUp,
   Download,
   Menu,
   X,
   LogOut,
-  LayoutDashboard,
-  Home,
-  CalendarDays,
-  Users,
-  UserCog,
-  Settings,
-  Building2,
-  Filter,
-  Search,
-  Sparkles,
   DollarSign,
+  Building2,
+  Search,
+  Filter,
+  CalendarDays,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import { adminDashboardService } from '../../services/adminDashboardService';
-import type { HomestayRevenueData } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
-import { toast } from 'sonner';
+import { adminNavItems } from '../../config/adminNavItems';
+import type { HomestayRevenueData } from '../../types/homestay.types';
 
 export default function RevenueReport() {
   const navigate = useNavigate();
@@ -36,19 +30,10 @@ export default function RevenueReport() {
 
   const user = authService.getCurrentUser();
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
-  ];
+  const navItems = adminNavItems;
 
   useEffect(() => {
-    loadRevenueData();
+    void loadRevenueData();
   }, []);
 
   useEffect(() => {

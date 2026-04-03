@@ -113,6 +113,7 @@ export default function StaffBookings() {
     }
   };
 
+  // @ts-ignore - Used when payment confirmation feature is enabled on BE
   const handleConfirmPayment = async (booking: Booking) => {
     try {
       const result = await adminBookingService.confirmPayment(booking.id);

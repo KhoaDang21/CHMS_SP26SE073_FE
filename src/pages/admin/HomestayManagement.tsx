@@ -15,12 +15,6 @@ import {
   X,
   Building2,
   LogOut,
-  LayoutDashboard,
-  CalendarDays,
-  UserCog,
-  TrendingUp,
-  Settings,
-  Sparkles,
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
@@ -30,6 +24,7 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import CreateHomestayModal from '../../components/admin/CreateHomestayModal';
 import EditHomestayModal from '../../components/admin/EditHomestayModal';
 import { authService } from '../../services/authService';
+import { adminNavItems } from '../../config/adminNavItems';
 
 export default function HomestayManagement() {
   const navigate = useNavigate();
@@ -104,7 +99,7 @@ export default function HomestayManagement() {
     if (!selectedHomestay) return;
 
     const result = await homestayService.deleteAdminHomestay(selectedHomestay.id);
-    
+
     if (result.success) {
       toast.success('Đã xóa homestay thành công');
       setShowDeleteModal(false);
@@ -119,11 +114,10 @@ export default function HomestayManagement() {
     setCreatingHomestay(true);
     try {
       const result = await homestayService.createAdminHomestay(data);
-      
-      if (result.success) {
-        let createdId = result?.data?.id || null;
 
-        // Some BE responses return success=true but data=null, so we recover id by querying latest matches.
+      if (result?.success ?? result) {
+        let createdId = result?.data?.id || result?.id || result?.result?.id || null;
+
         if (!createdId && imageFiles.length > 0) {
           await new Promise((resolve) => setTimeout(resolve, 300));
           const allHomestays = await homestayService.getAllAdminHomestays();
@@ -157,19 +151,18 @@ export default function HomestayManagement() {
         setShowCreateModal(false);
         loadHomestays();
       } else {
-        // Show detailed error message from backend
         toast.error(result.message || 'Không thể tạo homestay', {
-          description: result.message?.includes('SqlServerRetryingExecutionStrategy') 
+          description: result.message?.includes('SqlServerRetryingExecutionStrategy')
             ? 'Lỗi cấu hình backend. Liên hệ backend developer để fix SqlServerRetryingExecutionStrategy.'
             : undefined,
-          duration: 5000
+          duration: 5000,
         });
       }
     } catch (error: any) {
       console.error('Error creating homestay:', error);
       toast.error('Đã xảy ra lỗi khi tạo homestay', {
         description: error.message,
-        duration: 5000
+        duration: 5000,
       });
     } finally {
       setCreatingHomestay(false);
@@ -233,16 +226,7 @@ export default function HomestayManagement() {
     navigate('/auth/login');
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'bookings', label: 'Đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
-  ];
+  const navItems = adminNavItems;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
