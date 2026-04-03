@@ -12,23 +12,17 @@ import {
   Sparkles,
   LayoutGrid,
   List,
-  Home,
   Menu,
   X,
   Building2,
   LogOut,
-  LayoutDashboard,
-  CalendarDays,
-  Users,
-  UserCog,
-  TrendingUp,
-  Settings,
 } from 'lucide-react';
 import { adminAmenityService } from '../../services/adminAmenityService';
 import type { Amenity, CreateAmenityDTO, UpdateAmenityDTO, AmenityCategory, AmenityStats } from '../../types/amenity.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
+import { adminNavItems } from '../../config/adminNavItems';
 
 
 // Category labels
@@ -287,16 +281,7 @@ export default function AmenityManagement() {
     navigate('/auth/login');
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'bookings', label: 'Đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
-  ];
+  const navItems = adminNavItems;
 
   if (loading) {
     return (

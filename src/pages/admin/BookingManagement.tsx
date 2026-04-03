@@ -7,18 +7,13 @@ import {
   Menu,
   X,
   LogOut,
-  LayoutDashboard,
-  Home,
-  Sparkles,
-  Users,
-  UserCog,
-  TrendingUp,
-  Settings,
   Building2,
   CheckCircle,
   XCircle,
   Clock,
   DollarSign,
+  Users,
+  Home,
   User,
   Phone,
   Mail,
@@ -31,6 +26,7 @@ import { adminBookingService } from '../../services/adminBookingService';
 import type { Booking, BookingStatus, BookingStats } from '../../types/booking.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { adminNavItems } from '../../config/adminNavItems';
 
 const initialStats: BookingStats = {
   total: 0,
@@ -193,16 +189,7 @@ export default function BookingManagement() {
     return <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[safe] ?? 'bg-gray-100 text-gray-700'}`}>{labels[safe] ?? status}</span>;
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'bookings', label: 'Đơn đặt phòng', icon: Calendar, path: '/admin/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
-  ];
+  const navItems = adminNavItems;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
