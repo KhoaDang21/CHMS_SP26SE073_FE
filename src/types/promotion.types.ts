@@ -4,52 +4,57 @@ export type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT';
 
 export interface Promotion {
   id: string;
-  name: string;
+  name?: string;
   description?: string;
-  code?: string;
-  type: PromotionType;
-  discountType: DiscountType;
-  discountValue: number;
-  maxDiscount?: number;
-  minBookingValue?: number;
+  code: string;
+  // BE-aligned fields
+  discountPercent: number;
+  discountAmount: number;
+  maxDiscountAmount?: number;
+  minBookingAmount?: number;
   startDate: string;
   endDate: string;
+  maxUsage?: number;
+  isActive: boolean;
+  // Optional fields returned by some BE variants
+  usedCount?: number;
+  status?: PromotionStatus;
+  // Legacy fields kept for compatibility
+  type?: PromotionType;
+  discountType?: DiscountType;
+  discountValue?: number;
+  maxDiscount?: number;
+  minBookingValue?: number;
   maxUses?: number;
-  usedCount: number;
-  status: PromotionStatus;
   applicableHomestays?: string[];
   createdAt: string;
   updatedAt?: string;
 }
 
 export interface CreatePromotionDTO {
-  name: string;
+  code: string;
   description?: string;
-  code?: string;
-  type: PromotionType;
-  discountType: DiscountType;
-  discountValue: number;
-  maxDiscount?: number;
-  minBookingValue?: number;
+  discountPercent: number;
+  discountAmount: number;
+  maxDiscountAmount?: number;
+  minBookingAmount?: number;
   startDate: string;
   endDate: string;
-  maxUses?: number;
-  applicableHomestays?: string[];
+  maxUsage?: number;
+  isActive: boolean;
 }
 
 export interface UpdatePromotionDTO {
-  name?: string;
-  description?: string;
   code?: string;
-  type?: PromotionType;
-  discountType?: DiscountType;
-  discountValue?: number;
-  maxDiscount?: number;
-  minBookingValue?: number;
+  description?: string;
+  discountPercent?: number;
+  discountAmount?: number;
+  maxDiscountAmount?: number;
+  minBookingAmount?: number;
   startDate?: string;
   endDate?: string;
-  maxUses?: number;
-  applicableHomestays?: string[];
+  maxUsage?: number;
+  isActive?: boolean;
 }
 
 export interface CouponValidationRequest {

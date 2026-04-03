@@ -11,7 +11,6 @@ import {
   Trash2,
   BadgePercent,
   Ticket,
-  Clock3,
   CircleCheck,
   CircleX,
   Eye,
@@ -24,45 +23,42 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { adminNavItems } from '../../config/adminNavItems';
 import type {
   Promotion,
-  PromotionStatus,
-  PromotionType,
-  DiscountType,
   CreatePromotionDTO,
   UpdatePromotionDTO,
 } from '../../types/promotion.types';
 
 const initialForm: CreatePromotionDTO = {
-  name: '',
-  description: '',
   code: '',
-  type: 'DISCOUNT_PERCENTAGE',
-  discountType: 'PERCENTAGE',
-  discountValue: 0,
-  maxDiscount: undefined,
-  minBookingValue: undefined,
+  description: '',
+  discountPercent: 0,
+  discountAmount: 0,
+  maxDiscountAmount: undefined,
+  minBookingAmount: undefined,
   startDate: '',
   endDate: '',
-  maxUses: undefined,
-  applicableHomestays: [],
+  maxUsage: undefined,
+  isActive: true,
 };
 
-const statusMeta: Record<PromotionStatus, { label: string; className: string }> = {
-  ACTIVE: { label: 'Đang hoạt động', className: 'bg-green-100 text-green-700' },
-  INACTIVE: { label: 'Tạm tắt', className: 'bg-gray-100 text-gray-700' },
-  ARCHIVED: { label: 'Lưu trữ', className: 'bg-red-100 text-red-700' },
+const getIsActive = (promotion: Promotion) => {
+  if (typeof promotion.isActive === 'boolean') return promotion.isActive;
+  return promotion.status === 'ACTIVE';
 };
 
-const typeMeta: Record<PromotionType, { label: string; className: string }> = {
-  DISCOUNT_PERCENTAGE: { label: 'Giảm %', className: 'bg-blue-100 text-blue-700' },
-  DISCOUNT_FIXED: { label: 'Giảm tiền', className: 'bg-purple-100 text-purple-700' },
-  COUPON: { label: 'Coupon', className: 'bg-orange-100 text-orange-700' },
-  FLASH_SALE: { label: 'Flash sale', className: 'bg-pink-100 text-pink-700' },
-  SEASONAL: { label: 'Theo mùa', className: 'bg-cyan-100 text-cyan-700' },
-};
+const getUsedCount = (promotion: Promotion) => promotion.usedCount ?? 0;
+const getMaxUsage = (promotion: Promotion) => promotion.maxUsage ?? promotion.maxUses;
+const getMinBookingAmount = (promotion: Promotion) => promotion.minBookingAmount ?? promotion.minBookingValue;
+const getMaxDiscountAmount = (promotion: Promotion) => promotion.maxDiscountAmount ?? promotion.maxDiscount;
 
-const discountTypeLabel: Record<DiscountType, string> = {
-  PERCENTAGE: 'Phần trăm',
-  FIXED_AMOUNT: 'Số tiền cố định',
+const getDiscountSummary = (promotion: Promotion) => {
+  const percent = Number(promotion.discountPercent ?? 0);
+  const amount = Number(promotion.discountAmount ?? promotion.discountValue ?? 0);
+
+  if (percent > 0) {
+    return `${percent}%`;
+  }
+
+  return toCurrency(amount);
 };
 
 function safeList(response: any): Promotion[] {
@@ -90,8 +86,7 @@ export default function PromotionManagement() {
   const [loading, setLoading] = useState(true);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PromotionStatus | 'all'>('all');
-  const [typeFilter, setTypeFilter] = useState<PromotionType | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showModal, setShowModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null);
@@ -108,9 +103,8 @@ export default function PromotionManagement() {
   const stats = useMemo(() => {
     return {
       total: promotions.length,
-      active: promotions.filter((item) => item.status === 'ACTIVE').length,
-      inactive: promotions.filter((item) => item.status === 'INACTIVE').length,
-      archived: promotions.filter((item) => item.status === 'ARCHIVED').length,
+      active: promotions.filter((item) => getIsActive(item)).length,
+      inactive: promotions.filter((item) => !getIsActive(item)).length,
     };
   }, [promotions]);
 
@@ -128,15 +122,11 @@ export default function PromotionManagement() {
     }
 
     if (statusFilter !== 'all') {
-      list = list.filter((item) => item.status === statusFilter);
-    }
-
-    if (typeFilter !== 'all') {
-      list = list.filter((item) => item.type === typeFilter);
+      list = list.filter((item) => (statusFilter === 'active' ? getIsActive(item) : !getIsActive(item)));
     }
 
     return list;
-  }, [promotions, searchQuery, statusFilter, typeFilter]);
+  }, [promotions, searchQuery, statusFilter]);
 
   const loadPromotions = async () => {
     setLoading(true);
@@ -165,18 +155,16 @@ export default function PromotionManagement() {
   const openEditModal = (promotion: Promotion) => {
     setEditingPromotion(promotion);
     setFormData({
-      name: promotion.name || '',
       description: promotion.description || '',
-      code: promotion.code || '',
-      type: promotion.type,
-      discountType: promotion.discountType,
-      discountValue: promotion.discountValue,
-      maxDiscount: promotion.maxDiscount,
-      minBookingValue: promotion.minBookingValue,
+      code: promotion.code,
+      discountPercent: Number(promotion.discountPercent ?? 0),
+      discountAmount: Number(promotion.discountAmount ?? promotion.discountValue ?? 0),
+      maxDiscountAmount: getMaxDiscountAmount(promotion),
+      minBookingAmount: getMinBookingAmount(promotion),
       startDate: promotion.startDate ? promotion.startDate.slice(0, 10) : '',
       endDate: promotion.endDate ? promotion.endDate.slice(0, 10) : '',
-      maxUses: promotion.maxUses,
-      applicableHomestays: promotion.applicableHomestays || [],
+      maxUsage: getMaxUsage(promotion),
+      isActive: getIsActive(promotion),
     });
     setShowModal(true);
   };
@@ -190,20 +178,7 @@ export default function PromotionManagement() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleTypeChange = (type: PromotionType) => {
-    const nextDiscountType: DiscountType = type === 'DISCOUNT_FIXED' ? 'FIXED_AMOUNT' : 'PERCENTAGE';
-    setFormData((prev) => ({
-      ...prev,
-      type,
-      discountType: nextDiscountType,
-    }));
-  };
-
   const handleSubmit = async () => {
-    if (!formData.name.trim()) {
-      toast.error('Vui lòng nhập tên promotion');
-      return;
-    }
     if (!formData.code?.trim()) {
       toast.error('Vui lòng nhập mã coupon');
       return;
@@ -216,7 +191,11 @@ export default function PromotionManagement() {
     const payload: CreatePromotionDTO | UpdatePromotionDTO = {
       ...formData,
       code: formData.code.trim().toUpperCase(),
-      applicableHomestays: formData.applicableHomestays?.filter(Boolean),
+      discountPercent: Number(formData.discountPercent || 0),
+      discountAmount: Number(formData.discountAmount || 0),
+      maxDiscountAmount: formData.maxDiscountAmount || 0,
+      minBookingAmount: formData.minBookingAmount || 0,
+      maxUsage: formData.maxUsage || 0,
     };
 
     try {
@@ -356,7 +335,7 @@ export default function PromotionManagement() {
         </header>
 
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
               <div className="flex items-center justify-between">
                 <div>
@@ -393,27 +372,16 @@ export default function PromotionManagement() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Lưu trữ</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.archived}</p>
-                </div>
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <Clock3 className="w-6 h-6 text-red-600" />
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Tìm theo tên, mã coupon, mô tả..."
+                    placeholder="Tìm theo mã coupon, mô tả..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -424,28 +392,12 @@ export default function PromotionManagement() {
               <div>
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as PromotionStatus | 'all')}
+                  onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">Tất cả trạng thái</option>
-                  <option value="ACTIVE">Đang hoạt động</option>
-                  <option value="INACTIVE">Tạm tắt</option>
-                  <option value="ARCHIVED">Lưu trữ</option>
-                </select>
-              </div>
-
-              <div>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value as PromotionType | 'all')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">Tất cả loại</option>
-                  <option value="DISCOUNT_PERCENTAGE">Giảm %</option>
-                  <option value="DISCOUNT_FIXED">Giảm tiền</option>
-                  <option value="COUPON">Coupon</option>
-                  <option value="FLASH_SALE">Flash sale</option>
-                  <option value="SEASONAL">Theo mùa</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="inactive">Tạm tắt</option>
                 </select>
               </div>
             </div>
@@ -477,15 +429,18 @@ export default function PromotionManagement() {
                         <div className="flex items-start justify-between gap-4 mb-3">
                           <div>
                             <div className="flex items-center gap-3 flex-wrap mb-2">
-                              <h3 className="font-bold text-gray-900 text-lg">{promotion.name}</h3>
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusMeta[promotion.status].className}`}>
-                                {statusMeta[promotion.status].label}
-                              </span>
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${typeMeta[promotion.type].className}`}>
-                                {typeMeta[promotion.type].label}
+                              <h3 className="font-bold text-gray-900 text-lg">{promotion.code}</h3>
+                              <span
+                                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  getIsActive(promotion)
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                {getIsActive(promotion) ? 'Đang hoạt động' : 'Tạm tắt'}
                               </span>
                             </div>
-                            <p className="text-blue-600 font-medium">Mã: {promotion.code || '-'}</p>
+                            <p className="text-blue-600 font-medium">Mã: {promotion.code}</p>
                             {promotion.description && <p className="text-gray-600 text-sm mt-1">{promotion.description}</p>}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
@@ -515,24 +470,22 @@ export default function PromotionManagement() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                           <div className="rounded-lg bg-gray-50 p-4">
-                            <p className="text-xs text-gray-500 mb-1">Loại giảm giá</p>
-                            <p className="font-semibold text-gray-900">{discountTypeLabel[promotion.discountType]}</p>
+                            <p className="text-xs text-gray-500 mb-1">Giảm theo %</p>
+                            <p className="font-semibold text-gray-900">{Number(promotion.discountPercent || 0)}%</p>
                           </div>
                           <div className="rounded-lg bg-gray-50 p-4">
-                            <p className="text-xs text-gray-500 mb-1">Giá trị giảm</p>
-                            <p className="font-semibold text-gray-900">
-                              {promotion.discountType === 'PERCENTAGE' ? `${promotion.discountValue}%` : toCurrency(promotion.discountValue)}
-                            </p>
+                            <p className="text-xs text-gray-500 mb-1">Giảm số tiền</p>
+                            <p className="font-semibold text-gray-900">{toCurrency(Number(promotion.discountAmount || 0))}</p>
                           </div>
                           <div className="rounded-lg bg-gray-50 p-4">
                             <p className="text-xs text-gray-500 mb-1">Giảm tối đa</p>
-                            <p className="font-semibold text-gray-900">{promotion.maxDiscount ? toCurrency(promotion.maxDiscount) : 'Không giới hạn'}</p>
+                            <p className="font-semibold text-gray-900">{getMaxDiscountAmount(promotion) ? toCurrency(getMaxDiscountAmount(promotion)) : 'Không giới hạn'}</p>
                           </div>
                           <div className="rounded-lg bg-gray-50 p-4">
                             <p className="text-xs text-gray-500 mb-1">Lượt dùng</p>
                             <p className="font-semibold text-gray-900">
-                              {promotion.usedCount || 0}
-                              {promotion.maxUses ? ` / ${promotion.maxUses}` : ''}
+                              {getUsedCount(promotion)}
+                              {getMaxUsage(promotion) ? ` / ${getMaxUsage(promotion)}` : ''}
                             </p>
                           </div>
                         </div>
@@ -540,16 +493,15 @@ export default function PromotionManagement() {
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-4 border-t border-gray-200">
                           <div className="text-sm text-gray-600 space-y-1">
                             <p>Thời gian: {formatDate(promotion.startDate)} - {formatDate(promotion.endDate)}</p>
-                            <p>Đơn tối thiểu: {promotion.minBookingValue ? toCurrency(promotion.minBookingValue) : 'Không yêu cầu'}</p>
-                            <p>Áp dụng homestay: {promotion.applicableHomestays?.length ? promotion.applicableHomestays.length : 'Tất cả'}</p>
+                            <p>Đơn tối thiểu: {getMinBookingAmount(promotion) ? toCurrency(getMinBookingAmount(promotion)) : 'Không yêu cầu'}</p>
                           </div>
 
                           <button
                             onClick={() => handleToggleStatus(promotion)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${promotion.status === 'ACTIVE' ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${getIsActive(promotion) ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-green-600 text-white hover:bg-green-700'}`}
                           >
                             <BadgePercent className="w-4 h-4" />
-                            <span>{promotion.status === 'ACTIVE' ? 'Tắt' : 'Bật'}</span>
+                            <span>{getIsActive(promotion) ? 'Tắt' : 'Bật'}</span>
                           </button>
                         </div>
                       </div>
@@ -582,57 +534,30 @@ export default function PromotionManagement() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tên promotion</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mã Coupon</label>
                   <input
                     type="text"
-                    value={formData.name}
-                    onChange={(e) => handleFieldChange('name', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ví dụ: Giảm hè 2026"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Mã coupon</label>
-                  <input
-                    type="text"
-                    value={formData.code || ''}
+                    value={formData.code}
                     onChange={(e) => handleFieldChange('code', e.target.value.toUpperCase())}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
                     placeholder="SUMMER2026"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Loại promotion</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => handleTypeChange(e.target.value as PromotionType)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="DISCOUNT_PERCENTAGE">Giảm %</option>
-                    <option value="DISCOUNT_FIXED">Giảm tiền</option>
-                    <option value="COUPON">Coupon</option>
-                    <option value="FLASH_SALE">Flash sale</option>
-                    <option value="SEASONAL">Theo mùa</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Loại chiết khấu</label>
-                  <select
-                    value={formData.discountType}
-                    onChange={(e) => handleFieldChange('discountType', e.target.value as DiscountType)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="PERCENTAGE">Phần trăm</option>
-                    <option value="FIXED_AMOUNT">Số tiền cố định</option>
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Trạng Thái</label>
+                  <label className="inline-flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg">
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive}
+                      onChange={(e) => handleFieldChange('isActive', e.target.checked)}
+                    />
+                    <span>{formData.isActive ? 'Đang hoạt động' : 'Tạm tắt'}</span>
+                  </label>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mô Tả</label>
                 <textarea
                   value={formData.description || ''}
                   onChange={(e) => handleFieldChange('description', e.target.value)}
@@ -643,40 +568,63 @@ export default function PromotionManagement() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Giá trị giảm</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phần Trăm Giảm Giá (%)</label>
                   <input
                     type="number"
                     min="0"
-                    value={formData.discountValue}
-                    onChange={(e) => handleFieldChange('discountValue', Number(e.target.value))}
+                    value={formData.discountPercent}
+                    onChange={(e) => handleFieldChange('discountPercent', Number(e.target.value))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Giảm tối đa</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Số Tiền Giảm (VND)</label>
                   <input
                     type="number"
                     min="0"
-                    value={formData.maxDiscount ?? ''}
-                    onChange={(e) => handleFieldChange('maxDiscount', e.target.value ? Number(e.target.value) : undefined)}
+                    value={formData.discountAmount}
+                    onChange={(e) => handleFieldChange('discountAmount', Number(e.target.value))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Đơn tối thiểu</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Số Tiền Giảm Tối Đa</label>
                   <input
                     type="number"
                     min="0"
-                    value={formData.minBookingValue ?? ''}
-                    onChange={(e) => handleFieldChange('minBookingValue', e.target.value ? Number(e.target.value) : undefined)}
+                    value={formData.maxDiscountAmount ?? ''}
+                    onChange={(e) => handleFieldChange('maxDiscountAmount', e.target.value ? Number(e.target.value) : undefined)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày bắt đầu</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giá Trị Đơn Tối Thiểu</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.minBookingAmount ?? ''}
+                    onChange={(e) => handleFieldChange('minBookingAmount', e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Số Lượt Sử Dụng Tối Đa</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.maxUsage ?? ''}
+                    onChange={(e) => handleFieldChange('maxUsage', e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày Bắt Đầu</label>
                   <input
                     type="date"
                     value={formData.startDate}
@@ -685,7 +633,7 @@ export default function PromotionManagement() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày kết thúc</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày Kết Thúc</label>
                   <input
                     type="date"
                     value={formData.endDate}
@@ -693,35 +641,6 @@ export default function PromotionManagement() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Số lượt dùng tối đa</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.maxUses ?? ''}
-                    onChange={(e) => handleFieldChange('maxUses', e.target.value ? Number(e.target.value) : undefined)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Homestay áp dụng</label>
-                <input
-                  type="text"
-                  value={formData.applicableHomestays?.join(', ') || ''}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      'applicableHomestays',
-                      e.target.value
-                        .split(',')
-                        .map((item) => item.trim())
-                        .filter(Boolean),
-                    )
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập id homestay, cách nhau bởi dấu phẩy. Để trống nếu áp dụng tất cả"
-                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
@@ -751,7 +670,7 @@ export default function PromotionManagement() {
             <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex items-center justify-between text-white">
               <div>
                 <h2 className="text-2xl font-bold">Chi tiết promotion</h2>
-                <p className="text-blue-100 text-sm">{selectedPromotion.name}</p>
+                <p className="text-blue-100 text-sm">{selectedPromotion.code}</p>
               </div>
               <button onClick={() => setSelectedPromotion(null)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
                 <X className="w-6 h-6" />
@@ -760,11 +679,14 @@ export default function PromotionManagement() {
 
             <div className="p-6 space-y-4">
               <div className="flex flex-wrap gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusMeta[selectedPromotion.status].className}`}>
-                  {statusMeta[selectedPromotion.status].label}
-                </span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${typeMeta[selectedPromotion.type].className}`}>
-                  {typeMeta[selectedPromotion.type].label}
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    getIsActive(selectedPromotion)
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {getIsActive(selectedPromotion) ? 'Đang hoạt động' : 'Tạm tắt'}
                 </span>
               </div>
 
@@ -775,11 +697,7 @@ export default function PromotionManagement() {
                 </div>
                 <div className="rounded-lg bg-gray-50 p-4">
                   <p className="text-gray-500 mb-1">Giảm giá</p>
-                  <p className="font-semibold text-gray-900">
-                    {selectedPromotion.discountType === 'PERCENTAGE'
-                      ? `${selectedPromotion.discountValue}%`
-                      : toCurrency(selectedPromotion.discountValue)}
-                  </p>
+                  <p className="font-semibold text-gray-900">{getDiscountSummary(selectedPromotion)}</p>
                 </div>
                 <div className="rounded-lg bg-gray-50 p-4">
                   <p className="text-gray-500 mb-1">Thời gian</p>
@@ -790,17 +708,17 @@ export default function PromotionManagement() {
                 <div className="rounded-lg bg-gray-50 p-4">
                   <p className="text-gray-500 mb-1">Lượt dùng</p>
                   <p className="font-semibold text-gray-900">
-                    {selectedPromotion.usedCount || 0}
-                    {selectedPromotion.maxUses ? ` / ${selectedPromotion.maxUses}` : ''}
+                    {getUsedCount(selectedPromotion)}
+                    {getMaxUsage(selectedPromotion) ? ` / ${getMaxUsage(selectedPromotion)}` : ''}
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-50 p-4">
                   <p className="text-gray-500 mb-1">Đơn tối thiểu</p>
-                  <p className="font-semibold text-gray-900">{selectedPromotion.minBookingValue ? toCurrency(selectedPromotion.minBookingValue) : 'Không yêu cầu'}</p>
+                  <p className="font-semibold text-gray-900">{getMinBookingAmount(selectedPromotion) ? toCurrency(getMinBookingAmount(selectedPromotion)) : 'Không yêu cầu'}</p>
                 </div>
                 <div className="rounded-lg bg-gray-50 p-4">
-                  <p className="text-gray-500 mb-1">Homestay áp dụng</p>
-                  <p className="font-semibold text-gray-900">{selectedPromotion.applicableHomestays?.length ? selectedPromotion.applicableHomestays.join(', ') : 'Tất cả'}</p>
+                  <p className="text-gray-500 mb-1">Giảm tối đa</p>
+                  <p className="font-semibold text-gray-900">{getMaxDiscountAmount(selectedPromotion) ? toCurrency(getMaxDiscountAmount(selectedPromotion)) : 'Không giới hạn'}</p>
                 </div>
               </div>
 
