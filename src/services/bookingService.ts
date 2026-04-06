@@ -207,9 +207,41 @@ export const bookingService = {
         apiConfig.endpoints.bookings.calculate,
         data,
       );
-      // BE: ApiResponse<decimal>.SuccessResult(price)
-      const price = response?.data ?? response;
-      return typeof price === "number" ? price : null;
+      // API có thể trả nhiều shape:
+      // 1) { success, data: 9000 }
+      // 2) { success, data: { totalPrice: 9000 } }
+      // 3) trực tiếp number/object
+      const candidates = [
+        response,
+        response?.data,
+        response?.data?.data,
+      ];
+
+      for (const candidate of candidates) {
+        if (typeof candidate === "number" && Number.isFinite(candidate)) {
+          return candidate;
+        }
+
+        if (candidate && typeof candidate === "object") {
+          const obj = candidate as Record<string, unknown>;
+          const possibleKeys = [
+            "totalPrice",
+            "finalPrice",
+            "price",
+            "amount",
+            "value",
+          ];
+
+          for (const key of possibleKeys) {
+            const value = obj[key];
+            if (typeof value === "number" && Number.isFinite(value)) {
+              return value;
+            }
+          }
+        }
+      }
+
+      return null;
     } catch (error) {
       console.error("Calculate booking error:", error);
       return null;
