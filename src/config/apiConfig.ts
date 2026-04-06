@@ -57,6 +57,11 @@ export const apiConfig = {
         `/api/bookings/${id}/cancellation-policy`,
       specialRequests: (id: string) => `/api/bookings/${id}/special-requests`,
     },
+    extraCharges: {
+      create: "/api/extra-charges",
+      byBooking: (bookingId: string) => `/api/extra-charges/booking/${bookingId}`,
+      delete: (id: string) => `/api/extra-charges/${id}`,
+    },
     users: {
       list: "/api/users",
       detail: (id: string) => `/api/users/${id}`,
