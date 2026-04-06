@@ -18,6 +18,7 @@ import { useWishlist } from '../contexts/WishlistContext'
 import type { Promotion } from '../types/promotion.types'
 import { experienceService } from '../services/experienceService'
 import type { LocalExperience } from '../types/experience.types'
+import { buildSpecialRequestsWithExperiences } from '../utils/bookingExperience'
 
 export default function HomestayDetail() {
     const { id } = useParams()
@@ -572,16 +573,13 @@ export default function HomestayDetail() {
                                 <div className="mt-4">
                                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                                         <div className="flex items-center justify-between mb-2">
-                                            <h4 className="text-sm font-semibold text-gray-900">Dich vu dia phuong</h4>
-                                            <span className="text-xs text-amber-700 font-medium">Chon sau khi booking thanh cong</span>
-                                        </div>
-                                        <div className="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
-                                            API dat phong hien tai chua ho tro field dich vu. Ban se them dich vu sau khi tao booking thanh cong.
+                                            <h4 className="text-sm font-semibold text-gray-900">Dịch vụ địa phương</h4>
+                                            <span className="text-xs text-cyan-700 font-medium">Có thể chọn ngay khi đặt phòng</span>
                                         </div>
                                         {experiencesLoading ? (
-                                            <div className="text-sm text-gray-500">Dang tai danh sach dich vu...</div>
+                                            <div className="text-sm text-gray-500">Đang tải danh sách dịch vụ...</div>
                                         ) : experiences.length === 0 ? (
-                                            <div className="text-sm text-gray-500">Chua co dich vu dia phuong kha dung.</div>
+                                            <div className="text-sm text-gray-500">Chưa có dịch vụ địa phương khả dụng.</div>
                                         ) : (
                                             <div className="space-y-2 max-h-52 overflow-auto pr-1">
                                                 {experiences.map((item) => {
@@ -606,7 +604,7 @@ export default function HomestayDetail() {
                                                                         <div className="text-sm font-medium text-gray-900 truncate">{item.name}</div>
                                                                         <div className="text-xs text-gray-500">
                                                                             {item.categoryName ? `${item.categoryName} • ` : item.categoryId ? `${item.categoryId} • ` : ''}
-                                                                            {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : 'Lien he'}
+                                                                            {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : 'Liên hệ'}
                                                                         </div>
                                                                     </div>
                                                                 </label>
@@ -646,7 +644,7 @@ export default function HomestayDetail() {
                                         )}
                                         {selectedExperiencesEstimate > 0 && (
                                             <div className="mt-3 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-2 py-1.5">
-                                                Uoc tinh dich vu them: {selectedExperiencesEstimate.toLocaleString('vi-VN')}đ (tham khao)
+                                                Ước tính dịch vụ thêm: {selectedExperiencesEstimate.toLocaleString('vi-VN')}đ (tham khảo)
                                             </div>
                                         )}
                                     </div>
@@ -676,7 +674,7 @@ export default function HomestayDetail() {
                                     )}
                                     {selectedExperienceItems.length > 0 && (
                                         <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-900">
-                                            Ban da chon {selectedExperienceItems.length} dich vu tham khao. Dich vu se duoc them sau khi booking thanh cong.
+                                            Bạn đã chọn {selectedExperienceItems.length} dịch vụ thêm cho booking này.
                                         </div>
                                     )}
                                     {computedTotal !== undefined && (
@@ -747,6 +745,17 @@ export default function HomestayDetail() {
 
                                     setIsBooking(true)
                                     try {
+                                        const selectedExperiencePayload = selectedExperienceItems.map((entry) => ({
+                                            id: entry.item.id,
+                                            name: entry.item.name,
+                                            qty: entry.qty,
+                                            price: entry.item.price,
+                                        }))
+                                        const mergedSpecialRequests = buildSpecialRequestsWithExperiences(
+                                            specialRequests || '',
+                                            selectedExperiencePayload,
+                                        )
+
                                         const payload = {
                                             homestayId: homestay?.id,
                                             checkIn: checkIn,
@@ -754,7 +763,8 @@ export default function HomestayDetail() {
                                             guestsCount: guests,
                                             contactPhone: contactPhone.trim(),
                                             ...(selectedPromotionId ? { promotionId: selectedPromotionId } : {}),
-                                            ...(specialRequests?.trim() ? { specialRequests: specialRequests.trim() } : {}),
+                                            ...(mergedSpecialRequests ? { specialRequests: mergedSpecialRequests } : {}),
+                                            ...(selectedExperiencePayload.length > 0 ? { selectedExperiences: selectedExperiencePayload } : {}),
                                         } as any
 
                                         const res = await bookingService.createBooking(payload)
