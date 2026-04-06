@@ -252,7 +252,7 @@ export default function HomestayManagement() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.id === 'homestays';
@@ -428,8 +428,8 @@ export default function HomestayManagement() {
 
                     <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="font-medium">{homestay.rating || 0}</span>
-                      <span>({homestay.reviewCount || 0} đánh giá)</span>
+                      <span className="font-medium">{(homestay.averageRating ?? homestay.rating ?? 0).toFixed(1)}</span>
+                      <span>({homestay.totalReviews ?? homestay.reviewCount ?? 0} đánh giá)</span>
                     </div>
 
                     <div className="flex items-center justify-between text-sm mb-4">

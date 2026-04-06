@@ -16,6 +16,8 @@ import { apiConfig } from '../config/apiConfig'
 import type { Review } from '../services/reviewService'
 import { useWishlist } from '../contexts/WishlistContext'
 import type { Promotion } from '../types/promotion.types'
+import { experienceService } from '../services/experienceService'
+import type { LocalExperience } from '../types/experience.types'
 
 export default function HomestayDetail() {
     const { id } = useParams()
@@ -34,6 +36,9 @@ export default function HomestayDetail() {
     const [availablePromotions, setAvailablePromotions] = useState<Promotion[]>([])
     const [promotionsLoading, setPromotionsLoading] = useState(false)
     const [selectedPromotionId, setSelectedPromotionId] = useState<string | null>(null)
+    const [experiences, setExperiences] = useState<LocalExperience[]>([])
+    const [experiencesLoading, setExperiencesLoading] = useState(false)
+    const [selectedExperienceQty, setSelectedExperienceQty] = useState<Record<string, number>>({})
     const [isCalculating, setIsCalculating] = useState(false)
     const [calcResult, setCalcResult] = useState<number | null>(null)
     const [pendingBooking, setPendingBooking] = useState<{
@@ -111,6 +116,29 @@ export default function HomestayDetail() {
         }
 
         loadPromotions()
+        return () => {
+            mounted = false
+        }
+    }, [])
+
+    useEffect(() => {
+        let mounted = true
+
+        const loadExperiences = async () => {
+            setExperiencesLoading(true)
+            try {
+                const list = await experienceService.list()
+                if (!mounted) return
+                setExperiences(list.filter((item) => item.isActive))
+            } catch (error) {
+                console.error('Load experiences error', error)
+                if (mounted) setExperiences([])
+            } finally {
+                if (mounted) setExperiencesLoading(false)
+            }
+        }
+
+        loadExperiences()
         return () => {
             mounted = false
         }
@@ -235,6 +263,18 @@ export default function HomestayDetail() {
     const selectedPromotion = useMemo(
         () => availablePromotions.find((promotion) => promotion.id === selectedPromotionId) ?? null,
         [availablePromotions, selectedPromotionId],
+    )
+
+    const selectedExperienceItems = useMemo(
+        () => experiences
+            .filter((item) => (selectedExperienceQty[item.id] ?? 0) > 0)
+            .map((item) => ({ item, qty: selectedExperienceQty[item.id] ?? 0 })),
+        [experiences, selectedExperienceQty],
+    )
+
+    const selectedExperiencesEstimate = useMemo(
+        () => selectedExperienceItems.reduce((sum, entry) => sum + ((entry.item.price ?? 0) * entry.qty), 0),
+        [selectedExperienceItems],
     )
 
     return (
@@ -529,6 +569,89 @@ export default function HomestayDetail() {
                                     />
                                 </div>
 
+                                <div className="mt-4">
+                                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h4 className="text-sm font-semibold text-gray-900">Dich vu dia phuong</h4>
+                                            <span className="text-xs text-amber-700 font-medium">Chon sau khi booking thanh cong</span>
+                                        </div>
+                                        <div className="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                                            API dat phong hien tai chua ho tro field dich vu. Ban se them dich vu sau khi tao booking thanh cong.
+                                        </div>
+                                        {experiencesLoading ? (
+                                            <div className="text-sm text-gray-500">Dang tai danh sach dich vu...</div>
+                                        ) : experiences.length === 0 ? (
+                                            <div className="text-sm text-gray-500">Chua co dich vu dia phuong kha dung.</div>
+                                        ) : (
+                                            <div className="space-y-2 max-h-52 overflow-auto pr-1">
+                                                {experiences.map((item) => {
+                                                    const qty = selectedExperienceQty[item.id] ?? 0
+                                                    const checked = qty > 0
+                                                    return (
+                                                        <div key={item.id} className="bg-white rounded-lg border border-gray-200 px-3 py-2">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <label className="flex items-start gap-2 flex-1 cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={checked}
+                                                                        onChange={(e) => {
+                                                                            setSelectedExperienceQty((prev) => ({
+                                                                                ...prev,
+                                                                                [item.id]: e.target.checked ? Math.max(1, prev[item.id] ?? 1) : 0,
+                                                                            }))
+                                                                        }}
+                                                                        className="mt-1"
+                                                                    />
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-sm font-medium text-gray-900 truncate">{item.name}</div>
+                                                                        <div className="text-xs text-gray-500">
+                                                                            {item.categoryName ? `${item.categoryName} • ` : item.categoryId ? `${item.categoryId} • ` : ''}
+                                                                            {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : 'Lien he'}
+                                                                        </div>
+                                                                    </div>
+                                                                </label>
+
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setSelectedExperienceQty((prev) => ({
+                                                                                ...prev,
+                                                                                [item.id]: Math.max(0, (prev[item.id] ?? 0) - 1),
+                                                                            }))
+                                                                        }}
+                                                                        className="w-7 h-7 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                                    >
+                                                                        -
+                                                                    </button>
+                                                                    <span className="w-5 text-center text-sm font-medium">{qty}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setSelectedExperienceQty((prev) => ({
+                                                                                ...prev,
+                                                                                [item.id]: Math.min(9, (prev[item.id] ?? 0) + 1),
+                                                                            }))
+                                                                        }}
+                                                                        className="w-7 h-7 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                                    >
+                                                                        +
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                        {selectedExperiencesEstimate > 0 && (
+                                            <div className="mt-3 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-2 py-1.5">
+                                                Uoc tinh dich vu them: {selectedExperiencesEstimate.toLocaleString('vi-VN')}đ (tham khao)
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
                                     <div className="flex items-center justify-between text-sm text-gray-700">
                                         <span>{nights > 0 ? `${homestay.pricePerNight?.toLocaleString('vi-VN')}đ × ${nights} đêm` : 'Chọn ngày để tính giá'}</span>
@@ -549,6 +672,11 @@ export default function HomestayDetail() {
                                     {selectedPromotion && (
                                         <div className="mt-3 rounded-lg bg-cyan-50 border border-cyan-100 px-3 py-2 text-sm text-cyan-900">
                                             Đang áp dụng mã <span className="font-semibold">{selectedPromotion.code}</span>
+                                        </div>
+                                    )}
+                                    {selectedExperienceItems.length > 0 && (
+                                        <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-900">
+                                            Ban da chon {selectedExperienceItems.length} dich vu tham khao. Dich vu se duoc them sau khi booking thanh cong.
                                         </div>
                                     )}
                                     {computedTotal !== undefined && (
@@ -626,7 +754,7 @@ export default function HomestayDetail() {
                                             guestsCount: guests,
                                             contactPhone: contactPhone.trim(),
                                             ...(selectedPromotionId ? { promotionId: selectedPromotionId } : {}),
-                                            ...(specialRequests ? { specialRequests } : {}),
+                                            ...(specialRequests?.trim() ? { specialRequests: specialRequests.trim() } : {}),
                                         } as any
 
                                         const res = await bookingService.createBooking(payload)

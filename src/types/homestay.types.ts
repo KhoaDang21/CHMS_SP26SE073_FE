@@ -66,6 +66,8 @@ export interface Homestay {
   amenityNames?: string[];
   rating?: number;
   reviewCount?: number;
+  averageRating?: number;
+  totalReviews?: number;
   ownerId?: string;
   ownerName?: string;
   status: "ACTIVE" | "OCCUPIED" | "CLEANING" | "MAINTENANCE" | "INACTIVE";

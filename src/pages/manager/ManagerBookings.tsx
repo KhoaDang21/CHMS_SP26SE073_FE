@@ -210,7 +210,7 @@ export default function ManagerBookings() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.id === 'bookings';

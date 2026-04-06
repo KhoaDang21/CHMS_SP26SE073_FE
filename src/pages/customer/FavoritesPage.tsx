@@ -1,22 +1,17 @@
 import { useEffect, useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
-import HomestayCard, { fetchReviewSummary } from '../../components/homestay/HomestayCard';
+import HomestayCard from '../../components/homestay/HomestayCard';
 import { wishlistService } from '../../services/wishlistService';
 import type { Homestay } from '../../types/homestay.types';
 import toast from 'react-hot-toast';
 
-async function sortByReview(list: Homestay[]): Promise<Homestay[]> {
-  const summaries = await Promise.all(list.map(h => fetchReviewSummary(h.id)));
+function sortByReview(list: Homestay[]): Homestay[] {
   return [...list].sort((a, b) => {
-    const ia = list.indexOf(a);
-    const ib = list.indexOf(b);
-    const sa = summaries[ia];
-    const sb = summaries[ib];
-    const avgA = sa && sa.count > 0 ? sa.avg : 0;
-    const avgB = sb && sb.count > 0 ? sb.avg : 0;
+    const avgA = a.averageRating ?? a.rating ?? 0;
+    const avgB = b.averageRating ?? b.rating ?? 0;
     if (avgB !== avgA) return avgB - avgA;
-    const cntA = sa?.count ?? 0;
-    const cntB = sb?.count ?? 0;
+    const cntA = a.totalReviews ?? a.reviewCount ?? 0;
+    const cntB = b.totalReviews ?? b.reviewCount ?? 0;
     return cntB - cntA;
   });
 }
@@ -30,7 +25,7 @@ export default function FavoritesPage() {
     (async () => {
       try {
         const list = await wishlistService.getMyWishlist();
-        const sorted = await sortByReview(list);
+        const sorted = sortByReview(list);
         if (mounted) setItems(sorted);
       } catch (e) {
         toast.error('Lấy danh sách yêu thích thất bại');
