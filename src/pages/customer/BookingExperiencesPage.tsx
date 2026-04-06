@@ -18,6 +18,8 @@ const fallbackExperienceImages = [
   'https://images.unsplash.com/photo-1454391304352-2bf4678b1a7a?auto=format&fit=crop&w=1200&q=80',
 ];
 
+const normalizeId = (value?: string) => String(value ?? '').trim().toLowerCase();
+
 export default function BookingExperiencesPage() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
@@ -50,7 +52,16 @@ export default function BookingExperiencesPage() {
 
         setBooking(bookingDetail);
         const activeItems = allExperiences.filter((item) => item.isActive);
-        setExperiences(activeItems);
+        const bookingHomestayId = normalizeId(bookingDetail.homestayId);
+        const filteredByHomestay = bookingHomestayId
+          ? activeItems.filter((item) => normalizeId(item.homestayId) === bookingHomestayId)
+          : activeItems;
+
+        setExperiences(filteredByHomestay);
+
+        if (bookingHomestayId && filteredByHomestay.length === 0 && activeItems.length > 0) {
+          toast('Homestay này hiện chưa có dịch vụ thêm phù hợp.');
+        }
 
         const existing = extractBookingExperienceData(bookingDetail.specialRequests);
         const nextQty: Record<string, number> = {};

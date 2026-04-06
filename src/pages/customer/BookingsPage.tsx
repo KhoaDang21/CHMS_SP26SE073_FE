@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus } from 'lucide-react';
+import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
 import { reviewService, type Review } from '../../services/reviewService';
+import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { Pagination } from '../../components/common/Pagination';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import PaymentModal from './PaymentModal';
 import ReviewModal from './ReviewModal';
@@ -24,9 +26,11 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
 
 export default function BookingsPage() {
   const navigate = useNavigate();
+  const pageSize = 10;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'confirmed' | 'staying' | 'completed' | 'cancelled'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [selected, setSelected] = useState<Booking | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -52,6 +56,12 @@ export default function BookingsPage() {
   const [reviewingBooking, setReviewingBooking] = useState<{ id: string; homestayName: string } | null>(null);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [myReviewsMap, setMyReviewsMap] = useState<Record<string, Review | undefined>>({});
+
+  const [showExtraDetailModal, setShowExtraDetailModal] = useState(false);
+  const [extraDetailBooking, setExtraDetailBooking] = useState<Booking | null>(null);
+  const [extraDetailCharges, setExtraDetailCharges] = useState<ExtraCharge[]>([]);
+  const [extraChargeDetailLoading, setExtraChargeDetailLoading] = useState(false);
+  const totalExtraDetailAmount = extraDetailCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
 
   const load = async () => {
     setLoading(true);
@@ -99,6 +109,10 @@ export default function BookingsPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
   const filtered = useMemo(() => {
     if (activeTab === 'all') return bookings;
     if (activeTab === 'pending') return bookings.filter(b => b.status === 'PENDING');
@@ -108,6 +122,18 @@ export default function BookingsPage() {
     if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED' || b.status === 'REJECTED');
     return bookings;
   }, [bookings, activeTab]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [filtered.length, currentPage]);
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage]);
 
   const openDetail = async (b: Booking) => {
     setSelected(b);
@@ -134,6 +160,23 @@ export default function BookingsPage() {
       toast.error('Không thể tải chi tiết booking');
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const handleViewExtraDetail = async (booking: Booking) => {
+    setExtraDetailBooking(booking);
+    setShowExtraDetailModal(true);
+
+    try {
+      setExtraChargeDetailLoading(true);
+      const list = await extraChargeService.listByBooking(booking.id);
+      setExtraDetailCharges(list);
+    } catch (error) {
+      console.error('Load extra charges error:', error);
+      toast.error('Không thể tải chi tiết phát sinh');
+      setExtraDetailCharges([]);
+    } finally {
+      setExtraChargeDetailLoading(false);
     }
   };
 
@@ -270,7 +313,7 @@ export default function BookingsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filtered.map(b => (
+              {paginated.map(b => (
                 <div
                   key={b.id}
                   className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
@@ -392,7 +435,7 @@ export default function BookingsPage() {
                         )}
 
                         <div className="flex items-center gap-2">
-                          {(b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && !hasSelectedExperiences(b.specialRequests) && (
+                          {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
                             <button
                               onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
@@ -445,6 +488,14 @@ export default function BookingsPage() {
               ))}
             </div>
           )}
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.max(1, Math.ceil(filtered.length / pageSize))}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
 
           {/* Detail drawer/modal - giữ nguyên phần này từ code trước */}
           {selected && (
@@ -780,7 +831,7 @@ export default function BookingsPage() {
                       ) : (
                         /* Thao tác - Buttons */
                         <div className="flex flex-col gap-4 pt-2">
-                          {(selected.status === 'PENDING' || selected.status === 'CONFIRMED' || selected.status === 'CHECKED_IN') && !hasSelectedExperiences(selected.specialRequests) && (
+                          {(selected.status === 'CHECKED_IN' || ((selected.status === 'PENDING' || selected.status === 'CONFIRMED') && !hasSelectedExperiences(selected.specialRequests))) && (
                             <button
                               onClick={() => navigate(`/customer/bookings/${selected.id}/services`)}
                               className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700"
@@ -876,6 +927,17 @@ export default function BookingsPage() {
                             </div>
                           </div>
 
+                          {/* Nút xem phí phát sinh nếu booking đã hoàn thành */}
+                          {(selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN') && (
+                            <button
+                              onClick={() => handleViewExtraDetail(selected)}
+                              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 transition-colors"
+                            >
+                              Chi tiết phí phát sinh
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          )}
+
                           {/* Edit và Cancel buttons */}
                           <div className="flex flex-col sm:flex-row gap-3">
                             <button
@@ -952,6 +1014,75 @@ export default function BookingsPage() {
           onClose={() => setEditingReview(null)}
           onSuccess={() => { setEditingReview(null); toast.success('Đánh giá đã được cập nhật, chờ kiểm duyệt!'); load(); }}
         />
+      )}
+      {showExtraDetailModal && extraDetailBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Chi tiết phí phát sinh</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {extraDetailBooking.homestayName}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowExtraDetailModal(false);
+                  setExtraDetailBooking(null);
+                  setExtraDetailCharges([]);
+                }}
+                type="button"
+                className="p-2 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-auto">
+              <div className="mb-4 p-4 rounded-lg bg-orange-50 border border-orange-100">
+                <p className="text-sm text-orange-800">Tổng phí phát sinh</p>
+                <p className="text-2xl font-bold text-orange-900 mt-1">{totalExtraDetailAmount.toLocaleString('vi-VN')} VND</p>
+              </div>
+
+              {extraChargeDetailLoading ? (
+                <div className="py-10 text-center text-gray-500">Đang tải chi tiết...</div>
+              ) : extraDetailCharges.length === 0 ? (
+                <div className="py-10 text-center text-gray-500">Booking này chưa có khoản phát sinh.</div>
+              ) : (
+                <div className="space-y-3">
+                  {extraDetailCharges.map((item, index) => (
+                    <div key={item.id || `${extraDetailBooking.id}-${index}`} className="p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-gray-900">Khoản #{index + 1}</p>
+                        <p className="text-sm font-bold text-orange-600">+{(Number(item.amount) || 0).toLocaleString('vi-VN')} VND</p>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-2">{item.note || 'Không có mô tả'}</p>
+                      {item.createdAt && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          Tạo lúc: {new Date(item.createdAt).toLocaleString('vi-VN')}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowExtraDetailModal(false);
+                  setExtraDetailBooking(null);
+                  setExtraDetailCharges([]);
+                }}
+                type="button"
+                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

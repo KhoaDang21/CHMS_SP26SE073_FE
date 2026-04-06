@@ -19,9 +19,11 @@ import {
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { adminBookingService } from '../../services/adminBookingService';
+import { extraChargeService } from '../../services/extraChargeService';
 import type { Booking, BookingStatus } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
+import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
 
 interface DashboardStats {
   todayCheckIns: number;
@@ -51,6 +53,9 @@ export default function StaffDashboard() {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [todayTasks, setTodayTasks] = useState<TodayTask[]>([]);
+  const [checkoutBooking, setCheckoutBooking] = useState<Booking | null>(null);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
 
   const loadDashboardData = async () => {
     try {
@@ -122,6 +127,18 @@ export default function StaffDashboard() {
         return;
       }
 
+      if (task.type === 'checkout') {
+        const booking = bookings.find((item) => item.id === task.bookingId) ?? null;
+        if (!booking) {
+          toast.error('Không tìm thấy booking để kiểm phòng');
+          return;
+        }
+
+        setCheckoutBooking(booking);
+        setShowCheckoutModal(true);
+        return;
+      }
+
       const nextStatus: BookingStatus = task.type === 'checkin' ? 'checked_in' : 'completed';
       await adminBookingService.updateBooking(task.bookingId, { status: nextStatus });
 
@@ -131,6 +148,39 @@ export default function StaffDashboard() {
     } catch (error) {
       console.error('Complete task error:', error);
       toast.error('Không thể cập nhật trạng thái booking');
+    }
+  };
+
+  const handleConfirmCheckout = async (payload: { note: string; extraChargeAmount: number }) => {
+    if (!checkoutBooking) return;
+
+    try {
+      setCheckoutSubmitting(true);
+
+      if (payload.extraChargeAmount > 0) {
+        const chargeResult = await extraChargeService.create({
+          bookingId: checkoutBooking.id,
+          amount: payload.extraChargeAmount,
+          note: payload.note,
+        });
+
+        if (!chargeResult.success) {
+          toast.error(chargeResult.message || 'Không thể lưu phí phát sinh');
+          return;
+        }
+      }
+
+      await adminBookingService.updateBooking(checkoutBooking.id, { status: 'completed' });
+      setTodayTasks((prev) => prev.map((item) => (item.bookingId === checkoutBooking.id ? { ...item, status: 'completed' } : item)));
+      toast.success(`Đã hoàn tất kiểm phòng và checkout: ${checkoutBooking.customerName}`);
+      setShowCheckoutModal(false);
+      setCheckoutBooking(null);
+      await loadDashboardData();
+    } catch (error) {
+      console.error('Confirm checkout error:', error);
+      toast.error('Không thể hoàn tất checkout');
+    } finally {
+      setCheckoutSubmitting(false);
     }
   };
 
@@ -393,7 +443,7 @@ export default function StaffDashboard() {
                                 type="button"
                                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium whitespace-nowrap"
                               >
-                                Hoàn thành
+                                {task.type === 'checkout' ? 'Kiểm tra phòng' : 'Hoàn thành'}
                               </button>
                             ) : (
                               <div className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium">✓ Đã xong</div>
@@ -409,6 +459,17 @@ export default function StaffDashboard() {
           )}
         </main>
       </div>
+
+      <CheckoutInspectionModal
+        open={showCheckoutModal}
+        booking={checkoutBooking}
+        onClose={() => {
+          setShowCheckoutModal(false);
+          setCheckoutBooking(null);
+        }}
+        onConfirm={handleConfirmCheckout}
+        submitting={checkoutSubmitting}
+      />
     </div>
   );
 }
