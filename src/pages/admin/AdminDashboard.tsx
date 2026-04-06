@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Home,
-  CalendarDays,
-  Users,
-  UserCog,
-  TrendingUp,
-  MessageSquare,
   LogOut,
   Menu,
   X,
@@ -16,8 +9,11 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Sparkles,
   ClipboardList,
+  CalendarDays,
+  Users,
+  Home,
+  TrendingUp,
 } from 'lucide-react';
 import type {
   DashboardStats,
@@ -25,6 +21,7 @@ import type {
   OccupancyData,
   BookingsReportData,
 } from '../../types/homestay.types';
+import { adminNavItems } from '../../config/adminNavItems';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
@@ -168,16 +165,7 @@ export default function AdminDashboard() {
     navigate(path);
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'tickets', label: 'Tickets', icon: MessageSquare, path: '/admin/tickets' },
-  ];
+  const navItems = adminNavItems;
 
   if (loading) {
     return (
@@ -215,7 +203,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (

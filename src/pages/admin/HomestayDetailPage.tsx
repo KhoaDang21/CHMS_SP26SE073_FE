@@ -15,10 +15,6 @@ import {
   Menu,
   X,
   LogOut,
-  LayoutDashboard,
-  UserCog,
-  TrendingUp,
-  Settings,
   Shield,
   FileText,
   UserCheck,
@@ -30,6 +26,7 @@ import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import EditHomestayModal from '../../components/admin/EditHomestayModal';
+import { adminNavItems } from '../../config/adminNavItems';
 
 export default function HomestayDetailPage() {
   const navigate = useNavigate();
@@ -148,15 +145,7 @@ export default function HomestayDetailPage() {
     }
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
-  ];
+  const navItems = adminNavItems;
 
   if (loading) {
     return (
@@ -200,7 +189,7 @@ export default function HomestayDetailPage() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.id === 'homestays';

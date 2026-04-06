@@ -25,12 +25,15 @@ import {
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { adminBookingService } from '../../services/adminBookingService';
+import { Pagination } from '../../components/common/Pagination';
 import type { Booking, BookingStatus, BookingStats } from '../../types/booking.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { buildDisplaySpecialRequests } from '../../utils/bookingExperience';
 
 export default function ManagerBookings() {
   const navigate = useNavigate();
+  const pageSize = 10;
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
@@ -38,6 +41,7 @@ export default function ManagerBookings() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
     pending: 0,
@@ -59,6 +63,10 @@ export default function ManagerBookings() {
   useEffect(() => {
     filterBookings();
   }, [bookings, searchQuery, statusFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   const loadBookings = async () => {
     setLoading(true);
@@ -103,6 +111,15 @@ export default function ManagerBookings() {
 
     setFilteredBookings(filtered);
   };
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [filteredBookings.length, currentPage]);
+
+  const paginatedBookings = filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleUpdateStatus = async (bookingId: string, newStatus: BookingStatus) => {
     const booking = bookings.find((b) => b.id === bookingId) ?? (selectedBooking?.id === bookingId ? selectedBooking : null);
@@ -210,7 +227,7 @@ export default function ManagerBookings() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.id === 'bookings';
@@ -371,7 +388,7 @@ export default function ManagerBookings() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredBookings.map((booking) => (
+              {paginatedBookings.map((booking) => (
                 <div
                   key={booking.id}
                   className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden"
@@ -487,6 +504,14 @@ export default function ManagerBookings() {
               ))}
             </div>
           )}
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.max(1, Math.ceil(filteredBookings.length / pageSize))}
+            totalItems={filteredBookings.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
@@ -556,7 +581,9 @@ export default function ManagerBookings() {
               {selectedBooking.specialRequests && (
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Yêu cầu đặc biệt</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{selectedBooking.specialRequests}</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+                    {buildDisplaySpecialRequests(selectedBooking.specialRequests)}
+                  </p>
                 </div>
               )}
             </div>

@@ -23,6 +23,7 @@ import BookingManagement from '../pages/admin/BookingManagement';
 import CustomerManagement from '../pages/admin/CustomerManagement';
 import RevenueReport from '../pages/admin/RevenueReport';
 import TicketManagement from '../pages/admin/TicketManagement';
+import PromotionManagement from '../pages/admin/PromotionManagement';
 import StaffBookings from '../pages/staff/StaffBookings';
 import StaffReviews from '../pages/staff/StaffReviews';
 import StaffTickets from '../pages/staff/StaffTickets';
@@ -36,8 +37,10 @@ import ManagerStaffManagement from '../pages/manager/ManagerStaffManagement';
 import ProfilePage from '../pages/customer/ProfilePage';
 import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import NotificationsPage from '../pages/customer/NotificationsPage';
+import BookingExperiencesPage from '../pages/customer/BookingExperiencesPage';
 import { authService } from '../services/authService';
 import StaffDashboard from '../pages/staff/StaffDashboard';
+import ExperienceManagement from '../pages/shared/ExperienceManagement';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -113,6 +116,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <BookingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/bookings/:bookingId/services"
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <BookingExperiencesPage />
           </ProtectedRoute>
         }
       />
@@ -214,6 +225,14 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/manager/experiences"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ExperienceManagement />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected Routes - Staff */}
       <Route
@@ -283,6 +302,14 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/admin/experiences"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <ExperienceManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/staff"
         element={
           <ProtectedRoute allowedRoles={['admin']}>
@@ -311,6 +338,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <RevenueReport />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/promotions"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <PromotionManagement />
           </ProtectedRoute>
         }
       />

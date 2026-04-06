@@ -1,16 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Home,
-  CalendarDays,
-  Users,
-  UserCog,
-  TrendingUp,
   LogOut,
+  Building2,
   Menu,
   X,
-  Sparkles,
   MessageSquare,
   Search,
   Filter,
@@ -23,6 +17,7 @@ import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import { adminTicketService } from '../../services/adminTicketService';
+import { adminNavItems } from '../../config/adminNavItems';
 
 type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 type FilterStatus = 'all' | TicketStatus;
@@ -107,16 +102,7 @@ export default function TicketManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-    { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-    { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-    { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-    { id: 'tickets', label: 'Tickets', icon: MessageSquare, path: '/admin/tickets' },
-  ];
+  const navItems = adminNavItems;
 
   const loadData = async () => {
     setLoading(true);
@@ -183,13 +169,13 @@ export default function TicketManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       <aside
         className={`fixed top-0 left-0 z-40 h-screen transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} bg-white shadow-lg w-64`}
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <Home className="w-8 h-8 text-blue-600" />
+            <Building2 className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="font-bold text-gray-900">CHMS Admin</h1>
               <p className="text-xs text-gray-500">Management System</p>
@@ -200,22 +186,10 @@ export default function TicketManagement() {
           </button>
         </div>
 
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold">
-              {(currentUser?.name || 'A').charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="font-medium text-gray-900 truncate">{currentUser?.name || 'Admin'}</p>
-              <RoleBadge role={currentUser?.role || 'admin'} size="sm" />
-            </div>
-          </div>
-        </div>
-
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.path === '/admin/tickets';
+            const isActive = item.id === 'tickets';
 
             return (
               <button
@@ -230,10 +204,21 @@ export default function TicketManagement() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-200 mt-auto">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold">
+              {(currentUser?.name || 'A').charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-900 truncate">{currentUser?.name || 'Admin'}</p>
+              <div className="mt-1">
+                <RoleBadge role={currentUser?.role || 'admin'} size="sm" />
+              </div>
+            </div>
+          </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             <LogOut className="w-5 h-5" />
             <span>Đăng xuất</span>

@@ -8,7 +8,7 @@ import { publicHomestayService } from "../../services/publicHomestayService";
 import { authService } from "../../services/authService";
 import { provinceService } from "../../services/provinceService";
 import { districtService } from "../../services/districtService";
-import HomestayCard, { fetchReviewSummary } from "../../components/homestay/HomestayCard";
+import HomestayCard from "../../components/homestay/HomestayCard";
 import type { Province, District } from "../../types/homestay.types";
 
 export default function CustomerDashboard() {
@@ -57,15 +57,12 @@ export default function CustomerDashboard() {
         const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
         if (!mounted) return;
         const items = res.Items || [];
-        // Fetch ratings song song rồi sort cao → thấp
-        const summaries = await Promise.allSettled(items.map((h: any) => fetchReviewSummary(h.id)));
+        // Sort theo averageRating cao → thấp
         const sorted = [...items].sort((a: any, b: any) => {
-          const sa = summaries[items.indexOf(a)];
-          const sb = summaries[items.indexOf(b)];
-          const avgA = sa.status === 'fulfilled' ? sa.value.avg : 0;
-          const avgB = sb.status === 'fulfilled' ? sb.value.avg : 0;
-          const cntA = sa.status === 'fulfilled' ? sa.value.count : 0;
-          const cntB = sb.status === 'fulfilled' ? sb.value.count : 0;
+          const avgA = a.averageRating ?? a.rating ?? 0;
+          const avgB = b.averageRating ?? b.rating ?? 0;
+          const cntA = a.totalReviews ?? a.reviewCount ?? 0;
+          const cntB = b.totalReviews ?? b.reviewCount ?? 0;
           if (avgB !== avgA) return avgB - avgA;
           return cntB - cntA; // tie-break: nhiều đánh giá hơn lên trước
         });

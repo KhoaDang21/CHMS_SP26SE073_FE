@@ -20,10 +20,8 @@ import {
   LayoutDashboard,
   Home,
   CalendarDays,
-  Sparkles,
   UserCog,
   TrendingUp,
-  Settings,
   MapPin,
   Check,
 } from 'lucide-react';
@@ -33,6 +31,7 @@ import { employeeService } from '../../services/employeeService';
 import { adminRoleService } from '../../services/adminRoleService';
 import { locationService } from '../../services/locationService';
 import { districtService } from '../../services/districtService';
+import { adminNavItems } from '../../config/adminNavItems';
 import { homestayService } from '../../services/homestayService';
 import type { Staff, StaffRole, StaffStatus } from '../../types/staff.types';
 import type { Role } from '../../types/role.types';
@@ -628,16 +627,7 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
   };
 
   const navItems = isAdminMode
-    ? [
-        { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard' },
-        { id: 'homestays', label: 'Quản lý Homestay', icon: Home, path: '/admin/homestays' },
-        { id: 'amenities', label: 'Quản lý tiện ích', icon: Sparkles, path: '/admin/amenities' },
-        { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/admin/bookings' },
-        { id: 'customers', label: 'Khách hàng', icon: Users, path: '/admin/customers' },
-        { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/admin/staff' },
-        { id: 'revenue', label: 'Doanh thu', icon: TrendingUp, path: '/admin/revenue' },
-        { id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings' },
-      ]
+    ? adminNavItems
     : [
         { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
         { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/manager/bookings' },
@@ -787,7 +777,7 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
           </button>
         </div>
 
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.id === 'staff';
