@@ -198,5 +198,21 @@ export const apiConfig = {
     coupons: {
       validate: "/api/coupons/validate",
     },
+    experiences: {
+      list: "/api/experiences",
+      detail: (id: string) => `/api/experiences/${id}`,
+      create: "/api/experiences",
+      update: (id: string) => `/api/experiences/${id}`,
+      delete: (id: string) => `/api/experiences/${id}`,
+      updateStatus: (id: string) => `/api/experiences/${id}/status`,
+      categories: "/api/experiences/categories",
+    },
+    serviceCategory: {
+      list: "/api/ServiceCategory",
+      detail: (id: string) => `/api/ServiceCategory/${id}`,
+      create: "/api/ServiceCategory",
+      update: (id: string) => `/api/ServiceCategory/${id}`,
+      delete: (id: string) => `/api/ServiceCategory/${id}`,
+    },
   },
 };

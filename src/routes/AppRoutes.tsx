@@ -39,6 +39,7 @@ import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import NotificationsPage from '../pages/customer/NotificationsPage';
 import { authService } from '../services/authService';
 import StaffDashboard from '../pages/staff/StaffDashboard';
+import ExperienceManagement from '../pages/shared/ExperienceManagement';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -215,6 +216,14 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/manager/experiences"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ExperienceManagement />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected Routes - Staff */}
       <Route
@@ -280,6 +289,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AmenityManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/experiences"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <ExperienceManagement />
           </ProtectedRoute>
         }
       />
