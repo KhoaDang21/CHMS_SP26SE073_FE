@@ -37,6 +37,7 @@ import ManagerStaffManagement from '../pages/manager/ManagerStaffManagement';
 import ProfilePage from '../pages/customer/ProfilePage';
 import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import NotificationsPage from '../pages/customer/NotificationsPage';
+import BookingExperiencesPage from '../pages/customer/BookingExperiencesPage';
 import { authService } from '../services/authService';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ExperienceManagement from '../pages/shared/ExperienceManagement';
@@ -115,6 +116,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <BookingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/bookings/:bookingId/services"
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <BookingExperiencesPage />
           </ProtectedRoute>
         }
       />

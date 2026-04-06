@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star, AlertCircle, Check } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
@@ -10,6 +10,11 @@ import { publicHomestayService } from '../../services/publicHomestayService';
 import PaymentModal from './PaymentModal';
 import ReviewModal from './ReviewModal';
 import type { Homestay } from '../../types/homestay.types';
+import {
+  buildDisplaySpecialRequests,
+  buildSpecialRequestsWithExperiences,
+  extractBookingExperienceData,
+} from '../../utils/bookingExperience';
 
 const cleanLoadingText = (value?: string | null): string | undefined => {
   if (!value) return undefined;
@@ -18,6 +23,7 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
 };
 
 export default function BookingsPage() {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'confirmed' | 'staying' | 'completed' | 'cancelled'>('all');
@@ -140,7 +146,7 @@ export default function BookingsPage() {
     const maxG = detailHomestay?.maxGuests ?? 100;
     setEditGuests(Math.min(selected.guestsCount || 1, maxG));
     setEditPhone(selected.contactPhone || '');
-    setEditSpecialRequests(selected.specialRequests || '');
+    setEditSpecialRequests(extractBookingExperienceData(selected.specialRequests).note || '');
   };
 
   const editNights = (start: string, end: string) => {
@@ -164,6 +170,10 @@ export default function BookingsPage() {
     const end = new Date(checkOut);
     const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
+  };
+
+  const hasSelectedExperiences = (specialRequests?: string) => {
+    return extractBookingExperienceData(specialRequests).items.length > 0;
   };
 
   const getStatusColor = (status: string) => {
@@ -382,6 +392,15 @@ export default function BookingsPage() {
                         )}
 
                         <div className="flex items-center gap-2">
+                          {(b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && !hasSelectedExperiences(b.specialRequests) && (
+                            <button
+                              onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Thêm dịch vụ
+                            </button>
+                          )}
                           {(() => {
                             const existing = myReviewsMap[b.id];
                             if (existing) {
@@ -582,9 +601,9 @@ export default function BookingsPage() {
                           <MessageSquareText className="w-4 h-4 text-blue-500" />
                           Yêu cầu đặc biệt
                         </div>
-                        {selected.specialRequests ? (
+                        {buildDisplaySpecialRequests(selected.specialRequests) ? (
                           <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-xl border border-gray-100 p-4">
-                            {selected.specialRequests}
+                            {buildDisplaySpecialRequests(selected.specialRequests)}
                           </div>
                         ) : (
                           <div className="flex flex-col items-center justify-center gap-2 bg-gray-50 rounded-xl border border-dashed border-gray-200 p-5 text-center">
@@ -719,8 +738,13 @@ export default function BookingsPage() {
                                   if (res?.success) {
                                     toast.success(res.message || 'Đã cập nhật booking');
                                     // update special requests via dedicated endpoint
-                                    if (editSpecialRequests !== (selected.specialRequests || '')) {
-                                      const sr = await bookingService.updateSpecialRequests(selected.id, editSpecialRequests || '');
+                                    const currentParsed = extractBookingExperienceData(selected.specialRequests);
+                                    const mergedSpecialRequests = buildSpecialRequestsWithExperiences(
+                                      editSpecialRequests || '',
+                                      currentParsed.items,
+                                    );
+                                    if (mergedSpecialRequests !== (selected.specialRequests || '')) {
+                                      const sr = await bookingService.updateSpecialRequests(selected.id, mergedSpecialRequests || '');
                                       if (!sr?.success) {
                                         toast.error(sr?.message || 'Cập nhật yêu cầu đặc biệt thất bại');
                                       }
@@ -756,6 +780,15 @@ export default function BookingsPage() {
                       ) : (
                         /* Thao tác - Buttons */
                         <div className="flex flex-col gap-4 pt-2">
+                          {(selected.status === 'PENDING' || selected.status === 'CONFIRMED' || selected.status === 'CHECKED_IN') && !hasSelectedExperiences(selected.specialRequests) && (
+                            <button
+                              onClick={() => navigate(`/customer/bookings/${selected.id}/services`)}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Thêm dịch vụ cho booking này
+                            </button>
+                          )}
                           {/* Nút Thanh toán — PENDING (chưa cọc) hoặc CONFIRMED + DEPOSIT_PAID (còn lại) */}
                           {(selected.status === 'PENDING' || (selected.status === 'CONFIRMED' && selected.paymentStatus === 'DEPOSIT_PAID')) && (
                             <button
