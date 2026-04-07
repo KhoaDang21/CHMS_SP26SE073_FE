@@ -18,9 +18,9 @@ import {
   X,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
-import { adminBookingService } from '../../services/adminBookingService';
+import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService } from '../../services/extraChargeService';
-import type { Booking, BookingStatus } from '../../types/booking.types';
+import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
@@ -60,7 +60,7 @@ export default function StaffDashboard() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await adminBookingService.getAllBookings();
+      const data = await staffBookingService.getAllBookings();
       setBookings(data);
 
       const today = new Date().toISOString().split('T')[0];
@@ -122,8 +122,8 @@ export default function StaffDashboard() {
 
   const handleCompleteTask = async (task: TodayTask) => {
     try {
-      if (task.type === 'checkin' && task.paymentStatus !== 'paid') {
-        toast.error('Khách phải thanh toán đủ trước khi check-in');
+      if (task.type === 'checkin' && task.paymentStatus !== 'paid' && task.paymentStatus !== 'deposit_paid') {
+        toast.error('Khách phải thanh toán cọc trước khi check-in');
         return;
       }
 
@@ -139,8 +139,13 @@ export default function StaffDashboard() {
         return;
       }
 
-      const nextStatus: BookingStatus = task.type === 'checkin' ? 'checked_in' : 'completed';
-      await adminBookingService.updateBooking(task.bookingId, { status: nextStatus });
+      if (task.type === 'checkin') {
+        const checkInResult = await staffBookingService.checkIn(task.bookingId);
+        if (!checkInResult.success) {
+          toast.error(checkInResult.message || 'Không thể check-in booking');
+          return;
+        }
+      }
 
       setTodayTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, status: 'completed' } : item)));
       toast.success('Đã hoàn thành công việc!');
@@ -170,7 +175,12 @@ export default function StaffDashboard() {
         }
       }
 
-      await adminBookingService.updateBooking(checkoutBooking.id, { status: 'completed' });
+      const checkoutResult = await staffBookingService.checkOut(checkoutBooking.id);
+      if (!checkoutResult.success) {
+        toast.error(checkoutResult.message || 'Không thể checkout booking');
+        return;
+      }
+
       setTodayTasks((prev) => prev.map((item) => (item.bookingId === checkoutBooking.id ? { ...item, status: 'completed' } : item)));
       toast.success(`Đã hoàn tất kiểm phòng và checkout: ${checkoutBooking.customerName}`);
       setShowCheckoutModal(false);

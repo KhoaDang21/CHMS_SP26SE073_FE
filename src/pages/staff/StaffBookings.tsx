@@ -19,7 +19,7 @@ import {
   LayoutDashboard,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
-import { adminBookingService } from '../../services/adminBookingService';
+import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
 import { Pagination } from '../../components/common/Pagination';
 import type { Booking } from '../../types/booking.types';
@@ -56,7 +56,7 @@ export default function StaffBookings() {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      const data = await adminBookingService.getAllBookings();
+      const data = await staffBookingService.getAllBookings();
       setBookings(data);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -117,13 +117,17 @@ export default function StaffBookings() {
   }, [filteredBookings, currentPage]);
 
   const handleCheckIn = async (booking: Booking) => {
-    if (booking.paymentStatus !== 'paid') {
-      toast.error('Khách phải thanh toán đủ trước khi check-in');
+    if (booking.paymentStatus !== 'paid' && booking.paymentStatus !== 'deposit_paid') {
+      toast.error('Khách phải thanh toán cọc trước khi check-in');
       return;
     }
 
     try {
-      await adminBookingService.updateBooking(booking.id, { status: 'checked_in' });
+      const result = await staffBookingService.checkIn(booking.id);
+      if (!result.success) {
+        toast.error(result.message || 'Không thể check-in booking');
+        return;
+      }
       toast.success(`Check-in thành công: ${booking.customerName}`);
       await loadBookings();
     } catch (error) {
@@ -156,7 +160,12 @@ export default function StaffBookings() {
         }
       }
 
-      await adminBookingService.updateBooking(checkoutBooking.id, { status: 'completed' });
+      const checkoutResult = await staffBookingService.checkOut(checkoutBooking.id);
+      if (!checkoutResult.success) {
+        toast.error(checkoutResult.message || 'Không thể checkout booking');
+        return;
+      }
+
       toast.success(`Đã hoàn tất kiểm phòng và checkout: ${checkoutBooking.customerName}`);
       setShowCheckoutModal(false);
       setCheckoutBooking(null);
@@ -166,22 +175,6 @@ export default function StaffBookings() {
       toast.error('Không thể hoàn tất checkout');
     } finally {
       setCheckoutSubmitting(false);
-    }
-  };
-
-  // @ts-ignore - Used when payment confirmation feature is enabled on BE
-  const handleConfirmPayment = async (booking: Booking) => {
-    try {
-      const result = await adminBookingService.confirmPayment(booking.id);
-      if (result.success) {
-        toast.success(`Xác nhận thanh toán thành công: ${booking.customerName}`);
-        await loadBookings();
-      } else {
-        toast.error(result.message || 'Không thể xác nhận thanh toán');
-      }
-    } catch (error) {
-      console.error('Confirm payment error:', error);
-      toast.error('Không thể xác nhận thanh toán');
     }
   };
 
@@ -263,7 +256,8 @@ export default function StaffBookings() {
   };
 
   // Flow nghiệp vụ: confirmed + paid -> checked_in; checked_in -> completed.
-  const canCheckIn = (booking: Booking) => booking.status === 'confirmed' && booking.paymentStatus === 'paid';
+  const canCheckIn = (booking: Booking) =>
+    booking.status === 'confirmed' && (booking.paymentStatus === 'paid' || booking.paymentStatus === 'deposit_paid');
   const canCheckOut = (booking: Booking) => booking.status === 'checked_in';
   const totalDetailAmount = detailCharges.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
@@ -447,17 +441,6 @@ export default function StaffBookings() {
                       </div>
 
                       <div className="flex flex-col gap-2 lg:w-48">
-                        {booking.status === 'confirmed' && booking.paymentStatus === 'deposit_paid' && (
-                          <button
-                            disabled
-                            title="Chức năng đang được phát triển trên BE"
-                            type="button"
-                            className="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-60 text-sm font-medium flex items-center justify-center gap-2"
-                          >
-                            <ArrowUpRight className="w-4 h-4" />
-                            Xác nhận thanh toán tiền mặt
-                          </button>
-                        )}
                         {canCheckIn(booking) && (
                           <button
                             onClick={() => handleCheckIn(booking)}
@@ -465,7 +448,7 @@ export default function StaffBookings() {
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
                           >
                             <ArrowUpRight className="w-4 h-4" />
-                            Check-in
+                            {booking.paymentStatus === 'deposit_paid' ? 'Xác nhận tiền mặt & check-in' : 'Check-in'}
                           </button>
                         )}
                         {canCheckOut(booking) && (
