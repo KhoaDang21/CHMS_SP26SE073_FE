@@ -23,8 +23,14 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
 
+    const canUseWishlist = () => {
+        if (!authService.isAuthenticated()) return false;
+        const role = authService.getCurrentUser()?.role?.toLowerCase();
+        return role === 'customer';
+    };
+
     const load = async () => {
-        if (!authService.isAuthenticated()) {
+        if (!canUseWishlist()) {
             setFavorites(new Set());
             setLoading(false);
             return;
@@ -55,6 +61,8 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     const toggle = async (id: string) => {
+        if (!canUseWishlist()) return;
+
         const isFav = favorites.has(id);
         if (isFav) {
             removeLocal(id);

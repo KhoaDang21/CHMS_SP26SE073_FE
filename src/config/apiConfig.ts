@@ -109,7 +109,17 @@ export const apiConfig = {
       update: (id: string) => `/api/admin/bookings/${id}`,
     },
     staffBookings: {
-      confirmPayment: (id: string) => `/api/staff/bookings/${id}/payment`,
+      list: "/api/staff/bookings",
+      create: "/api/staff/bookings",
+      today: "/api/staff/bookings/today",
+      detail: (id: string) => `/api/staff/bookings/${id}`,
+      confirm: (id: string) => `/api/staff/bookings/${id}/confirm`,
+      cancel: (id: string) => `/api/staff/bookings/${id}/cancel`,
+      checkIn: (id: string) => `/api/staff/bookings/${id}/check-in`,
+      checkOut: (id: string) => `/api/staff/bookings/${id}/check-out`,
+      extend: (id: string) => `/api/staff/bookings/${id}/extend`,
+      // Legacy alias: BE uses check-in endpoint for cash-payment confirmation flow.
+      confirmPayment: (id: string) => `/api/staff/bookings/${id}/check-in`,
     },
     adminCustomers: {
       list: "/api/admin/customers",
