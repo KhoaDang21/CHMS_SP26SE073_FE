@@ -57,7 +57,7 @@ export const publicHomestayService = {
         ownerId: it.ownerId ?? it.OwnerId ?? "",
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
-        depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 50,
+        depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
         createdAt: it.createdAt ?? it.CreatedAt ?? "",
         updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
       }));
@@ -113,7 +113,7 @@ export const publicHomestayService = {
         ownerId: it.ownerId ?? it.OwnerId ?? "",
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
-        depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 50,
+        depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
         createdAt: it.createdAt ?? it.CreatedAt ?? "",
         updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
       } as Homestay;
@@ -163,7 +163,7 @@ export const publicHomestayService = {
         ownerId: it.ownerId ?? it.OwnerId ?? "",
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
-        depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 50,
+        depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
         createdAt: it.createdAt ?? it.CreatedAt ?? "",
         updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
       }));
