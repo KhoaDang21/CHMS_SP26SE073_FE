@@ -340,7 +340,7 @@ export default function BookingsPage() {
                         </span>
                         {/* Payment status badges */}
                         {b.status === 'PENDING' && b.paymentStatus === 'UNPAID' && typeof b.depositAmount === 'number' && b.depositAmount > 0 && (
-                          <span title={`Cọc ${b.depositPercentage || 50}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                          <span title={`Cọc ${b.depositPercentage || 20}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
                             Cọc: {b.depositAmount.toLocaleString('vi-VN')}đ
                           </span>
                         )}
@@ -618,11 +618,11 @@ export default function BookingsPage() {
                             {selected.totalPrice && (
                               <div className="text-xs text-gray-500 mt-2 space-y-1">
                                 <div className="flex justify-between">
-                                  <span>Cọc ({selected.depositPercentage || 50}%)</span>
+                                  <span>Cọc ({selected.depositPercentage || 20}%)</span>
                                   <span className="font-medium">{(selected.depositAmount || 0).toLocaleString('vi-VN')}đ</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span>Còn lại ({100 - (selected.depositPercentage || 50)}%)</span>
+                                  <span>Còn lại ({100 - (selected.depositPercentage || 20)}%)</span>
                                   <span className="font-medium">{(selected.remainingAmount || 0).toLocaleString('vi-VN')}đ</span>
                                 </div>
                               </div>

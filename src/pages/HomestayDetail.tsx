@@ -680,10 +680,10 @@ export default function HomestayDetail() {
                                     {computedTotal !== undefined && (
                                         <div className="mt-3 pt-3 border-t border-dashed border-orange-200 space-y-1.5">
                                             {(() => {
-                                                const rate = (homestay.depositPercentage ?? 50) / 100;
+                                                const rate = (homestay.depositPercentage ?? 20) / 100;
                                                 const deposit = computedTotal * rate;
                                                 const remaining = computedTotal - deposit;
-                                                const pct = homestay.depositPercentage ?? 50;
+                                                const pct = homestay.depositPercentage ?? 20;
                                                 return (
                                                     <>
                                                         <div className="flex items-center justify-between text-sm">
@@ -772,7 +772,7 @@ export default function HomestayDetail() {
                                             const bookingData = res.data
                                             const bookingTotal = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
                                             // depositAmount và remainingAmount từ BE — không tính lại FE
-                                            const depositRate = (homestay!.depositPercentage ?? 50) / 100
+                                            const depositRate = (homestay!.depositPercentage ?? 20) / 100
                                             const depositAmount = bookingData.depositAmount ?? bookingTotal * depositRate
                                             const remainingAmount = bookingData.remainingAmount ?? bookingTotal - depositAmount
                                             setPendingBooking({
