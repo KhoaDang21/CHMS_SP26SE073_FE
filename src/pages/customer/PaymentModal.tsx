@@ -105,8 +105,8 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
               {/* Breakdown cọc / còn lại */}
               {(() => {
                 const isDepositPayment = !booking.paymentLabel || booking.paymentLabel === 'Đặt cọc';
-                // Ưu tiên: depositAmount từ BE → nếu không có, dùng depositPercentage → fallback 50%
-                const depositPercent = booking.depositPercentage ?? 50;
+                // Ưu tiên: depositAmount từ BE → nếu không có, dùng depositPercentage → fallback 20%
+                const depositPercent = booking.depositPercentage ?? 20;
                 const deposit = booking.depositAmount ?? (booking.bookingTotal * depositPercent / 100);
                 const remaining = booking.remainingAmount ?? (booking.bookingTotal - deposit);
                 return (
