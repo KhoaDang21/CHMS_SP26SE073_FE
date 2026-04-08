@@ -167,7 +167,7 @@ export default function CustomerDashboard() {
 
   return (
     <MainLayout>
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-8 space-y-8">
         {/* Welcome Section */}
         <div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
