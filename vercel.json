@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://163.227.230.54:8088/api/:path*"
+      "destination": "https://api.chms.io.vn/api/:path*"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
