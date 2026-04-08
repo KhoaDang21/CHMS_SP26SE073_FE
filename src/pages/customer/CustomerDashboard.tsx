@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Users, ChevronRight } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+import { MapPin, Calendar, X, ChevronRight } from "lucide-react";
 import { bookingService, type Booking } from "../../services/bookingService";
-import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 import MainLayout from "../../layouts/MainLayout";
 import { publicHomestayService } from "../../services/publicHomestayService";
 import { authService } from "../../services/authService";
@@ -33,6 +32,7 @@ export default function CustomerDashboard() {
   // State cho bookings từ API
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+  const [showUpcomingModal, setShowUpcomingModal] = useState(false);
 
   // State for all homestays
   const [allHomestays, setAllHomestays] = useState<any[]>([]);
@@ -89,14 +89,6 @@ export default function CustomerDashboard() {
     }
   };
 
-  const homestayMap = useMemo(() => {
-    const map: Record<string, any> = {};
-    allHomestays.forEach((h: any) => {
-      if (h?.id) map[h.id] = h;
-    });
-    return map;
-  }, [allHomestays]);
-
   // Filter districts when province changes
   useEffect(() => {
     setSelectedDistrict("");
@@ -125,6 +117,20 @@ export default function CustomerDashboard() {
     });
     return blocked;
   }, [checkInDate, checkOutDate, myBookings]);
+
+  const upcomingConfirmedBookings = useMemo(() => {
+    const now = new Date();
+    const oneWeekLater = new Date();
+    oneWeekLater.setDate(now.getDate() + 7);
+
+    return myBookings
+      .filter((booking) => {
+        if (booking.status !== 'CONFIRMED') return false;
+        const checkIn = new Date(booking.checkIn);
+        return checkIn >= now && checkIn <= oneWeekLater;
+      })
+      .sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime());
+  }, [myBookings]);
 
   // Filter homestays when province/district/date changes
   useEffect(() => {
@@ -157,13 +163,6 @@ export default function CustomerDashboard() {
 
     setFilteredHomestays(result);
   }, [selectedProvince, selectedDistrict, checkInDate, checkOutDate, allHomestays, allDistricts, myBookings]);
-
-  // Lọc booking sắp tới (CONFIRMED/CHECKED_IN và chưa qua ngày checkOut)
-  const upcomingBookings = myBookings.filter(
-    b => (b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && new Date(b.checkOut) >= new Date()
-  );
-
-
 
   return (
     <MainLayout>
@@ -277,103 +276,103 @@ export default function CustomerDashboard() {
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             <p className="mt-2 text-gray-600">Đang tải booking...</p>
           </div>
-        ) : upcomingBookings.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">Chuyến Đi Sắp Tới</h3>
-              <Link to="/customer/bookings" className="text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium">
-                Xem Tất Cả
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {upcomingBookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="flex flex-col sm:flex-row">
-                    <div className="sm:w-40 h-40 sm:h-auto relative bg-gray-100">
-                      {(() => {
-                        const hs = homestayMap[booking.homestayId];
-                        const img = hs?.images?.[0] || '';
-                        const alt = hs?.name || 'Homestay';
-                        return (
-                          <ImageWithFallback
-                            src={img}
-                            alt={alt}
-                            className="w-full h-full object-cover"
-                          />
-                        );
-                      })()}
-                    </div>
-                    <div className="flex-1 p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            {(() => {
-                              const hs = homestayMap[booking.homestayId];
-                              const cleaned = booking.homestayName && !/loading/i.test(String(booking.homestayName))
-                                ? booking.homestayName
-                                : undefined;
-                              return hs?.name || cleaned || 'Homestay';
-                            })()}
-                          </h4>
-                          <p className="text-sm text-gray-600 flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            {(() => {
-                              const hs = homestayMap[booking.homestayId];
-                              if (hs?.address) return hs.address;
-                              const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
-                              return cityCountry || 'Đang cập nhật';
-                            })()}
-                          </p>
-                        </div>
-                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${
-                          booking.status === 'CONFIRMED'
-                            ? 'bg-blue-100 text-blue-700'
-                            : booking.status === 'CHECKED_IN'
-                            ? 'bg-green-100 text-green-700'
-                            : booking.status === 'PENDING'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : booking.status === 'CANCELLED'
-                            ? 'bg-red-100 text-red-700'
-                            : booking.status === 'COMPLETED'
-                            ? 'bg-cyan-100 text-cyan-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {booking.status === 'CONFIRMED'
-                            ? 'Đã Xác Nhận'
-                            : booking.status === 'CHECKED_IN'
-                            ? 'Đang Lưu Trú'
-                            : booking.status === 'PENDING'
-                            ? 'Chờ Thanh Toán Cọc'
-                            : booking.status === 'CANCELLED'
-                            ? 'Đã Hủy'
-                            : booking.status === 'COMPLETED'
-                            ? 'Hoàn Thành'
-                            : 'Trạng Thái'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(booking.checkIn).toLocaleDateString("vi-VN")}
-                        </span>
-                        <span>→</span>
-                        <span>
-                          {new Date(booking.checkOut).toLocaleDateString("vi-VN")}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Users className="w-4 h-4" />
-                        {booking.guestsCount} Khách
-                      </div>
-                    </div>
-                  </div>
+        ) : (
+          <div className={`rounded-3xl border px-6 py-6 shadow-sm sm:px-8 ${upcomingConfirmedBookings.length > 0 ? 'border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white' : 'border-cyan-100 bg-gradient-to-r from-cyan-50 via-white to-white'}`}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl">
+                <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${upcomingConfirmedBookings.length > 0 ? 'bg-amber-100 text-amber-700' : 'bg-cyan-100 text-cyan-700'}`}>
+                  {upcomingConfirmedBookings.length > 0 ? 'Thông báo chuyến đi' : 'Lời chào từ CHMS'}
                 </div>
-              ))}
+                <p className="mt-3 text-xl font-bold leading-8 text-gray-900 sm:text-2xl">
+                  {upcomingConfirmedBookings.length > 0
+                    ? 'Bạn đang có 1 chuyến đi sắp tới, hãy chú ý nhé.'
+                    : 'Chúng tôi rất vinh hạnh khi được đón tiếp bạn ở 1 homestay ven biển tuyệt đẹp.'}
+                </p>
+                {upcomingConfirmedBookings.length > 0 && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Có {upcomingConfirmedBookings.length} booking đã được xác nhận trong 7 ngày tới.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowUpcomingModal(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-black"
+                >
+                  Xem chuyến sắp tới
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showUpcomingModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+            <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Chuyến đi sắp tới</h3>
+                  <p className="text-sm text-gray-500">Danh sách booking đã được xác nhận trong 7 ngày tới</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowUpcomingModal(false)}
+                  className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+                {upcomingConfirmedBookings.length === 0 ? (
+                  <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-5 py-6 text-center text-gray-700">
+                    Hiện tại bạn chưa có booking nào trong 7 ngày tới.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {upcomingConfirmedBookings.map((booking) => {
+                      const hs = allHomestays.find((item) => item.id === booking.homestayId);
+                      const homestayName = hs?.name || booking.homestayName || 'Homestay';
+                      const location = hs?.address || `${hs?.districtName || ''}${hs?.districtName && hs?.provinceName ? ', ' : ''}${hs?.provinceName || ''}`.trim() || 'Đang cập nhật';
+
+                      return (
+                        <div key={booking.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <h4 className="text-lg font-semibold text-gray-900">{homestayName}</h4>
+                              <p className="mt-1 text-sm text-gray-600 flex items-center gap-1">
+                                <MapPin className="h-4 w-4" />
+                                {location}
+                              </p>
+                            </div>
+                            <span className="inline-flex w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                              Đã xác nhận
+                            </span>
+                          </div>
+
+                          <div className="mt-3 grid gap-2 text-sm text-gray-700 sm:grid-cols-3">
+                            <div className="rounded-xl bg-white px-4 py-3">
+                              <div className="text-xs uppercase tracking-wide text-gray-400">Check-in</div>
+                              <div className="mt-1 font-semibold">{new Date(booking.checkIn).toLocaleDateString('vi-VN')}</div>
+                            </div>
+                            <div className="rounded-xl bg-white px-4 py-3">
+                              <div className="text-xs uppercase tracking-wide text-gray-400">Check-out</div>
+                              <div className="mt-1 font-semibold">{new Date(booking.checkOut).toLocaleDateString('vi-VN')}</div>
+                            </div>
+                            <div className="rounded-xl bg-white px-4 py-3">
+                              <div className="text-xs uppercase tracking-wide text-gray-400">Khách</div>
+                              <div className="mt-1 font-semibold">{booking.guestsCount} khách</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
