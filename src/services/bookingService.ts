@@ -106,7 +106,7 @@ const mapBooking = (item: any): Booking => ({
   totalPrice: item.totalPrice,
   depositAmount: item.depositAmount,
   remainingAmount: item.remainingAmount,
-  depositPercentage: item.depositPercentage ?? 50, // Default 50% nếu BE không gửi
+  depositPercentage: item.depositPercentage ?? 20, // Default 20% nếu BE không gửi
   paymentStatus: item.paymentStatus ?? undefined,
   status: normalizeStatus(item.status),
   specialRequests: item.specialRequests ?? undefined,
