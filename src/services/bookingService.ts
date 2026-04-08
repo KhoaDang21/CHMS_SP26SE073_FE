@@ -90,29 +90,39 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
   return value;
 };
 
-const mapBooking = (item: any): Booking => ({
-  id: item.id,
-  homestayId: item.homestayId,
-  homestayName: cleanLoadingText(item.homestayName),
-  customerId: item.customerId,
-  customerName: cleanLoadingText(item.customerName),
-  checkIn: item.checkIn,
-  checkOut: item.checkOut,
-  totalNights: item.totalNights,
-  guestsCount: item.guestsCount,
-  pricePerNight: item.pricePerNight,
-  subTotal: item.subTotal,
-  discountAmount: item.discountAmount,
-  totalPrice: item.totalPrice,
-  depositAmount: item.depositAmount,
-  remainingAmount: item.remainingAmount,
-  depositPercentage: item.depositPercentage ?? 20, // Default 20% nếu BE không gửi
-  paymentStatus: item.paymentStatus ?? undefined,
-  status: normalizeStatus(item.status),
-  specialRequests: item.specialRequests ?? undefined,
-  contactPhone: item.contactPhone ?? undefined,
-  createdAt: item.createdAt,
-});
+const mapBooking = (item: any): Booking => {
+  const get = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = item?.[key];
+      if (value !== undefined && value !== null) return value;
+    }
+    return undefined;
+  };
+
+  return {
+    id: String(get('id', 'Id') ?? ''),
+    homestayId: String(get('homestayId', 'HomestayId') ?? ''),
+    homestayName: cleanLoadingText(get('homestayName', 'HomestayName')),
+    customerId: get('customerId', 'CustomerId'),
+    customerName: cleanLoadingText(get('customerName', 'CustomerName')),
+    checkIn: String(get('checkIn', 'CheckIn') ?? ''),
+    checkOut: String(get('checkOut', 'CheckOut') ?? ''),
+    totalNights: get('totalNights', 'TotalNights'),
+    guestsCount: Number(get('guestsCount', 'GuestsCount') ?? 0),
+    pricePerNight: get('pricePerNight', 'PricePerNight'),
+    subTotal: get('subTotal', 'SubTotal'),
+    discountAmount: get('discountAmount', 'DiscountAmount'),
+    totalPrice: get('totalPrice', 'TotalPrice'),
+    depositAmount: get('depositAmount', 'DepositAmount'),
+    remainingAmount: get('remainingAmount', 'RemainingAmount'),
+    depositPercentage: get('depositPercentage', 'DepositPercentage') ?? 20,
+    paymentStatus: get('paymentStatus', 'PaymentStatus') ?? undefined,
+    status: normalizeStatus(get('status', 'Status')),
+    specialRequests: get('specialRequests', 'SpecialRequests') ?? undefined,
+    contactPhone: get('contactPhone', 'ContactPhone') ?? undefined,
+    createdAt: get('createdAt', 'CreatedAt'),
+  };
+};
 
 export const bookingService = {
   /** GET /api/bookings — danh sách booking của user */
@@ -140,8 +150,14 @@ export const bookingService = {
         apiConfig.endpoints.bookings.detail(id),
       );
       const raw = response?.data ?? response;
-      if (!raw?.id) return null;
-      return mapBooking(raw);
+      if (!raw) return null;
+      if (raw?.success && raw?.data) {
+        const booking = mapBooking(raw.data);
+        return booking.id ? booking : null;
+      }
+      const booking = mapBooking(raw);
+      if (!booking.id) return null;
+      return booking;
     } catch (error) {
       console.error("Get booking detail error:", error);
       return null;

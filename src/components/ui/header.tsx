@@ -25,6 +25,7 @@ const navigationItems = [
 const authenticatedNavigationItems = [
   { name: 'Dashboard', nameVi: 'Trang Chủ', href: '/customer/dashboard', icon: Compass },
   { name: 'Booking', nameVi: 'Đặt Phòng', href: '/customer/bookings', icon: Compass },
+  { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/customer/experiences', icon: Star },
   { name: 'Favorites', nameVi: 'Yêu Thích', href: '/customer/favorites', icon: Heart },
   { name: 'Messages', nameVi: 'Hỗ Trợ', href: '/customer/messages', icon: MessageCircle },
 ];
