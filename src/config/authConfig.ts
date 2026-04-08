@@ -3,7 +3,7 @@
 export const authConfig = {
   // API Configuration
   api: {
-    baseUrl: "http://163.227.230.54:8088/api",
+    baseUrl: `${import.meta.env.VITE_API_URL || "http://163.227.230.54:8088"}/api`,
     endpoints: {
       login: "/Auth/login",
       googleLogin: "/Auth/google-login",
