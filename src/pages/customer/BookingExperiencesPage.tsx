@@ -30,12 +30,21 @@ export default function BookingExperiencesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
   useEffect(() => {
     let mounted = true;
 
     const load = async () => {
-      if (!bookingId) return;
+      if (!bookingId) {
+        setError('Không tìm thấy mã booking.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
+      setError(null);
       try {
         const [bookingDetail, allExperiences] = await Promise.all([
           bookingService.getBookingDetail(bookingId),
@@ -44,15 +53,22 @@ export default function BookingExperiencesPage() {
 
         if (!mounted) return;
 
-        if (!bookingDetail) {
-          toast.error('Không tìm thấy booking');
-          navigate('/customer/bookings');
+        let resolvedBooking = bookingDetail;
+        if (!resolvedBooking) {
+          const myBookings = await bookingService.getMyBookings();
+          resolvedBooking = myBookings.find((item) => item.id === bookingId) ?? null;
+        }
+
+        if (!resolvedBooking) {
+          const err = 'Không tìm thấy booking. Vui lòng kiểm tra lại.';
+          setError(err);
+          toast.error(err);
           return;
         }
 
-        setBooking(bookingDetail);
+        setBooking(resolvedBooking);
         const activeItems = allExperiences.filter((item) => item.isActive);
-        const bookingHomestayId = normalizeId(bookingDetail.homestayId);
+        const bookingHomestayId = normalizeId(resolvedBooking.homestayId);
         const filteredByHomestay = bookingHomestayId
           ? activeItems.filter((item) => normalizeId(item.homestayId) === bookingHomestayId)
           : activeItems;
@@ -63,16 +79,19 @@ export default function BookingExperiencesPage() {
           toast('Homestay này hiện chưa có dịch vụ thêm phù hợp.');
         }
 
-        const existing = extractBookingExperienceData(bookingDetail.specialRequests);
+        const existing = extractBookingExperienceData(resolvedBooking.specialRequests);
         const nextQty: Record<string, number> = {};
         existing.items.forEach((item) => {
           if (item.id) nextQty[item.id] = Math.max(1, item.qty);
         });
         setQtyMap(nextQty);
+        setError(null);
       } catch (error) {
         console.error('Load booking experiences error:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Không thể tải dữ liệu dịch vụ. Vui lòng thử lại.';
+        setError(errorMsg);
         if (mounted) {
-          toast.error('Không thể tải dữ liệu dịch vụ thêm');
+          toast.error(errorMsg);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -84,7 +103,7 @@ export default function BookingExperiencesPage() {
     return () => {
       mounted = false;
     };
-  }, [bookingId, navigate]);
+  }, [bookingId, navigate, retryCount]);
 
   const selectedItems = useMemo(() => {
     return experiences
@@ -128,7 +147,7 @@ export default function BookingExperiencesPage() {
 
   return (
     <MainLayout>
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <button
           onClick={() => navigate('/customer/bookings')}
           className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 mb-6"
@@ -137,7 +156,7 @@ export default function BookingExperiencesPage() {
           Quay lại booking
         </button>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -161,18 +180,45 @@ export default function BookingExperiencesPage() {
               <Loader2 className="w-8 h-8 mx-auto animate-spin mb-2" />
               Đang tải dữ liệu...
             </div>
+          ) : error ? (
+            <div className="py-12 text-center">
+              <div className="text-red-600 font-semibold mb-4">⚠️ {error}</div>
+              <button
+                onClick={() => setRetryCount((prev) => prev + 1)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Thử lại
+              </button>
+              <button
+                onClick={() => navigate('/customer/bookings')}
+                className="ml-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-semibold transition-colors"
+              >
+                Quay lại
+              </button>
+            </div>
           ) : experiences.length === 0 ? (
-            <div className="py-12 text-center text-gray-500">Chưa có dịch vụ khả dụng.</div>
+            <div className="py-12 text-center">
+              <div className="text-gray-500">Chưa có dịch vụ khả dụng cho homestay này.</div>
+              <button
+                onClick={() => navigate('/customer/bookings')}
+                className="mt-4 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-semibold transition-colors"
+              >
+                Quay lại
+              </button>
+            </div>
           ) : (
             <>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {experiences.map((item, index) => {
                   const qty = qtyMap[item.id] ?? 0;
                   const checked = qty > 0;
                   const thumbnail = item.imageUrl || fallbackExperienceImages[index % fallbackExperienceImages.length];
                   return (
-                    <div key={item.id} className="rounded-xl border border-gray-200 p-4 bg-gray-50">
-                      <div className="flex items-start justify-between gap-4">
+                    <div
+                      key={item.id}
+                      className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between gap-5">
                         <label className="flex items-start gap-3 flex-1 cursor-pointer">
                           <input
                             type="checkbox"
@@ -185,7 +231,7 @@ export default function BookingExperiencesPage() {
                             }}
                             className="mt-1"
                           />
-                          <div className="w-24 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0 bg-white">
+                          <div className="w-28 h-24 sm:w-32 sm:h-28 rounded-xl overflow-hidden border border-gray-200 flex-shrink-0 bg-white shadow-sm">
                             <ImageWithFallback
                               src={thumbnail}
                               alt={item.name}
@@ -193,19 +239,19 @@ export default function BookingExperiencesPage() {
                             />
                           </div>
                           <div className="min-w-0">
-                            <div className="font-semibold text-gray-900">{item.name}</div>
-                            <div className="text-sm text-gray-500 mt-0.5">
+                            <div className="font-semibold text-gray-900 text-lg">{item.name}</div>
+                            <div className="text-sm sm:text-base text-gray-500 mt-1">
                               {item.categoryName || item.categoryId || 'Không phân loại'}
                               {' • '}
                               {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : 'Liên hệ'}
                             </div>
                             {item.description && (
-                              <div className="text-sm text-gray-600 mt-1">{item.description}</div>
+                              <div className="text-sm text-gray-600 mt-2 leading-6">{item.description}</div>
                             )}
                           </div>
                         </label>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3 shrink-0">
                           <button
                             type="button"
                             onClick={() => {
@@ -214,11 +260,11 @@ export default function BookingExperiencesPage() {
                                 [item.id]: Math.max(0, (prev[item.id] ?? 0) - 1),
                               }));
                             }}
-                            className="w-8 h-8 rounded border border-gray-300 bg-white hover:bg-gray-100 flex items-center justify-center"
+                            className="w-10 h-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 flex items-center justify-center"
                           >
                             <Minus className="w-4 h-4" />
                           </button>
-                          <span className="w-6 text-center font-semibold">{qty}</span>
+                          <span className="w-7 text-center font-semibold text-base">{qty}</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -227,7 +273,7 @@ export default function BookingExperiencesPage() {
                                 [item.id]: Math.min(9, (prev[item.id] ?? 0) + 1),
                               }));
                             }}
-                            className="w-8 h-8 rounded border border-gray-300 bg-white hover:bg-gray-100 flex items-center justify-center"
+                            className="w-10 h-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 flex items-center justify-center"
                           >
                             <Plus className="w-4 h-4" />
                           </button>

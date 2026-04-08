@@ -17,7 +17,6 @@ import {
   LogOut,
   LayoutDashboard,
   UserCog,
-  TrendingUp,
   Shield,
   FileText,
   UserCheck,
@@ -154,7 +153,6 @@ export default function ManagerHomestayDetailPage() {
     { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
     { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-    { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
     { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
   ];
 

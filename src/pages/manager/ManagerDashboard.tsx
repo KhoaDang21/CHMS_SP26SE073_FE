@@ -16,36 +16,62 @@ import {
   Building2,
   Bell,
   MessageSquare,
+  TrendingUp,
+  ClipboardList,
+  XCircle,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { authService } from '../../services/authService';
-import { adminBookingService } from '../../services/adminBookingService';
-import { adminCustomerService } from '../../services/adminCustomerService';
 import { employeeService } from '../../services/employeeService';
 import { homestayService } from '../../services/homestayService';
+import { apiService } from '../../services/apiService';
 import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
 
 interface DashboardStats {
-  todayBookings: number;
-  pendingBookings: number;
-  checkedInToday: number;
+  totalBookings: number;
+  arrivalsToday: number;
+  inHouse: number;
   checkOutToday: number;
   totalRevenue: number;
-  activeCustomers: number;
-  totalStaff: number;
-  availableHomestays: number;
 }
 
-interface RecentActivity {
-  id: string;
-  type: 'booking' | 'checkin' | 'checkout' | 'customer';
-  title: string;
-  description: string;
-  time: string;
-  icon: LucideIcon;
-  color: string;
+interface RevenueData {
+  month: string;
+  revenue: number;
+}
+
+interface OccupancyData {
+  month: string;
+  occupancyRate: number;
+}
+
+interface BookingsReportData {
+  totalBookings: number;
+  statusDetails: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+  }>;
+}
+
+interface ManagerBookingsResponse {
+  success?: boolean;
+  data?: any[];
+  result?: any[];
+  items?: any[];
+}
+
+interface ManagerBookingStatisticsResponse {
+  success?: boolean;
+  data?: {
+    totalBookings?: number;
+    totalArrivalsToday?: number;
+    totalDeparturesToday?: number;
+    totalInHouse?: number;
+    totalRevenue?: number;
+  };
 }
 
 export default function ManagerDashboard() {
@@ -53,20 +79,113 @@ export default function ManagerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
-    todayBookings: 0,
-    pendingBookings: 0,
-    checkedInToday: 0,
+    totalBookings: 0,
+    arrivalsToday: 0,
+    inHouse: 0,
     checkOutToday: 0,
     totalRevenue: 0,
-    activeCustomers: 0,
-    totalStaff: 0,
-    availableHomestays: 0,
   });
-  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [upcomingCheckIns, setUpcomingCheckIns] = useState<Booking[]>([]);
   const [upcomingCheckOuts, setUpcomingCheckOuts] = useState<Booking[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [occupancyData, setOccupancyData] = useState<OccupancyData[]>([]);
+  const [bookingsReport, setBookingsReport] = useState<BookingsReportData>({
+    totalBookings: 0,
+    statusDetails: [],
+  });
 
   const user = authService.getCurrentUser();
+
+  const getAssignedProvinceId = async (): Promise<string | null> => {
+    if (!user) return null;
+
+    const pickProvinceId = (item: any): string | null => {
+      const candidate =
+        item?.managedProvinceId ||
+        item?.assignedProvinceId ||
+        item?.managedProvince?.id ||
+        item?.assignedProvince?.id ||
+        item?.provinceId;
+      return candidate ? String(candidate) : null;
+    };
+
+    try {
+      const byId = await employeeService.getEmployeeById(String(user.id));
+      const provinceId = pickProvinceId(byId);
+      if (provinceId) return provinceId;
+    } catch {
+      // Fallback to list search below.
+    }
+
+    try {
+      const all = await employeeService.getEmployees();
+      const me = all.find(
+        (item) =>
+          String(item.id || '').toLowerCase() === String(user.id || '').toLowerCase() ||
+          String(item.email || '').toLowerCase() === String(user.email || '').toLowerCase(),
+      );
+      return pickProvinceId(me);
+    } catch {
+      return null;
+    }
+  };
+
+  const getHomestayProvinceId = (homestay: any): string => {
+    return String(
+      homestay?.provinceId ||
+      homestay?.ProvinceId ||
+      homestay?.province?.id ||
+      homestay?.Province?.Id ||
+      '',
+    );
+  };
+
+  const toISO = (value: any): string => {
+    if (!value) return new Date().toISOString();
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return new Date().toISOString();
+    return date.toISOString();
+  };
+
+  const normalizeStatus = (value: any): Booking['status'] => {
+    const raw = String(value || '').toUpperCase();
+    if (raw === 'CONFIRMED') return 'confirmed';
+    if (raw === 'COMPLETED' || raw === 'CHECKED_OUT' || raw === 'CHECKEDOUT') return 'completed';
+    if (raw === 'CHECKED_IN' || raw === 'CHECKEDIN' || raw === 'IN_PROGRESS') return 'checked_in';
+    if (raw === 'CANCELLED' || raw === 'REJECTED') return 'cancelled';
+    return 'pending';
+  };
+
+  const toBookingFromManager = (item: any): Booking => {
+    const checkInDate = toISO(item?.checkInDate || item?.checkIn);
+    const checkOutDate = toISO(item?.checkOutDate || item?.checkOut);
+
+    return {
+      id: String(item?.id || ''),
+      bookingCode: String(item?.bookingCode || item?.code || String(item?.id || '').slice(0, 8) || 'N/A'),
+      homestayId: item?.homestayId ? String(item.homestayId) : undefined,
+      homestayName: String(item?.homestayName || item?.name || item?.propertyName || 'Homestay'),
+      homestayImage: item?.homestayImage || item?.imageUrl || item?.homestay?.imageUrls?.[0],
+      customerName: String(item?.customerName || item?.guestName || 'Khách hàng'),
+      customerEmail: String(item?.customerEmail || item?.email || ''),
+      customerPhone: String(item?.customerPhone || item?.contactPhone || item?.phoneNumber || ''),
+      checkInDate,
+      checkOutDate,
+      numberOfGuests: Number(item?.numberOfGuests ?? item?.guestsCount ?? 1),
+      numberOfNights: Number(item?.numberOfNights ?? item?.totalNights ?? 1),
+      totalPrice: Number(item?.totalPrice ?? item?.amount ?? 0),
+      pricePerNight: Number(item?.pricePerNight ?? 0),
+      status: normalizeStatus(item?.status),
+      paymentStatus: 'pending',
+      paymentMethod: item?.paymentMethod,
+      specialRequests: item?.specialRequests,
+      notes: item?.notes,
+      cancellationReason: item?.cancellationReason,
+      createdAt: toISO(item?.createdAt),
+      confirmedAt: item?.confirmedAt ? toISO(item.confirmedAt) : undefined,
+      cancelledAt: item?.cancelledAt ? toISO(item.cancelledAt) : undefined,
+    };
+  };
 
   useEffect(() => {
     void loadDashboardData();
@@ -75,89 +194,160 @@ export default function ManagerDashboard() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [bookingStats, customerStats, staffData, homestays, allBookings] = await Promise.all([
-        adminBookingService.getBookingStats(),
-        adminCustomerService.getCustomerStats(),
-        employeeService.getEmployees(),
+      const [homestays, managerBookingsResponse, managerBookingStatistics, assignedProvinceId] = await Promise.all([
         homestayService.getAllAdminHomestays(),
-        adminBookingService.getAllBookings(),
+        apiService.get<ManagerBookingsResponse>('/api/manager/bookings'),
+        apiService.get<ManagerBookingStatisticsResponse>('/api/manager/bookings/statistics').catch(() => null),
+        getAssignedProvinceId(),
       ]);
 
+      if (!assignedProvinceId) {
+        setStats((prev) => ({
+          ...prev,
+          totalBookings: 0,
+          arrivalsToday: 0,
+          inHouse: 0,
+          checkOutToday: 0,
+          totalRevenue: 0,
+        }));
+        setUpcomingCheckIns([]);
+        setUpcomingCheckOuts([]);
+        toast.warning('Bạn chưa được phân công tỉnh quản lý.');
+        return;
+      }
+
+      const allowedHomestayIds = new Set(
+        (homestays || [])
+          .filter((h: any) => getHomestayProvinceId(h) === assignedProvinceId)
+          .map((h: any) => String(h.id)),
+      );
+
+      const rawManagerBookings = Array.isArray(managerBookingsResponse)
+        ? managerBookingsResponse
+        : managerBookingsResponse?.data || managerBookingsResponse?.result || managerBookingsResponse?.items || [];
+
+      const allManagerBookings = (Array.isArray(rawManagerBookings) ? rawManagerBookings : [])
+        .map(toBookingFromManager)
+        .filter((b) => Boolean(b.id));
+
+      const scopedBookings = allManagerBookings.filter((b) => {
+        if (!allowedHomestayIds.size) return true;
+        return allowedHomestayIds.has(String(b.homestayId || ''));
+      });
+
+      const statsPayload = managerBookingStatistics?.data;
+      const totalBookings = Number(statsPayload?.totalBookings ?? scopedBookings.length);
+      const arrivalsToday = Number(statsPayload?.totalArrivalsToday ?? 0);
+      const checkOutToday = Number(statsPayload?.totalDeparturesToday ?? 0);
+      const inHouse = Number(statsPayload?.totalInHouse ?? 0);
+      const totalRevenue = Number(statsPayload?.totalRevenue ?? 0);
+
       const today = new Date().toISOString().split('T')[0];
-      const todayBookings = allBookings.filter((b) => b.createdAt?.startsWith(today)).length;
-
-      const checkedInToday = allBookings.filter(
-        (b) => b.checkInDate.startsWith(today) && b.status === 'checked_in',
-      ).length;
-
-      const checkOutToday = allBookings.filter((b) => b.checkOutDate.startsWith(today)).length;
 
       setStats({
-        todayBookings,
-        pendingBookings: bookingStats.pending,
-        checkedInToday,
+        totalBookings,
+        arrivalsToday,
+        inHouse,
         checkOutToday,
-        totalRevenue: bookingStats.totalRevenue,
-        activeCustomers: customerStats.active + customerStats.vip,
-        totalStaff: staffData.length,
-        availableHomestays: homestays.filter((h) => h.status === 'ACTIVE').length,
+        totalRevenue,
       });
+
+      // Build booking status distribution from /api/manager/bookings
+      const statusBuckets = [
+        { key: 'pending', label: 'PENDING' },
+        { key: 'confirmed', label: 'CONFIRMED' },
+        { key: 'checked_in', label: 'CHECKED_IN' },
+        { key: 'completed', label: 'COMPLETED' },
+        { key: 'cancelled', label: 'CANCELLED' },
+      ] as const;
+
+      const totalBookingsForStatus = scopedBookings.length;
+      setBookingsReport({
+        totalBookings: totalBookingsForStatus,
+        statusDetails: statusBuckets.map((bucket) => {
+          const count = scopedBookings.filter((b) => b.status === bucket.key).length;
+          return {
+            status: bucket.label,
+            count,
+            percentage: totalBookingsForStatus > 0 ? Math.round((count / totalBookingsForStatus) * 100) : 0,
+          };
+        }),
+      });
+
+      // Calculate revenue by month from scoped bookings (COMPLETED only)
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const revenueByMonth: Record<string, number> = {};
+      months.forEach((month) => {
+        revenueByMonth[month] = 0;
+      });
+
+      scopedBookings
+        .filter((b) => b.status === 'completed')
+        .forEach((b) => {
+          const date = new Date(b.checkOutDate || b.checkInDate);
+          const month = months[date.getMonth()];
+          revenueByMonth[month] = (revenueByMonth[month] || 0) + (Number(b.totalPrice) || 0);
+        });
+
+      const revData: RevenueData[] = months.map((month) => ({
+        month,
+        revenue: revenueByMonth[month] || 0,
+      }));
+      setRevenueData(revData);
+
+      // Calculate occupancy rate by month (COMPLETED bookings only)
+      const occupancyByMonth: Record<string, { days: number; occupiedDays: number }> = {};
+      months.forEach((month) => {
+        occupancyByMonth[month] = { days: 0, occupiedDays: 0 };
+      });
+
+      scopedBookings
+        .filter((b) => b.status === 'completed' || b.status === 'checked_in')
+        .forEach((b) => {
+          const checkIn = new Date(b.checkInDate);
+          const checkOut = new Date(b.checkOutDate);
+          const startMonth = checkIn.getMonth();
+          const endMonth = checkOut.getMonth();
+
+          for (let m = startMonth; m <= endMonth && m < 12; m++) {
+            const month = months[m];
+            const monthStart = new Date(checkIn.getFullYear(), m, 1);
+            const monthEnd = new Date(checkIn.getFullYear(), m + 1, 0);
+
+            const occupiedStart = m === startMonth ? checkIn : monthStart;
+            const occupiedEnd = m === endMonth ? checkOut : monthEnd;
+
+            const daysInMonth = new Date(checkIn.getFullYear(), m + 1, 0).getDate();
+            const occupiedDays = Math.ceil((occupiedEnd.getTime() - occupiedStart.getTime()) / (1000 * 60 * 60 * 24));
+
+            occupancyByMonth[month].days = daysInMonth;
+            occupancyByMonth[month].occupiedDays += occupiedDays;
+          }
+        });
+
+      const occData: OccupancyData[] = months.map((month) => ({
+        month,
+        occupancyRate:
+          occupancyByMonth[month].days > 0
+            ? Math.round((occupancyByMonth[month].occupiedDays / (occupancyByMonth[month].days * allowedHomestayIds.size)) * 100)
+            : 0,
+      }));
+      setOccupancyData(occData);
 
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-      const upcomingIns = allBookings
+      const upcomingIns = scopedBookings
         .filter((b) => b.checkInDate.startsWith(today) || b.checkInDate.startsWith(tomorrowStr))
         .slice(0, 5);
 
-      const upcomingOuts = allBookings
+      const upcomingOuts = scopedBookings
         .filter((b) => b.checkOutDate.startsWith(today) || b.checkOutDate.startsWith(tomorrowStr))
         .slice(0, 5);
 
       setUpcomingCheckIns(upcomingIns);
       setUpcomingCheckOuts(upcomingOuts);
-
-      const activities: RecentActivity[] = [
-        {
-          id: '1',
-          type: 'booking',
-          title: 'Đơn đặt phòng mới',
-          description: 'Khách hàng vừa tạo đơn đặt phòng mới',
-          time: '10 phút trước',
-          icon: Calendar,
-          color: 'text-blue-600 bg-blue-100',
-        },
-        {
-          id: '2',
-          type: 'checkin',
-          title: 'Check-in thành công',
-          description: 'Một khách đã hoàn tất check-in',
-          time: '30 phút trước',
-          icon: CheckCircle,
-          color: 'text-green-600 bg-green-100',
-        },
-        {
-          id: '3',
-          type: 'customer',
-          title: 'Khách hàng mới',
-          description: 'Có tài khoản khách hàng mới đăng ký',
-          time: '1 giờ trước',
-          icon: Users,
-          color: 'text-purple-600 bg-purple-100',
-        },
-        {
-          id: '4',
-          type: 'checkout',
-          title: 'Check-out hoàn tất',
-          description: 'Một booking đã hoàn tất lưu trú',
-          time: '2 giờ trước',
-          icon: Clock,
-          color: 'text-orange-600 bg-orange-100',
-        },
-      ];
-
-      setRecentActivities(activities);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       toast.error('Không thể tải dữ liệu dashboard');
@@ -285,9 +475,9 @@ export default function ManagerDashboard() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">Đặt phòng hôm nay</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.todayBookings}</p>
-                  <p className="text-xs text-green-600 mt-1">+2 so với hôm qua</p>
+                  <p className="text-gray-600 text-sm mb-1">Tổng đặt phòng</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.totalBookings}</p>
+                  <p className="text-xs text-gray-500 mt-1">Từ thống kê manager</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-6 h-6 text-blue-600" />
@@ -298,9 +488,9 @@ export default function ManagerDashboard() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">Chờ xác nhận</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.pendingBookings}</p>
-                  <p className="text-xs text-red-600 mt-1">Cần xử lý</p>
+                  <p className="text-gray-600 text-sm mb-1">Khách đến hôm nay</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.arrivalsToday}</p>
+                  <p className="text-xs text-gray-500 mt-1">Từ thống kê manager</p>
                 </div>
                 <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                   <AlertCircle className="w-6 h-6 text-yellow-600" />
@@ -311,9 +501,9 @@ export default function ManagerDashboard() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">Check-in hôm nay</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.checkedInToday}</p>
-                  <p className="text-xs text-gray-500 mt-1">{stats.checkOutToday} check-out</p>
+                  <p className="text-gray-600 text-sm mb-1">Khách đang lưu trú</p>
+                  <p className="text-3xl font-bold text-gray-900">{stats.inHouse}</p>
+                  <p className="text-xs text-gray-500 mt-1">{stats.checkOutToday} khách rời hôm nay</p>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <CheckCircle className="w-6 h-6 text-green-600" />
@@ -328,7 +518,7 @@ export default function ManagerDashboard() {
                   <p className="text-2xl font-bold text-gray-900">
                     {(stats.totalRevenue / 1000000).toFixed(1)}M ₫
                   </p>
-                  <p className="text-xs text-green-600 mt-1">+15% so với tháng trước</p>
+                  <p className="text-xs text-gray-500 mt-1">Từ thống kê manager</p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <DollarSign className="w-6 h-6 text-purple-600" />
@@ -337,43 +527,109 @@ export default function ManagerDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Revenue Chart */}
             <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center">
-                  <Users className="w-6 h-6 text-cyan-600" />
-                </div>
-                <div>
-                  <p className="text-gray-600 text-sm">Khách hàng hoạt động</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.activeCustomers}</p>
-                </div>
-              </div>
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Doanh thu theo tháng
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value: any) => value ? `${(value / 1000000).toFixed(1)}M ₫` : ''}
+                    contentStyle={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#3b82f6"
+                    dot={{ fill: '#3b82f6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
 
+            {/* Occupancy Rate Chart */}
             <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <UserCog className="w-6 h-6 text-indigo-600" />
-                </div>
-                <div>
-                  <p className="text-gray-600 text-sm">Nhân viên</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalStaff}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Home className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-gray-600 text-sm">Homestay sẵn sàng</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.availableHomestays}</p>
-                </div>
-              </div>
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                Tỷ lệ chiếm phòng theo tháng
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={occupancyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value: any) => value ? `${value}%` : ''}
+                    contentStyle={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="occupancyRate"
+                    stroke="#10b981"
+                    dot={{ fill: '#10b981', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Booking Status Chart */}
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-purple-600" />
+              Phân bố trạng thái đặt phòng
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={bookingsReport.statusDetails}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="status" />
+                <YAxis />
+                <Tooltip contentStyle={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }} />
+                <Legend />
+                <Bar dataKey="count" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Booking Status Cards */}
+          {bookingsReport.statusDetails.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+              {bookingsReport.statusDetails.map((status) => {
+                const statusColors: Record<string, { bg: string; text: string; icon: any }> = {
+                  PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-700', icon: AlertCircle },
+                  CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-700', icon: CheckCircle },
+                  CHECKED_IN: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle },
+                  COMPLETED: { bg: 'bg-purple-100', text: 'text-purple-700', icon: CheckCircle },
+                  CANCELLED: { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle },
+                };
+
+                const statusColor = statusColors[status.status] || statusColors.PENDING;
+                const StatusIcon = statusColor.icon;
+
+                return (
+                  <div key={status.status} className={`rounded-lg p-4 ${statusColor.bg}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className={`text-sm font-semibold ${statusColor.text}`}>
+                        {status.status}
+                      </p>
+                      <StatusIcon className={`w-5 h-5 ${statusColor.text}`} />
+                    </div>
+                    <p className={`text-2xl font-bold ${statusColor.text}`}>{status.count}</p>
+                    <p className={`text-xs ${statusColor.text} mt-1`}>{status.percentage}%</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <div className="bg-white rounded-xl shadow-md p-6">
@@ -462,37 +718,6 @@ export default function ManagerDashboard() {
                   ))
                 )}
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-600" />
-                Hoạt động gần đây
-              </h3>
-            </div>
-            <div className="space-y-3">
-              {recentActivities.map((activity) => {
-                const Icon = activity.icon;
-                return (
-                  <div
-                    key={activity.id}
-                    className="flex items-center gap-3 p-3 border-l-4 border-blue-500 bg-gray-50 rounded-lg"
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${activity.color}`}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{activity.title}</p>
-                      <p className="text-sm text-gray-600">{activity.description}</p>
-                    </div>
-                    <span className="text-xs text-gray-500">{activity.time}</span>
-                  </div>
-                );
-              })}
             </div>
           </div>
 
