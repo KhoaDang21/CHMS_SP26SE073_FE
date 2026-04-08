@@ -16,7 +16,6 @@ import {
   UserCog,
   Users,
   X,
-  TrendingUp,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { reviewService } from '../../services/reviewService';
@@ -107,7 +106,6 @@ export default function ManagerReviews() {
     { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
     { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-    { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
     { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
   ];
 

@@ -53,8 +53,8 @@ export function CheckoutInspectionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] my-1 sm:my-3 overflow-hidden flex flex-col">
         <div className="flex items-start justify-between gap-4 p-6 border-b border-gray-200 bg-gradient-to-r from-cyan-50 to-blue-50">
           <div>
             <div className="flex items-center gap-2 text-cyan-700 font-semibold mb-2">
@@ -71,7 +71,7 @@ export function CheckoutInspectionModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-xl border border-gray-200 p-4 bg-gray-50">
               <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Thông tin phòng</p>
