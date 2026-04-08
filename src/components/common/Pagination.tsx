@@ -63,7 +63,7 @@ export function Pagination({
             <button
               key={page}
               type="button"
-              onClick={() => goToPage(page)}
+              onClick={() => goToPage(page as number)}
               className={`min-w-10 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
                 currentPage === page
                   ? 'bg-cyan-600 text-white border-cyan-600'
