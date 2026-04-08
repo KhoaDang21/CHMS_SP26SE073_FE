@@ -508,6 +508,7 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
+                                {/* Step 1: Chọn ngày */}
                                 <div className="mt-5 grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -525,6 +526,15 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
+                                {/* Tóm tắt số đêm */}
+                                {nights > 0 && (
+                                    <div className="mt-2 flex items-center gap-2 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2">
+                                        <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                                        <span>{nights} đêm · {homestay.pricePerNight?.toLocaleString('vi-VN')}đ × {nights} = <span className="font-semibold">{(homestay.pricePerNight * nights).toLocaleString('vi-VN')}đ</span></span>
+                                    </div>
+                                )}
+
+                                {/* Step 2: Số khách */}
                                 <div className="mt-4">
                                     <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                         <Users className="w-4 h-4 text-gray-500" />
@@ -538,33 +548,7 @@ export default function HomestayDetail() {
                                     </select>
                                 </div>
 
-                                <div className="mt-4">
-                                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                        <Phone className="w-4 h-4 text-gray-500" />
-                                        Số điện thoại liên hệ <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        value={contactPhone}
-                                        onChange={(e) => setContactPhone(e.target.value)}
-                                        placeholder="VD: 0901234567"
-                                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                                    />
-                                </div>
-
-                                <div className="mt-4">
-                                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                        <MessageSquareText className="w-4 h-4 text-gray-500" />
-                                        Yêu cầu đặc biệt (tuỳ chọn)
-                                    </label>
-                                    <textarea
-                                        value={specialRequests}
-                                        onChange={(e) => setSpecialRequests(e.target.value)}
-                                        rows={3}
-                                        placeholder="Ví dụ: nhận phòng sớm, thêm gối, ..."
-                                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
-                                    />
-                                </div>
-
+                                {/* Step 3: Promotion */}
                                 <div className="mt-4">
                                     <PromotionPicker
                                         promotions={availablePromotions}
@@ -575,6 +559,7 @@ export default function HomestayDetail() {
                                     />
                                 </div>
 
+                                {/* Step 4: Dịch vụ địa phương */}
                                 <div className="mt-4">
                                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                                         <div className="flex items-center justify-between mb-2">
@@ -709,6 +694,35 @@ export default function HomestayDetail() {
                                             ✓ Giá đã được tính chính xác từ hệ thống
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Step 5: Thông tin liên hệ */}
+                                <div className="mt-4 grid grid-cols-1 gap-3">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                            <Phone className="w-4 h-4 text-gray-500" />
+                                            Số điện thoại liên hệ <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            value={contactPhone}
+                                            onChange={(e) => setContactPhone(e.target.value)}
+                                            placeholder="VD: 0901234567"
+                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                            <MessageSquareText className="w-4 h-4 text-gray-500" />
+                                            Yêu cầu đặc biệt (tuỳ chọn)
+                                        </label>
+                                        <textarea
+                                            value={specialRequests}
+                                            onChange={(e) => setSpecialRequests(e.target.value)}
+                                            rows={2}
+                                            placeholder="Ví dụ: nhận phòng sớm, thêm gối, ..."
+                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+                                        />
+                                    </div>
                                 </div>
 
                                 <button onClick={async () => {

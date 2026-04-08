@@ -1,5 +1,5 @@
 export const apiConfig = {
-  baseURL: import.meta.env.VITE_API_URL || "http://163.227.230.54:8088",
+  baseURL: import.meta.env.VITE_API_URL || "https://api.chms.io.vn",
   timeout: 10000,
 
   endpoints: {
@@ -59,7 +59,8 @@ export const apiConfig = {
     },
     extraCharges: {
       create: "/api/extra-charges",
-      byBooking: (bookingId: string) => `/api/extra-charges/booking/${bookingId}`,
+      byBooking: (bookingId: string) =>
+        `/api/extra-charges/booking/${bookingId}`,
       delete: (id: string) => `/api/extra-charges/${id}`,
     },
     users: {
@@ -156,7 +157,8 @@ export const apiConfig = {
       delete: (id: string) => `/api/reviews/${id}`,
       managerList: "/api/manager/reviews",
       managerRespond: (id: string) => `/api/manager/reviews/${id}/response`,
-      managerUpdateRespond: (id: string) => `/api/manager/reviews/${id}/response`,
+      managerUpdateRespond: (id: string) =>
+        `/api/manager/reviews/${id}/response`,
       staffList: "/api/staff/reviews",
       staffApprove: (id: string) => `/api/staff/reviews/${id}/approve`,
       staffReject: (id: string) => `/api/staff/reviews/${id}/reject`,
@@ -169,7 +171,8 @@ export const apiConfig = {
     },
     locations: {
       provinces: "/api/locations/provinces",
-      districts: (provinceId: string) => `/api/locations/districts/${provinceId}`,
+      districts: (provinceId: string) =>
+        `/api/locations/districts/${provinceId}`,
       wards: (districtId: string) => `/api/locations/wards/${districtId}`,
       coastalAreas: "/api/locations/coastal-areas",
     },
@@ -188,7 +191,8 @@ export const apiConfig = {
       recentlyViewed: "/api/recently-viewed",
     },
     publicHomestays: {
-      reviews: (homestayId: string) => `/api/public/homestays/${homestayId}/reviews`,
+      reviews: (homestayId: string) =>
+        `/api/public/homestays/${homestayId}/reviews`,
     },
     supportTickets: {
       create: "/api/support/tickets",
