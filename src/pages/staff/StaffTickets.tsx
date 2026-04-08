@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  ArrowLeft,
   Bell,
   Calendar,
   CheckCircle2,
+  Clock,
   Home,
   LayoutDashboard,
   LogOut,
   Menu,
   MessageSquare,
+  Loader2,
   Search,
+  Send,
   Ticket,
   UserCheck,
   X,
@@ -19,11 +23,72 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import {
   staffTicketService,
+  type StaffTicketDetail,
   type StaffTicket,
+  type StaffTicketReply,
   type StaffTicketStatus,
 } from '../../services/staffTicketService';
 
 type FilterStatus = 'all' | StaffTicketStatus;
+
+function formatTime(dateStr: string) {
+  if (!dateStr) return '';
+  const normalized = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : `${dateStr}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function StatusTimeline({ status }: { status: StaffTicketStatus }) {
+  const steps = [
+    { key: 'OPEN', label: 'Mở', icon: <MessageSquare className="w-3.5 h-3.5" /> },
+    { key: 'IN_PROGRESS', label: 'Đang xử lý', icon: <Clock className="w-3.5 h-3.5" /> },
+    { key: 'RESOLVED', label: 'Đã giải quyết', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+  ];
+  const order: Record<StaffTicketStatus, number> = { OPEN: 0, IN_PROGRESS: 1, RESOLVED: 2, CLOSED: 2 };
+  const current = order[status] ?? 0;
+
+  return (
+    <div className="flex items-center gap-0 w-full">
+      {steps.map((step, index) => {
+        const done = index <= current;
+        const active = index === current;
+        return (
+          <div key={step.key} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-1 min-w-0">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                  active
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white shadow-md shadow-cyan-200'
+                    : done
+                      ? 'bg-green-100 text-green-600'
+                      : 'bg-gray-100 text-gray-400'
+                }`}
+              >
+                {step.icon}
+              </div>
+              <span
+                className={`text-[10px] font-medium whitespace-nowrap ${
+                  active ? 'text-cyan-600' : done ? 'text-green-600' : 'text-gray-400'
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-1 mb-4 rounded-full ${index < current ? 'bg-green-300' : 'bg-gray-200'}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function StaffTickets() {
   const navigate = useNavigate();
@@ -31,13 +96,15 @@ export default function StaffTickets() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tickets, setTickets] = useState<StaffTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-  const [selectedTicket, setSelectedTicket] = useState<StaffTicket | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<StaffTicketDetail | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
-  const [nextStatus, setNextStatus] = useState<StaffTicketStatus>('IN_PROGRESS');
+  const [nextStatus, setNextStatus] = useState<StaffTicketStatus>('OPEN');
 
   const navigationItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
@@ -46,7 +113,7 @@ export default function StaffTickets() {
     { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: true },
   ];
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     try {
       setLoading(true);
       const list = await staffTicketService.list();
@@ -57,11 +124,27 @@ export default function StaffTickets() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const loadDetail = useCallback(async (ticketId: string) => {
+    try {
+      setDetailLoading(true);
+      const detail = await staffTicketService.getDetail(ticketId);
+      setSelectedTicket(detail);
+      setNextStatus(detail?.status ?? 'OPEN');
+      setReplyMessage('');
+    } catch (error) {
+      console.error('Load staff ticket detail error:', error);
+      setSelectedTicket(null);
+      toast.error('Không thể tải chi tiết ticket');
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     void loadTickets();
-  }, []);
+  }, [loadTickets]);
 
   const filteredTickets = useMemo(() => {
     let list = [...tickets];
@@ -85,6 +168,48 @@ export default function StaffTickets() {
 
     return list;
   }, [tickets, filterStatus, searchTerm]);
+
+  useEffect(() => {
+    if (filteredTickets.length === 0) {
+      if (selectedTicketId !== null) {
+        setSelectedTicketId(null);
+        setSelectedTicket(null);
+      }
+      return;
+    }
+
+    const stillVisible = selectedTicketId && filteredTickets.some((ticket) => ticket.id === selectedTicketId);
+    if (!stillVisible) {
+      setSelectedTicketId(filteredTickets[0].id);
+    }
+  }, [filteredTickets, selectedTicketId]);
+
+  useEffect(() => {
+    if (!selectedTicketId) {
+      setSelectedTicket(null);
+      setReplyMessage('');
+      return;
+    }
+
+    void loadDetail(selectedTicketId);
+  }, [loadDetail, selectedTicketId]);
+
+  const selectedSummary = useMemo(
+    () => tickets.find((ticket) => ticket.id === selectedTicketId) ?? null,
+    [tickets, selectedTicketId],
+  );
+  const activeTicket = selectedTicket ?? selectedSummary;
+  const activeDetail = selectedTicket;
+  const activeReplies = activeDetail?.replies ?? [];
+  const activeStatus = activeTicket?.status ?? 'OPEN';
+  const isClosed = activeStatus === 'CLOSED';
+
+  useEffect(() => {
+    const container = document.getElementById('staff-ticket-messages');
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [activeReplies.length, selectedTicketId, detailLoading]);
 
   const stats = useMemo(() => {
     return {
@@ -110,12 +235,6 @@ export default function StaffTickets() {
     return 'Closed';
   };
 
-  const openTicketDetail = (ticket: StaffTicket) => {
-    setSelectedTicket(ticket);
-    setReplyMessage('');
-    setNextStatus(ticket.status === 'OPEN' ? 'IN_PROGRESS' : ticket.status);
-  };
-
   const handleAssign = async (ticketId: string) => {
     try {
       setSaving(true);
@@ -124,10 +243,11 @@ export default function StaffTickets() {
         toast.error(result.message);
         return;
       }
+
       toast.success(result.message);
       await loadTickets();
-      if (selectedTicket?.id === ticketId) {
-        setSelectedTicket((prev) => (prev ? { ...prev, staffName: currentUser?.name || prev.staffName } : prev));
+      if (selectedTicketId === ticketId) {
+        await loadDetail(ticketId);
       }
     } finally {
       setSaving(false);
@@ -135,15 +255,14 @@ export default function StaffTickets() {
   };
 
   const handleReply = async () => {
-    if (!selectedTicket) return;
-    if (!replyMessage.trim()) {
+    if (!selectedTicketId || !replyMessage.trim()) {
       toast.error('Vui lòng nhập nội dung phản hồi');
       return;
     }
 
     try {
       setSaving(true);
-      const result = await staffTicketService.reply(selectedTicket.id, replyMessage.trim());
+      const result = await staffTicketService.reply(selectedTicketId, replyMessage.trim());
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -152,17 +271,18 @@ export default function StaffTickets() {
       toast.success(result.message);
       setReplyMessage('');
       await loadTickets();
+      await loadDetail(selectedTicketId);
     } finally {
       setSaving(false);
     }
   };
 
   const handleUpdateStatus = async () => {
-    if (!selectedTicket) return;
+    if (!selectedTicketId) return;
 
     try {
       setSaving(true);
-      const result = await staffTicketService.updateStatus(selectedTicket.id, nextStatus);
+      const result = await staffTicketService.updateStatus(selectedTicketId, nextStatus);
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -170,7 +290,7 @@ export default function StaffTickets() {
 
       toast.success(result.message);
       await loadTickets();
-      setSelectedTicket((prev) => (prev ? { ...prev, status: nextStatus } : prev));
+      await loadDetail(selectedTicketId);
     } finally {
       setSaving(false);
     }
@@ -181,6 +301,8 @@ export default function StaffTickets() {
     toast.success('Đăng xuất thành công!');
     navigate('/auth/login');
   };
+
+  const showList = !selectedTicketId;
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -258,7 +380,7 @@ export default function StaffTickets() {
               </button>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Staff Tickets</h2>
-                <p className="text-sm text-gray-500">Xử lý ticket hỗ trợ từ khách hàng</p>
+                <p className="text-sm text-gray-500">Xử lý ticket hỗ trợ theo dạng chat giữa 2 vai trò</p>
               </div>
             </div>
             <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
@@ -268,8 +390,8 @@ export default function StaffTickets() {
           </div>
         </header>
 
-        <main className="p-6">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <main className="p-6 space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
               <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
               <p className="text-sm text-gray-600">Total</p>
@@ -292,7 +414,7 @@ export default function StaffTickets() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -318,144 +440,249 @@ export default function StaffTickets() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">Đang tải...</div>
-          ) : filteredTickets.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-              <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-900 font-medium">Không có ticket phù hợp</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredTickets.map((ticket) => (
-                <div key={ticket.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{ticket.title || '(Không tiêu đề)'}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(ticket.status)}`}>
-                          {getStatusText(ticket.status)}
-                        </span>
-                      </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" style={{ height: 'calc(100vh - 260px)', minHeight: 560 }}>
+            <div className="flex h-full">
+              <div className={`flex flex-col border-r border-gray-100 flex-shrink-0 w-full lg:w-96 ${showList ? 'flex' : 'hidden'} lg:flex`}>
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Danh sách ticket</p>
+                    <p className="text-xs text-gray-500">Chọn ticket để mở khung chat</p>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">{filteredTickets.length}</span>
+                </div>
 
-                      <p className="text-sm text-gray-600 mb-2">{ticket.ticketNumber || ticket.id}</p>
-                      <p className="text-sm text-gray-700 mb-1">Khách hàng: {ticket.customerName || '-'}</p>
-                      <p className="text-sm text-gray-700 mb-1">Email: {ticket.customerEmail || '-'}</p>
-                      <p className="text-sm text-gray-700 mb-1">Ưu tiên: {ticket.priority}</p>
-                      <p className="text-sm text-gray-700 mb-1">Nhân viên xử lý: {ticket.staffName || 'Chưa có'}</p>
-                      {ticket.description && (
-                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{ticket.description}</p>
+                <div className="flex-1 overflow-y-auto">
+                  {loading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="w-6 h-6 text-cyan-500 animate-spin" />
+                    </div>
+                  ) : filteredTickets.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
+                      <MessageSquare className="w-10 h-10 text-gray-200" />
+                      <p className="text-sm text-gray-400">Không có ticket phù hợp.</p>
+                    </div>
+                  ) : (
+                    filteredTickets.map((ticket) => {
+                      const isSelected = selectedTicketId === ticket.id;
+                      return (
+                        <button
+                          key={ticket.id}
+                          type="button"
+                          onClick={() => setSelectedTicketId(ticket.id)}
+                          className={`w-full text-left px-4 py-3.5 border-b border-gray-50 border-l-4 transition-all ${
+                            isSelected ? 'bg-cyan-50 border-l-cyan-500' : 'border-l-transparent hover:bg-gray-50/80'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <p className={`text-sm font-medium line-clamp-1 flex-1 ${isSelected ? 'text-cyan-700' : 'text-gray-900'}`}>
+                              {ticket.title || '(Không tiêu đề)'}
+                            </p>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusBadgeClass(ticket.status)}`}>
+                              {getStatusText(ticket.status)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mb-1">{ticket.ticketNumber || ticket.id}</p>
+                          <p className="text-xs text-gray-600 line-clamp-1">Khách hàng: {ticket.customerName || '-'}</p>
+                          <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-gray-400">
+                            <span>Ưu tiên: {ticket.priority}</span>
+                            <span>{formatTime(ticket.createdAt)}</span>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0 flex flex-col">
+                {!selectedTicketId ? (
+                  <div className="flex-1 flex items-center justify-center px-6 text-center">
+                    <div className="max-w-sm">
+                      <MessageSquare className="w-14 h-14 text-gray-200 mx-auto mb-3" />
+                      <p className="text-lg font-semibold text-gray-900">Chọn một ticket để bắt đầu chat</p>
+                      <p className="text-sm text-gray-500 mt-1">Khung bên phải sẽ hiển thị nội dung, lịch sử nhắn tin và các thao tác xử lý.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0">
+                      <button
+                        onClick={() => setSelectedTicketId(null)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors lg:hidden flex-shrink-0"
+                        aria-label="Quay lại danh sách"
+                        type="button"
+                      >
+                        <ArrowLeft className="w-5 h-5 text-gray-500" />
+                      </button>
+
+                      {detailLoading ? (
+                        <div className="flex-1 space-y-2">
+                          <div className="h-5 w-48 bg-gray-100 rounded animate-pulse" />
+                          <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
+                        </div>
+                      ) : activeTicket ? (
+                        <>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 truncate">{activeTicket.title || '(Không tiêu đề)'}</h3>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${getStatusBadgeClass(activeStatus)}`}>
+                                {getStatusText(activeStatus)}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">
+                                {activeTicket.priority}
+                              </span>
+                              <span className="text-xs text-gray-400">{activeTicket.ticketNumber || activeTicket.id}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleAssign(activeTicket.id)}
+                            disabled={saving}
+                            className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg border border-cyan-200 text-cyan-700 hover:bg-cyan-50 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            Nhận ticket
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex-1 h-5 bg-gray-100 rounded animate-pulse" />
                       )}
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleAssign(ticket.id)}
-                        disabled={saving}
-                        className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60 flex items-center gap-1"
-                      >
-                        <UserCheck className="w-4 h-4" /> Nhận xử lý
-                      </button>
+                    {detailLoading ? (
+                      <div className="flex-1 flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 text-cyan-500 animate-spin" />
+                      </div>
+                    ) : !activeTicket ? (
+                      <div className="flex-1 flex items-center justify-center text-sm text-gray-400">Không tải được dữ liệu.</div>
+                    ) : (
+                      <>
+                        <div className="px-5 pt-4 pb-3 bg-gray-50/60 border-b border-gray-100 flex-shrink-0 space-y-4">
+                          <StatusTimeline status={activeStatus} />
 
-                      <button
-                        type="button"
-                        onClick={() => openTicketDetail(ticket)}
-                        className="px-3 py-2 rounded-lg bg-cyan-600 text-white text-sm hover:bg-cyan-700"
-                      >
-                        Chi tiết
-                      </button>
-                    </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <div className="rounded-xl border border-gray-100 bg-white p-3">
+                              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Khách hàng</p>
+                              <p className="font-medium text-gray-900">{activeTicket.customerName || '-'}</p>
+                              <p className="text-xs text-gray-500">{activeTicket.customerEmail || '-'}</p>
+                            </div>
+                            <div className="rounded-xl border border-gray-100 bg-white p-3">
+                              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Nhân viên phụ trách</p>
+                              <p className="font-medium text-gray-900">{activeTicket.staffName || 'Chưa có'}</p>
+                              <p className="text-xs text-gray-500">{activeDetail?.bookingId ? `Booking: ${activeDetail.bookingId}` : 'Không gắn booking'}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3 items-start">
+                            <div className="rounded-xl border border-gray-100 bg-white p-3">
+                              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Mô tả vấn đề</p>
+                              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{activeTicket.description || 'Không có mô tả'}</p>
+                            </div>
+
+                            <div className="rounded-xl border border-gray-100 bg-white p-3 space-y-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Cập nhật trạng thái</label>
+                                <select
+                                  value={nextStatus}
+                                  onChange={(e) => setNextStatus(e.target.value as StaffTicketStatus)}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500"
+                                >
+                                  <option value="OPEN">Open</option>
+                                  <option value="IN_PROGRESS">In Progress</option>
+                                  <option value="RESOLVED">Resolved</option>
+                                  <option value="CLOSED">Closed</option>
+                                </select>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleUpdateStatus}
+                                disabled={saving}
+                                className="w-full px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-1.5"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                Lưu trạng thái
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div id="staff-ticket-messages" className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                          {activeReplies.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+                              <MessageSquare className="w-10 h-10 text-gray-200" />
+                              <p className="text-sm text-gray-400">Chưa có tin nhắn nào. Hãy phản hồi để bắt đầu trao đổi.</p>
+                            </div>
+                          ) : (
+                            activeReplies.map((reply: StaffTicketReply) => {
+                              const isMe = reply.senderId?.toLowerCase() === currentUser?.id?.toLowerCase();
+                              return (
+                                <div key={reply.id} className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                  <div
+                                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                                      isMe ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+                                    }`}
+                                  >
+                                    {reply.senderName?.[0]?.toUpperCase() ?? '?'}
+                                  </div>
+                                  <div
+                                    className={`max-w-[72%] px-3.5 py-2.5 rounded-2xl text-sm shadow-sm ${
+                                      isMe
+                                        ? 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white rounded-br-sm'
+                                        : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'
+                                    }`}
+                                  >
+                                    {!isMe && <p className="text-xs font-medium mb-0.5 text-cyan-600">{reply.senderName}</p>}
+                                    <p className="whitespace-pre-wrap break-words leading-relaxed">{reply.message}</p>
+                                    <p className={`text-[10px] mt-1 ${isMe ? 'text-cyan-100 text-right' : 'text-gray-400'}`}>
+                                      {formatTime(reply.createdAt)}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        <div className="px-4 py-3 bg-white border-t border-gray-100 flex-shrink-0">
+                          {isClosed ? (
+                            <p className="text-center text-sm text-gray-400 py-1">Ticket này đã đóng.</p>
+                          ) : (
+                            <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-gray-200 px-3 py-2 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-100 transition-all">
+                              <textarea
+                                rows={1}
+                                value={replyMessage}
+                                onChange={(e) => setReplyMessage(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    void handleReply();
+                                  }
+                                }}
+                                placeholder="Nhập phản hồi..."
+                                className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none outline-none max-h-24 leading-relaxed"
+                                style={{ minHeight: 24 }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void handleReply()}
+                                disabled={!replyMessage.trim() || saving}
+                                className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                              >
+                                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </main>
-      </div>
-
-      {selectedTicket && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-gray-200 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Chi tiết Ticket</h3>
-                <p className="text-sm text-gray-500">{selectedTicket.ticketNumber || selectedTicket.id}</p>
-              </div>
-              <button onClick={() => setSelectedTicket(null)} className="p-2 hover:bg-gray-100 rounded-lg" type="button">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Tiêu đề</p>
-                <p className="font-medium text-gray-900">{selectedTicket.title || '(Không tiêu đề)'}</p>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Mô tả</p>
-                <p className="text-gray-800 whitespace-pre-wrap">{selectedTicket.description || 'Không có mô tả'}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Cập nhật trạng thái</label>
-                  <select
-                    value={nextStatus}
-                    onChange={(e) => setNextStatus(e.target.value as StaffTicketStatus)}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="OPEN">Open</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="RESOLVED">Resolved</option>
-                    <option value="CLOSED">Closed</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleUpdateStatus}
-                    disabled={saving}
-                    className="mt-2 px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-60 flex items-center gap-1"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Lưu trạng thái
-                  </button>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Nhận xử lý ticket</label>
-                  <button
-                    type="button"
-                    onClick={() => void handleAssign(selectedTicket.id)}
-                    disabled={saving}
-                    className="mt-1 w-full px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-1"
-                  >
-                    <UserCheck className="w-4 h-4" /> Assign cho tôi
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">Phản hồi</label>
-                <textarea
-                  value={replyMessage}
-                  onChange={(e) => setReplyMessage(e.target.value)}
-                  rows={4}
-                  placeholder="Nhập nội dung phản hồi..."
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg resize-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleReply}
-                  disabled={saving || !replyMessage.trim()}
-                  className="mt-2 px-3 py-2 rounded-lg bg-cyan-600 text-white text-sm hover:bg-cyan-700 disabled:opacity-60"
-                >
-                  Gửi phản hồi
-                </button>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </main>
+      </div>
 
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
     </div>

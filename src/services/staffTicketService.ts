@@ -3,6 +3,14 @@ import { apiService } from './apiService';
 
 export type StaffTicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 
+export interface StaffTicketReply {
+  id: string;
+  senderId: string;
+  senderName: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface StaffTicket {
   id: string;
   ticketNumber?: string;
@@ -15,6 +23,11 @@ export interface StaffTicket {
   customerEmail?: string;
   staffName?: string;
   createdAt: string;
+}
+
+export interface StaffTicketDetail extends StaffTicket {
+  bookingId?: string;
+  replies: StaffTicketReply[];
 }
 
 const extractList = (response: any): any[] => {
@@ -47,10 +60,36 @@ const mapTicket = (raw: any): StaffTicket => ({
   createdAt: String(raw?.createdAt || new Date().toISOString()),
 });
 
+const mapTicketDetail = (raw: any): StaffTicketDetail => ({
+  ...mapTicket(raw),
+  bookingId: raw?.bookingId ? String(raw.bookingId) : undefined,
+  replies: Array.isArray(raw?.replies)
+    ? raw.replies.map((reply: any): StaffTicketReply => ({
+        id: String(reply?.id || ''),
+        senderId: String(reply?.senderId || ''),
+        senderName: String(reply?.senderName || ''),
+        message: String(reply?.message || ''),
+        createdAt: String(reply?.createdAt || new Date().toISOString()),
+      }))
+    : [],
+});
+
 export const staffTicketService = {
   async list(): Promise<StaffTicket[]> {
     const response = await apiService.get<any>(apiConfig.endpoints.staffTickets.list);
     return extractList(response).map(mapTicket).filter((item) => item.id);
+  },
+
+  async getDetail(ticketId: string): Promise<StaffTicketDetail | null> {
+    try {
+      const response = await apiService.get<any>(apiConfig.endpoints.staffTickets.detail(ticketId));
+      const raw = response?.data ?? response;
+      if (!raw?.id) return null;
+      return mapTicketDetail(raw);
+    } catch (error) {
+      console.error('Load staff ticket detail error:', error);
+      return null;
+    }
   },
 
   async assign(ticketId: string): Promise<{ success: boolean; message: string }> {

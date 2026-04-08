@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Search,
-  Download,
   Menu,
   X,
   LogOut,
@@ -11,7 +10,6 @@ import {
   Home,
   Users,
   UserCog,
-  TrendingUp,
   Building2,
   CheckCircle,
   XCircle,
@@ -25,6 +23,10 @@ import {
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { adminBookingService } from '../../services/adminBookingService';
+import { employeeService } from '../../services/employeeService';
+import { homestayService } from '../../services/homestayService';
+import { locationService } from '../../services/locationService';
+import { apiService } from '../../services/apiService';
 import { Pagination } from '../../components/common/Pagination';
 import type { Booking, BookingStatus, BookingStats } from '../../types/booking.types';
 import { toast } from 'sonner';
@@ -54,10 +56,138 @@ export default function ManagerBookings() {
   });
 
   const user = authService.getCurrentUser();
+  const normalizeText = (value: unknown) => String(value ?? '').trim().toLowerCase();
+
+  const getAssignedProvinceId = async (): Promise<string | null> => {
+    if (!user) return null;
+
+    const pickProvinceId = (item: any): string | null => {
+      const candidate =
+        item?.managerProvinceId ||
+        item?.ManagerProvinceId ||
+        item?.managedProvinceId ||
+        item?.assignedProvinceId ||
+        item?.managedProvince?.id ||
+        item?.assignedProvince?.id ||
+        item?.provinceId;
+      return candidate ? String(candidate) : null;
+    };
+
+    try {
+      const byId = await employeeService.getEmployeeById(String(user.id));
+      const provinceId = pickProvinceId(byId);
+      if (provinceId) return provinceId;
+    } catch {
+      // Fallback to list search below.
+    }
+
+    try {
+      const all = await employeeService.getEmployees();
+      const me = all.find(
+        (item) =>
+          String(item.id || '').toLowerCase() === String(user.id || '').toLowerCase() ||
+          String(item.email || '').toLowerCase() === String(user.email || '').toLowerCase(),
+      );
+      return pickProvinceId(me);
+    } catch {
+      return null;
+    }
+  };
+
+  const fetchLocationDistrictMap = async (): Promise<Map<string, string>> => {
+    try {
+      const res = await apiService.get<any>('/api/locations');
+      const payload = res?.data ?? res;
+      const list: any[] = Array.isArray(payload)
+        ? payload
+        : payload?.items ?? payload?.Items ?? [];
+
+      return new Map(
+        (Array.isArray(list) ? list : [])
+          .map((item) => {
+            const locationId = String(item?.id ?? item?.Id ?? '').trim();
+            const districtId = String(item?.districtId ?? item?.DistrictId ?? '').trim();
+            return [locationId, districtId] as const;
+          })
+          .filter(([locationId, districtId]) => Boolean(locationId) && Boolean(districtId)),
+      );
+    } catch {
+      return new Map<string, string>();
+    }
+  };
+
+  const resolveHomestayProvinceId = (
+    homestay: any,
+    districtToProvinceMap: Map<string, string>,
+    provinceNameToIdMap: Map<string, string>,
+    locationDistrictMap: Map<string, string>,
+  ): string => {
+    const directProvinceId = String(
+      homestay?.provinceId ||
+      homestay?.ProvinceId ||
+      homestay?.province?.id ||
+      homestay?.Province?.Id ||
+      '',
+    ).trim();
+    if (directProvinceId) return directProvinceId;
+
+    const districtIdRaw = String(
+      homestay?.districtId ||
+      homestay?.DistrictId ||
+      homestay?.district?.id ||
+      homestay?.District?.Id ||
+      '',
+    ).trim();
+
+    const locationId = String(
+      homestay?.locationId ||
+      homestay?.LocationId ||
+      homestay?.location?.id ||
+      homestay?.Location?.Id ||
+      '',
+    ).trim();
+
+    const districtId = districtIdRaw || (locationId ? locationDistrictMap.get(locationId) || '' : '');
+    if (districtId && districtToProvinceMap.has(districtId)) {
+      return districtToProvinceMap.get(districtId) || '';
+    }
+
+    const provinceName = normalizeText(
+      homestay?.provinceName ||
+      homestay?.ProvinceName ||
+      homestay?.province?.name ||
+      homestay?.Province?.Name ||
+      '',
+    );
+    if (provinceName && provinceNameToIdMap.has(provinceName)) {
+      return provinceNameToIdMap.get(provinceName) || '';
+    }
+
+    return '';
+  };
+
+  const buildStats = (source: Booking[]): BookingStats => {
+    const total = source.length;
+    const pending = source.filter((b) => b.status === 'pending').length;
+    const confirmed = source.filter((b) => b.status === 'confirmed').length;
+    const checkedIn = source.filter((b) => b.status === 'checked_in').length;
+    const checkedOut = source.filter((b) => b.status === 'completed' || b.status === 'checked_out').length;
+    const cancelled = source.filter((b) => b.status === 'cancelled').length;
+    const totalRevenue = source.reduce((sum, b) => sum + (Number(b.totalPrice) || 0), 0);
+    return {
+      total,
+      pending,
+      confirmed,
+      checkedIn,
+      checkedOut,
+      cancelled,
+      totalRevenue,
+      averageBookingValue: total > 0 ? totalRevenue / total : 0,
+    };
+  };
 
   useEffect(() => {
     void loadBookings();
-    void loadStats();
   }, []);
 
   useEffect(() => {
@@ -71,22 +201,50 @@ export default function ManagerBookings() {
   const loadBookings = async () => {
     setLoading(true);
     try {
-      const data = await adminBookingService.getAllBookings();
-      setBookings(data);
+      const [provinceId, allHomestays, allBookings, provinces, locationDistrictMap] = await Promise.all([
+        getAssignedProvinceId(),
+        homestayService.getAllAdminHomestays(),
+        adminBookingService.getAllBookings(),
+        locationService.getProvinces(),
+        fetchLocationDistrictMap(),
+      ]);
+
+      if (!provinceId) {
+        setBookings([]);
+        setStats(buildStats([]));
+        toast.warning('Bạn chưa được phân công tỉnh quản lý.');
+        return;
+      }
+
+      const districtsByProvince = await Promise.all(
+        (provinces || []).map(async (province) => {
+          const districts = await locationService.getDistrictsByProvince(province.id);
+          return districts.map((district) => [String(district.id), String(province.id)] as const);
+        }),
+      );
+
+      const districtToProvinceMap = new Map<string, string>(districtsByProvince.flat());
+      const provinceNameToIdMap = new Map<string, string>(
+        (provinces || []).map((province) => [normalizeText(province.name), String(province.id)] as const),
+      );
+
+      const allowedHomestayIds = new Set(
+        (allHomestays || [])
+          .filter(
+            (h: any) =>
+              resolveHomestayProvinceId(h, districtToProvinceMap, provinceNameToIdMap, locationDistrictMap) === provinceId,
+          )
+          .map((h: any) => String(h.id)),
+      );
+
+      const scopedBookings = allBookings.filter((b) => allowedHomestayIds.has(String(b.homestayId || '')));
+      setBookings(scopedBookings);
+      setStats(buildStats(scopedBookings));
     } catch (error) {
       console.error('Error loading bookings:', error);
       toast.error('Không thể tải danh sách đơn đặt phòng');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const data = await adminBookingService.getBookingStats();
-      setStats(data);
-    } catch (error) {
-      console.error('Error loading stats:', error);
     }
   };
 
@@ -132,7 +290,6 @@ export default function ManagerBookings() {
     if (result.success) {
       toast.success('Cập nhật trạng thái thành công!');
       await loadBookings();
-      await loadStats();
       setSelectedBooking(null);
     } else {
       toast.error(result.message || 'Không thể cập nhật trạng thái');
@@ -147,7 +304,6 @@ export default function ManagerBookings() {
     if (result.success) {
       toast.success('Hủy đơn đặt phòng thành công!');
       await loadBookings();
-      await loadStats();
       setSelectedBooking(null);
     } else {
       toast.error(result.message || 'Không thể hủy đơn đặt phòng');
@@ -200,7 +356,6 @@ export default function ManagerBookings() {
     { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
     { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-    { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
     { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
   ];
 
@@ -281,9 +436,12 @@ export default function ManagerBookings() {
                 <p className="text-gray-600 text-sm">Xem và xử lý các đơn đặt phòng</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <Download className="w-5 h-5" />
-              <span>Xuất báo cáo</span>
+            <button 
+              onClick={() => navigate('/manager/reviews')}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <MessageSquare className="w-5 h-5" />
+              <span>Xem Review</span>
             </button>
           </div>
         </header>

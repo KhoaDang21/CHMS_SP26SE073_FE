@@ -3,14 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Search,
-  Download,
   Menu,
   X,
   LogOut,
   LayoutDashboard,
   Home,
   UserCog,
-  TrendingUp,
   Building2,
   Calendar,
   Phone,
@@ -288,7 +286,6 @@ export default function ManagerCustomers() {
     { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
     { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
     { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-    { id: 'reports', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
     { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
   ];
 
@@ -363,9 +360,12 @@ export default function ManagerCustomers() {
                 <p className="text-gray-600 text-sm">Xem và quản lý thông tin khách hàng</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <Download className="w-5 h-5" />
-              <span>Xuất báo cáo</span>
+            <button 
+              onClick={() => navigate('/manager/reviews')}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <MessageSquare className="w-5 h-5" />
+              <span>Xem Review</span>
             </button>
           </div>
         </header>

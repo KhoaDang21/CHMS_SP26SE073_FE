@@ -134,6 +134,7 @@ export const apiConfig = {
     },
     staffTickets: {
       list: "/api/staff/tickets",
+      detail: (id: string) => `/api/staff/tickets/${id}`,
       assign: (id: string) => `/api/staff/tickets/${id}/assign`,
       reply: (id: string) => `/api/staff/tickets/${id}/reply`,
       updateStatus: (id: string) => `/api/staff/tickets/${id}/status`,

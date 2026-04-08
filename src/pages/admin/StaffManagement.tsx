@@ -21,7 +21,7 @@ import {
   Home,
   CalendarDays,
   UserCog,
-  TrendingUp,
+  MessageSquare,
   MapPin,
   Check,
 } from 'lucide-react';
@@ -634,7 +634,7 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
         { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
         { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
         { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-        { id: 'revenue', label: 'Báo cáo', icon: TrendingUp, path: '/manager/reports' },
+        { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
       ];
 
   const managerAccounts = filteredStaff.filter((s) => s.role === 'manager' || s.role === 'admin');

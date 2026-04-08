@@ -12,7 +12,6 @@ import {
   MessageSquare,
   Phone,
   Search,
-  StickyNote,
   Ticket,
   Users,
   X,
@@ -26,7 +25,7 @@ import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
-import { buildDisplaySpecialRequests, extractBookingExperienceData } from '../../utils/bookingExperience';
+import { buildDisplaySpecialRequests } from '../../utils/bookingExperience';
 
 type FilterStatus = 'all' | 'checkin-today' | 'checkout-today' | 'confirmed' | 'completed';
 
@@ -41,16 +40,18 @@ export default function StaffBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [note, setNote] = useState('');
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutBooking, setCheckoutBooking] = useState<Booking | null>(null);
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
-  const [showExtraDetailModal, setShowExtraDetailModal] = useState(false);
-  const [detailBooking, setDetailBooking] = useState<Booking | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailCharges, setDetailCharges] = useState<ExtraCharge[]>([]);
+  const [showBookingDetailModal, setShowBookingDetailModal] = useState(false);
+  const [bookingDetailLoading, setBookingDetailLoading] = useState(false);
+  const [bookingDetail, setBookingDetail] = useState<Booking | null>(null);
+  const [bookingDetailChargeLoading, setBookingDetailChargeLoading] = useState(false);
+  const [bookingDetailCharges, setBookingDetailCharges] = useState<ExtraCharge[]>([]);
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [extendBooking, setExtendBooking] = useState<Booking | null>(null);
+  const [newCheckOutDate, setNewCheckOutDate] = useState('');
+  const [extendSubmitting, setExtendSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const loadBookings = async () => {
@@ -178,47 +179,109 @@ export default function StaffBookings() {
     }
   };
 
-  const handleAddNote = (booking: Booking) => {
-    setSelectedBooking(booking);
-    setNote(booking.notes || extractBookingExperienceData(booking.specialRequests).note || '');
-    setShowNoteModal(true);
-  };
-
-  const handleViewExtraDetail = async (booking: Booking) => {
-    setDetailBooking(booking);
-    setShowExtraDetailModal(true);
+  const handleViewBookingDetail = async (booking: Booking) => {
+    setShowBookingDetailModal(true);
+    setBookingDetailLoading(true);
+    setBookingDetailChargeLoading(true);
+    setBookingDetail(booking);
+    setBookingDetailCharges([]);
 
     try {
-      setDetailLoading(true);
-      const list = await extraChargeService.listByBooking(booking.id);
-      setDetailCharges(list);
+      const [detail, charges] = await Promise.all([
+        staffBookingService.getBookingById(booking.id),
+        extraChargeService.listByBooking(booking.id),
+      ]);
+      setBookingDetail(detail || booking);
+      setBookingDetailCharges(charges);
     } catch (error) {
-      console.error('Load extra charges error:', error);
-      toast.error('Không thể tải chi tiết phát sinh');
-      setDetailCharges([]);
+      console.error('Load booking detail error:', error);
+      toast.error('Không thể tải chi tiết booking');
+      setBookingDetail(booking);
+      setBookingDetailCharges([]);
     } finally {
-      setDetailLoading(false);
+      setBookingDetailLoading(false);
+      setBookingDetailChargeLoading(false);
     }
   };
 
-  const handleSaveNote = () => {
-    if (!selectedBooking) return;
+  const canExtendStay = (booking: Booking) => booking.status === 'checked_in';
 
-    setBookings((prev) =>
-      prev.map((item) =>
-        item.id === selectedBooking.id
-          ? {
-              ...item,
-              notes: note,
-            }
-          : item,
-      ),
-    );
+  const openExtendModal = (booking: Booking) => {
+    if (!canExtendStay(booking)) {
+      toast.error('Chỉ có thể gia hạn khi booking đã check-in');
+      return;
+    }
 
-    toast.success('Đã lưu ghi chú');
-    setShowNoteModal(false);
-    setNote('');
-    setSelectedBooking(null);
+    const currentCheckOut = new Date(booking.checkOutDate);
+    currentCheckOut.setDate(currentCheckOut.getDate() + 1);
+    const suggestedDate = currentCheckOut.toISOString().split('T')[0];
+
+    setExtendBooking(booking);
+    setNewCheckOutDate(suggestedDate);
+    setShowExtendModal(true);
+  };
+
+  const hasBookingOverlap = (target: Booking, nextCheckOutDate: string) => {
+    const targetStart = new Date(target.checkInDate);
+    const targetEnd = new Date(nextCheckOutDate);
+
+    return bookings.some((item) => {
+      if (item.id === target.id) return false;
+      if (item.homestayId !== target.homestayId) return false;
+      if (item.status === 'cancelled') return false;
+
+      const otherStart = new Date(item.checkInDate);
+      const otherEnd = new Date(item.checkOutDate);
+
+      return targetStart < otherEnd && targetEnd > otherStart;
+    });
+  };
+
+  const handleConfirmExtend = async () => {
+    if (!extendBooking) return;
+
+    if (!canExtendStay(extendBooking)) {
+      toast.error('Chỉ có thể gia hạn khi booking đã check-in');
+      return;
+    }
+
+    const currentCheckOut = new Date(extendBooking.checkOutDate);
+    const nextCheckOut = new Date(newCheckOutDate);
+
+    if (Number.isNaN(nextCheckOut.getTime())) {
+      toast.error('Ngày checkout mới không hợp lệ');
+      return;
+    }
+
+    if (nextCheckOut <= currentCheckOut) {
+      toast.error('Ngày checkout mới phải sau ngày checkout hiện tại');
+      return;
+    }
+
+    if (hasBookingOverlap(extendBooking, newCheckOutDate)) {
+      toast.error('Không thể gia hạn vì bị trùng lịch với booking khác của homestay này');
+      return;
+    }
+
+    try {
+      setExtendSubmitting(true);
+      const result = await staffBookingService.extend(extendBooking.id, { newCheckOutDate });
+      if (result?.success === false) {
+        toast.error(result.message || 'Không thể gia hạn booking');
+        return;
+      }
+
+      toast.success('Gia hạn ngày ở thành công');
+      setShowExtendModal(false);
+      setExtendBooking(null);
+      setNewCheckOutDate('');
+      await loadBookings();
+    } catch (error) {
+      console.error('Extend booking error:', error);
+      toast.error('Không thể gia hạn booking');
+    } finally {
+      setExtendSubmitting(false);
+    }
   };
 
   const handleLogout = () => {
@@ -259,7 +322,7 @@ export default function StaffBookings() {
   const canCheckIn = (booking: Booking) =>
     booking.status === 'confirmed' && (booking.paymentStatus === 'paid' || booking.paymentStatus === 'deposit_paid');
   const canCheckOut = (booking: Booking) => booking.status === 'checked_in';
-  const totalDetailAmount = detailCharges.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const totalBookingDetailAmount = bookingDetailCharges.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -441,6 +504,14 @@ export default function StaffBookings() {
                       </div>
 
                       <div className="flex flex-col gap-2 lg:w-48">
+                        <button
+                          onClick={() => handleViewBookingDetail(booking)}
+                          type="button"
+                          className="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                        >
+                          <ClipboardList className="w-4 h-4" />
+                          Chi tiết booking
+                        </button>
                         {canCheckIn(booking) && (
                           <button
                             onClick={() => handleCheckIn(booking)}
@@ -461,27 +532,21 @@ export default function StaffBookings() {
                             Kiểm tra phòng & checkout
                           </button>
                         )}
+                        {canExtendStay(booking) && (
+                          <button
+                            onClick={() => openExtendModal(booking)}
+                            type="button"
+                            className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                          >
+                            <Calendar className="w-4 h-4" />
+                            Gia hạn ngày ở
+                          </button>
+                        )}
                         {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && (
                           <div className="px-3 py-2 rounded-lg bg-red-50 text-red-700 text-xs font-medium text-center">
                             Chờ khách thanh toán cọc
                           </div>
                         )}
-                        <button
-                          onClick={() => handleAddNote(booking)}
-                          type="button"
-                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                        >
-                          <StickyNote className="w-4 h-4" />
-                          Ghi chú
-                        </button>
-                        <button
-                          onClick={() => handleViewExtraDetail(booking)}
-                          type="button"
-                          className="px-4 py-2 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                        >
-                          <ClipboardList className="w-4 h-4" />
-                          Xem detail phát sinh
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -500,41 +565,6 @@ export default function StaffBookings() {
         </main>
       </div>
 
-      {showNoteModal && selectedBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900">Thêm ghi chú</h3>
-            </div>
-            <div className="p-6">
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Nhập ghi chú..."
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
-              />
-            </div>
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => setShowNoteModal(false)}
-                type="button"
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSaveNote}
-                type="button"
-                className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-medium"
-              >
-                Lưu ghi chú
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <CheckoutInspectionModal
         open={showCheckoutModal}
         booking={checkoutBooking}
@@ -546,21 +576,18 @@ export default function StaffBookings() {
         submitting={checkoutSubmitting}
       />
 
-      {showExtraDetailModal && detailBooking && (
+      {showBookingDetailModal && bookingDetail && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b border-gray-200 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Chi tiết phụ phí phát sinh</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  {detailBooking.homestayName} · {detailBooking.customerName}
-                </p>
+                <h3 className="text-lg font-bold text-gray-900">Chi tiết booking</h3>
+                <p className="text-sm text-gray-600 mt-1">{bookingDetail.homestayName} · {bookingDetail.customerName}</p>
               </div>
               <button
                 onClick={() => {
-                  setShowExtraDetailModal(false);
-                  setDetailBooking(null);
-                  setDetailCharges([]);
+                  setShowBookingDetailModal(false);
+                  setBookingDetail(null);
                 }}
                 type="button"
                 className="p-2 rounded-lg hover:bg-gray-100"
@@ -570,31 +597,81 @@ export default function StaffBookings() {
             </div>
 
             <div className="p-6 overflow-auto">
-              <div className="mb-4 p-4 rounded-lg bg-cyan-50 border border-cyan-100">
-                <p className="text-sm text-cyan-800">Tổng phụ phí</p>
-                <p className="text-2xl font-bold text-cyan-900 mt-1">{totalDetailAmount.toLocaleString('vi-VN')} VND</p>
-              </div>
-
-              {detailLoading ? (
+              {bookingDetailLoading ? (
                 <div className="py-10 text-center text-gray-500">Đang tải chi tiết...</div>
-              ) : detailCharges.length === 0 ? (
-                <div className="py-10 text-center text-gray-500">Booking này chưa có khoản phát sinh.</div>
               ) : (
-                <div className="space-y-3">
-                  {detailCharges.map((item, index) => (
-                    <div key={item.id || `${detailBooking.id}-${index}`} className="p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-gray-900">Khoản #{index + 1}</p>
-                        <p className="text-sm font-bold text-red-600">+{(Number(item.amount) || 0).toLocaleString('vi-VN')} VND</p>
-                      </div>
-                      <p className="text-sm text-gray-700 mt-2">{item.note || 'Không có mô tả'}</p>
-                      {item.createdAt && (
-                        <p className="text-xs text-gray-500 mt-2">
-                          Tạo lúc: {new Date(item.createdAt).toLocaleString('vi-VN')}
-                        </p>
-                      )}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Mã booking</div>
+                      <div className="font-semibold text-gray-900 mt-1">{bookingDetail.bookingCode || bookingDetail.id}</div>
                     </div>
-                  ))}
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Mã hệ thống</div>
+                      <div className="font-semibold text-gray-900 mt-1 break-all">{bookingDetail.id}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Trạng thái</div>
+                      <div className="font-semibold text-gray-900 mt-1">{bookingDetail.status}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Thanh toán</div>
+                      <div className="font-semibold text-gray-900 mt-1">{bookingDetail.paymentStatus}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Check-in</div>
+                      <div className="font-semibold text-gray-900 mt-1">{new Date(bookingDetail.checkInDate).toLocaleDateString('vi-VN')}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Check-out</div>
+                      <div className="font-semibold text-gray-900 mt-1">{new Date(bookingDetail.checkOutDate).toLocaleDateString('vi-VN')}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Số khách</div>
+                      <div className="font-semibold text-gray-900 mt-1">{bookingDetail.numberOfGuests} khách</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Số điện thoại</div>
+                      <div className="font-semibold text-gray-900 mt-1">{bookingDetail.customerPhone || '-'}</div>
+                    </div>
+                  </div>
+
+                  {(bookingDetail.notes || bookingDetail.specialRequests) && (
+                    <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4">
+                      <div className="text-sm font-semibold text-yellow-900 mb-1">Ghi chú / yêu cầu đặc biệt</div>
+                      <div className="text-sm text-yellow-900 whitespace-pre-wrap">
+                        {bookingDetail.notes || buildDisplaySpecialRequests(bookingDetail.specialRequests)}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-lg border border-cyan-200 bg-cyan-50 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-cyan-900">Chi tiết phụ phí phát sinh</h4>
+                      <span className="text-sm font-bold text-cyan-900">Tổng: {totalBookingDetailAmount.toLocaleString('vi-VN')} VND</span>
+                    </div>
+
+                    {bookingDetailChargeLoading ? (
+                      <div className="text-sm text-gray-500">Đang tải phát sinh...</div>
+                    ) : bookingDetailCharges.length === 0 ? (
+                      <div className="text-sm text-gray-500">Booking này chưa có khoản phát sinh.</div>
+                    ) : (
+                      <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                        {bookingDetailCharges.map((item, index) => (
+                          <div key={item.id || `${bookingDetail.id}-${index}`} className="bg-white border border-cyan-100 rounded-lg p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-medium text-gray-900">Khoản #{index + 1}</p>
+                              <p className="text-sm font-bold text-red-600">+{(Number(item.amount) || 0).toLocaleString('vi-VN')} VND</p>
+                            </div>
+                            <p className="text-sm text-gray-700 mt-1">{item.note || 'Không có mô tả'}</p>
+                            {item.createdAt && (
+                              <p className="text-xs text-gray-500 mt-1">Tạo lúc: {new Date(item.createdAt).toLocaleString('vi-VN')}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -602,14 +679,70 @@ export default function StaffBookings() {
             <div className="p-6 border-t border-gray-200">
               <button
                 onClick={() => {
-                  setShowExtraDetailModal(false);
-                  setDetailBooking(null);
-                  setDetailCharges([]);
+                  setShowBookingDetailModal(false);
+                  setBookingDetail(null);
                 }}
                 type="button"
                 className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showExtendModal && extendBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">Gia hạn ngày ở</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {extendBooking.homestayName} · {extendBooking.customerName}
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm text-gray-700">
+                Checkout hiện tại: <span className="font-semibold">{new Date(extendBooking.checkOutDate).toLocaleDateString('vi-VN')}</span>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Ngày checkout mới</label>
+                <input
+                  type="date"
+                  value={newCheckOutDate}
+                  min={new Date(extendBooking.checkOutDate).toISOString().split('T')[0]}
+                  onChange={(e) => setNewCheckOutDate(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                />
+              </div>
+
+              <p className="text-xs text-gray-500">
+                Hệ thống sẽ kiểm tra trùng lịch với booking khác của cùng homestay trước khi gia hạn.
+              </p>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => {
+                  if (extendSubmitting) return;
+                  setShowExtendModal(false);
+                  setExtendBooking(null);
+                  setNewCheckOutDate('');
+                }}
+                type="button"
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmExtend}
+                disabled={extendSubmitting || !newCheckOutDate}
+                type="button"
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {extendSubmitting ? 'Đang gia hạn...' : 'Xác nhận gia hạn'}
               </button>
             </div>
           </div>
