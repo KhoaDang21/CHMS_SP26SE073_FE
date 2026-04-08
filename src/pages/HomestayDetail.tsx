@@ -266,11 +266,16 @@ export default function HomestayDetail() {
         [availablePromotions, selectedPromotionId],
     )
 
+    const availableExperiences = useMemo(() => {
+        if (!homestay?.id) return []
+        return experiences.filter((item) => String(item.homestayId || '').trim() === String(homestay.id).trim())
+    }, [experiences, homestay?.id])
+
     const selectedExperienceItems = useMemo(
-        () => experiences
+        () => availableExperiences
             .filter((item) => (selectedExperienceQty[item.id] ?? 0) > 0)
             .map((item) => ({ item, qty: selectedExperienceQty[item.id] ?? 0 })),
-        [experiences, selectedExperienceQty],
+        [availableExperiences, selectedExperienceQty],
     )
 
     const selectedExperiencesEstimate = useMemo(
@@ -578,11 +583,11 @@ export default function HomestayDetail() {
                                         </div>
                                         {experiencesLoading ? (
                                             <div className="text-sm text-gray-500">Đang tải danh sách dịch vụ...</div>
-                                        ) : experiences.length === 0 ? (
+                                        ) : availableExperiences.length === 0 ? (
                                             <div className="text-sm text-gray-500">Chưa có dịch vụ địa phương khả dụng.</div>
                                         ) : (
                                             <div className="space-y-2 max-h-52 overflow-auto pr-1">
-                                                {experiences.map((item) => {
+                                                {availableExperiences.map((item) => {
                                                     const qty = selectedExperienceQty[item.id] ?? 0
                                                     const checked = qty > 0
                                                     return (
