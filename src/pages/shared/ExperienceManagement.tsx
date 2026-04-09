@@ -3,19 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import {
   Building2,
   Calendar,
-  Home,
-  LayoutDashboard,
   ListFilter,
   LogOut,
   MapPin,
   Menu,
-  MessageSquare,
   Plus,
   Search,
-  Sparkles,
   Trash2,
-  UserCog,
-  Users,
   X,
   Pencil,
   Tag,
@@ -32,18 +26,9 @@ import type {
   ServiceCategoryPayload,
 } from '../../types/experience.types';
 import { adminNavItems } from '../../config/adminNavItems';
+import { managerNavItems } from '../../config/managerNavItems';
 import { homestayService } from '../../services/homestayService';
 import type { Homestay } from '../../types/homestay.types';
-
-const managerNavItems = [
-  { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
-  { id: 'bookings', label: 'Đơn đặt phòng', icon: Calendar, path: '/manager/bookings' },
-  { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
-  { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
-  { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-  { id: 'experiences', label: 'Dịch vụ địa phương', icon: Sparkles, path: '/manager/experiences' },
-  { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
-] as const;
 
 const initialServiceForm: ExperiencePayload = {
   homestayId: '',

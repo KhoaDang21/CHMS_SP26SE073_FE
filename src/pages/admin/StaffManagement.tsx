@@ -17,11 +17,8 @@ import {
   X,
   Menu,
   LogOut,
-  LayoutDashboard,
   Home,
-  CalendarDays,
   UserCog,
-  MessageSquare,
   MapPin,
   Check,
 } from 'lucide-react';
@@ -32,6 +29,7 @@ import { adminRoleService } from '../../services/adminRoleService';
 import { locationService } from '../../services/locationService';
 import { districtService } from '../../services/districtService';
 import { adminNavItems } from '../../config/adminNavItems';
+import { managerNavItems } from '../../config/managerNavItems';
 import { homestayService } from '../../services/homestayService';
 import type { Staff, StaffRole, StaffStatus } from '../../types/staff.types';
 import type { Role } from '../../types/role.types';
@@ -628,14 +626,7 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
 
   const navItems = isAdminMode
     ? adminNavItems
-    : [
-        { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
-        { id: 'bookings', label: 'Đơn đặt phòng', icon: CalendarDays, path: '/manager/bookings' },
-        { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
-        { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
-        { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-        { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
-      ];
+    : managerNavItems;
 
   const managerAccounts = filteredStaff.filter((s) => s.role === 'manager' || s.role === 'admin');
   const staffAccounts = filteredStaff.filter((s) => s.role === 'staff');

@@ -5,22 +5,19 @@ import {
   Building2,
   Calendar,
   CheckCircle2,
-  Home,
-  LayoutDashboard,
   LogOut,
   Menu,
   MessageSquare,
   Search,
   Star,
   User,
-  UserCog,
-  Users,
   X,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { reviewService } from '../../services/reviewService';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
+import { managerNavItems } from '../../config/managerNavItems';
 
 type FilterStatus = 'all' | 'responded' | 'pending';
 
@@ -100,14 +97,7 @@ export default function ManagerReviews() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
-    { id: 'bookings', label: 'Đơn đặt phòng', icon: Calendar, path: '/manager/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
-    { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-    { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
-  ];
+  const navItems = managerNavItems;
 
   const loadReviews = async () => {
     try {

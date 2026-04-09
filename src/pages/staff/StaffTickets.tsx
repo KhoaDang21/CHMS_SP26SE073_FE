@@ -21,6 +21,8 @@ import {
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
+import { employeeService } from '../../services/employeeService';
+import { staffBookingService } from '../../services/staffBookingService';
 import {
   staffTicketService,
   type StaffTicketDetail,
@@ -90,6 +92,29 @@ function StatusTimeline({ status }: { status: StaffTicketStatus }) {
   );
 }
 
+function normalizeId(value: string | undefined | null): string {
+  return String(value || '').trim().toLowerCase();
+}
+
+function extractAssignedHomestayIds(source: any): string[] {
+  const rawList = [
+    ...(Array.isArray(source?.assignedHomestays) ? source.assignedHomestays : []),
+    ...(Array.isArray(source?.assignedHomestayIds) ? source.assignedHomestayIds : []),
+    ...(Array.isArray(source?.homestayIds) ? source.homestayIds : []),
+  ];
+
+  const ids = rawList
+    .map((item: any) => {
+      if (!item) return '';
+      if (typeof item === 'string') return item;
+      return String(item?.id || item?.homestayId || item?.value || '');
+    })
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(ids));
+}
+
 export default function StaffTickets() {
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
@@ -105,6 +130,7 @@ export default function StaffTickets() {
   const [selectedTicket, setSelectedTicket] = useState<StaffTicketDetail | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [nextStatus, setNextStatus] = useState<StaffTicketStatus>('OPEN');
+  const [assignedHomestayCount, setAssignedHomestayCount] = useState(0);
 
   const navigationItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
@@ -113,18 +139,94 @@ export default function StaffTickets() {
     { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: true },
   ];
 
+  const resolveAssignedHomestayIds = useCallback(async () => {
+    if (!currentUser?.id && !currentUser?.email) return [] as string[];
+
+    try {
+      if (currentUser?.id) {
+        const byId = await employeeService.getEmployeeById(currentUser.id);
+        const idsById = extractAssignedHomestayIds(byId);
+        if (idsById.length > 0) return idsById;
+      }
+
+      const employees = await employeeService.getEmployees();
+      const matched = employees.find((item) => {
+        const itemId = String(item?.id || '').trim().toLowerCase();
+        const itemEmail = String(item?.email || '').trim().toLowerCase();
+        const userId = String(currentUser?.id || '').trim().toLowerCase();
+        const userEmail = String(currentUser?.email || '').trim().toLowerCase();
+        return (userId && itemId === userId) || (userEmail && itemEmail === userEmail);
+      });
+
+      return extractAssignedHomestayIds(matched);
+    } catch (error) {
+      console.error('Resolve assigned homestays error:', error);
+      return [] as string[];
+    }
+  }, [currentUser?.email, currentUser?.id]);
+
+  const resolveTicketHomestayId = useCallback(async (ticket: StaffTicket): Promise<string | null> => {
+    if (ticket.homestayId) return ticket.homestayId;
+
+    const bookingIdFromList = String(ticket.bookingId || '').trim();
+    if (bookingIdFromList) {
+      const booking = await staffBookingService.getBookingById(bookingIdFromList);
+      const bookingHomestayId = String(booking?.homestayId || '').trim();
+      return bookingHomestayId || null;
+    }
+
+    const detail = await staffTicketService.getDetail(ticket.id);
+    if (detail?.homestayId) return detail.homestayId;
+
+    const bookingIdFromDetail = String(detail?.bookingId || '').trim();
+    if (!bookingIdFromDetail) return null;
+
+    const booking = await staffBookingService.getBookingById(bookingIdFromDetail);
+    const bookingHomestayId = String(booking?.homestayId || '').trim();
+    return bookingHomestayId || null;
+  }, []);
+
   const loadTickets = useCallback(async () => {
     try {
       setLoading(true);
-      const list = await staffTicketService.list();
-      setTickets(list);
+      const [list, assignedHomestayIds] = await Promise.all([
+        staffTicketService.list(),
+        resolveAssignedHomestayIds(),
+      ]);
+
+      setAssignedHomestayCount(assignedHomestayIds.length);
+
+      const assignedSet = new Set(assignedHomestayIds.map((id) => normalizeId(id)).filter(Boolean));
+      if (assignedSet.size === 0) {
+        setTickets([]);
+        return;
+      }
+
+      const directScoped = list.filter((ticket) => assignedSet.has(normalizeId(ticket.homestayId)));
+      const unresolved = list.filter((ticket) => !normalizeId(ticket.homestayId));
+
+      const resolvedUnresolved = await Promise.all(
+        unresolved.map(async (ticket) => {
+          try {
+            const homestayId = await resolveTicketHomestayId(ticket);
+            return assignedSet.has(normalizeId(homestayId)) ? ticket : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      const resolvedScoped = resolvedUnresolved.filter((item): item is StaffTicket => Boolean(item));
+      const merged = [...directScoped, ...resolvedScoped];
+      const uniqueById = Array.from(new Map(merged.map((ticket) => [ticket.id, ticket])).values());
+      setTickets(uniqueById);
     } catch (error) {
       console.error('Load staff tickets error:', error);
       toast.error('Không thể tải danh sách ticket');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [resolveAssignedHomestayIds, resolveTicketHomestayId]);
 
   const loadDetail = useCallback(async (ticketId: string) => {
     try {
@@ -229,10 +331,10 @@ export default function StaffTickets() {
   };
 
   const getStatusText = (status: StaffTicketStatus) => {
-    if (status === 'OPEN') return 'Open';
-    if (status === 'IN_PROGRESS') return 'In Progress';
-    if (status === 'RESOLVED') return 'Resolved';
-    return 'Closed';
+    if (status === 'OPEN') return 'Mở';
+    if (status === 'IN_PROGRESS') return 'Đang xử lý';
+    if (status === 'RESOLVED') return 'Đã giải quyết';
+    return 'Đã đóng';
   };
 
   const handleAssign = async (ticketId: string) => {
@@ -394,23 +496,23 @@ export default function StaffTickets() {
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
               <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              <p className="text-sm text-gray-600">Total</p>
+              <p className="text-sm text-gray-600">Tổng cộng</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-4 border border-blue-100">
               <p className="text-2xl font-bold text-gray-900">{stats.open}</p>
-              <p className="text-sm text-gray-600">Open</p>
+              <p className="text-sm text-gray-600">Mở</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-4 border border-yellow-100">
               <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
-              <p className="text-sm text-gray-600">In Progress</p>
+              <p className="text-sm text-gray-600">Đang xử lý</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-4 border border-green-100">
               <p className="text-2xl font-bold text-gray-900">{stats.resolved}</p>
-              <p className="text-sm text-gray-600">Resolved</p>
+              <p className="text-sm text-gray-600">Đã giải quyết</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
               <p className="text-2xl font-bold text-gray-900">{stats.closed}</p>
-              <p className="text-sm text-gray-600">Closed</p>
+              <p className="text-sm text-gray-600">Đã đóng</p>
             </div>
           </div>
 
@@ -432,10 +534,10 @@ export default function StaffTickets() {
                 className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
               >
                 <option value="all">Tất cả trạng thái</option>
-                <option value="OPEN">Open</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="RESOLVED">Resolved</option>
-                <option value="CLOSED">Closed</option>
+                <option value="OPEN">Mở</option>
+                <option value="IN_PROGRESS">Đang xử lý</option>
+                <option value="RESOLVED">Đã giải quyết</option>
+                <option value="CLOSED">Đã đóng</option>
               </select>
             </div>
           </div>
@@ -446,7 +548,7 @@ export default function StaffTickets() {
                 <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Danh sách ticket</p>
-                    <p className="text-xs text-gray-500">Chọn ticket để mở khung chat</p>
+                    <p className="text-xs text-gray-500">Chỉ hiển thị ticket thuộc homestay bạn được phân công ({assignedHomestayCount})</p>
                   </div>
                   <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">{filteredTickets.length}</span>
                 </div>
@@ -588,10 +690,10 @@ export default function StaffTickets() {
                                   onChange={(e) => setNextStatus(e.target.value as StaffTicketStatus)}
                                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500"
                                 >
-                                  <option value="OPEN">Open</option>
-                                  <option value="IN_PROGRESS">In Progress</option>
-                                  <option value="RESOLVED">Resolved</option>
-                                  <option value="CLOSED">Closed</option>
+                                  <option value="OPEN">Mở</option>
+                                  <option value="IN_PROGRESS">Đang xử lý</option>
+                                  <option value="RESOLVED">Đã giải quyết</option>
+                                  <option value="CLOSED">Đã đóng</option>
                                 </select>
                               </div>
                               <button
