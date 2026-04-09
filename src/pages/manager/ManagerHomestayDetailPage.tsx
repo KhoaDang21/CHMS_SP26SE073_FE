@@ -15,12 +15,9 @@ import {
   Menu,
   X,
   LogOut,
-  LayoutDashboard,
-  UserCog,
   Shield,
   FileText,
   UserCheck,
-  MessageSquare,
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
@@ -29,6 +26,7 @@ import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import EditHomestayModal from '../../components/admin/EditHomestayModal';
+import { managerNavItems } from '../../config/managerNavItems';
 
 export default function ManagerHomestayDetailPage() {
   const navigate = useNavigate();
@@ -147,14 +145,7 @@ export default function ManagerHomestayDetailPage() {
     }
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
-    { id: 'bookings', label: 'Đơn đặt phòng', icon: Calendar, path: '/manager/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
-    { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-    { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
-  ];
+  const navItems = managerNavItems;
 
   if (loading) {
     return (

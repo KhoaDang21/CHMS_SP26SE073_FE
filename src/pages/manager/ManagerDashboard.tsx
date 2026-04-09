@@ -4,7 +4,6 @@ import {
   Menu,
   X,
   LogOut,
-  LayoutDashboard,
   Calendar,
   Users,
   UserCog,
@@ -12,7 +11,6 @@ import {
   CheckCircle,
   AlertCircle,
   DollarSign,
-  Home,
   Building2,
   Bell,
   MessageSquare,
@@ -28,6 +26,7 @@ import { apiService } from '../../services/apiService';
 import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
+import { managerNavItems } from '../../config/managerNavItems';
 
 interface DashboardStats {
   totalBookings: number;
@@ -361,14 +360,7 @@ export default function ManagerDashboard() {
     navigate('/auth/login');
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/manager/dashboard' },
-    { id: 'bookings', label: 'Đơn đặt phòng', icon: Calendar, path: '/manager/bookings' },
-    { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
-    { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
-    { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
-    { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
-  ];
+  const navItems = managerNavItems;
 
   if (loading) {
     return (
