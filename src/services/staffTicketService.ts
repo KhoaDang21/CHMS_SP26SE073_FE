@@ -16,6 +16,9 @@ export interface StaffTicket {
   ticketNumber?: string;
   title: string;
   description?: string;
+  bookingId?: string;
+  homestayId?: string;
+  homestayName?: string;
   status: StaffTicketStatus;
   priority: string;
   category?: string;
@@ -51,6 +54,9 @@ const mapTicket = (raw: any): StaffTicket => ({
   ticketNumber: raw?.ticketNumber ? String(raw.ticketNumber) : undefined,
   title: String(raw?.title || raw?.subject || ''),
   description: raw?.description ? String(raw.description) : undefined,
+  bookingId: raw?.bookingId ? String(raw.bookingId) : undefined,
+  homestayId: raw?.homestayId ? String(raw.homestayId) : undefined,
+  homestayName: raw?.homestayName ? String(raw.homestayName) : undefined,
   status: normalizeStatus(raw?.status),
   priority: String(raw?.priority || 'NORMAL'),
   category: raw?.category ? String(raw.category) : undefined,
