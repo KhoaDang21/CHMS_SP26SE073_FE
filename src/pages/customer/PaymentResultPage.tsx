@@ -28,12 +28,30 @@ export default function PaymentResultPage() {
     checkBookingStatus();
   }, [bookingId]);
 
-  const checkBookingStatus = async () => {
+  const resolveBooking = async (id: string) => {
+    const detail = await bookingService.getBookingDetail(id);
+    if (detail) return detail;
+
+    // Fallback: endpoint detail có thể lỗi tạm thời ở BE, lấy từ danh sách booking của customer.
+    const myBookings = await bookingService.getMyBookings();
+    return myBookings.find((item) => item.id === id) ?? null;
+  };
+
+  const checkBookingStatus = async (attempt = 0) => {
     if (!bookingId) return;
     setState('loading');
     try {
-      const detail = await bookingService.getBookingDetail(bookingId);
-      if (!detail) { setState('error'); return; }
+      const detail = await resolveBooking(bookingId);
+      if (!detail) {
+        if (attempt < 1) {
+          setTimeout(() => {
+            void checkBookingStatus(attempt + 1);
+          }, 1200);
+          return;
+        }
+        setState('error');
+        return;
+      }
       setBooking(detail);
 
       const status = (detail.status as string).toUpperCase();
@@ -212,7 +230,7 @@ export default function PaymentResultPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Không tìm thấy thông tin</h2>
               <p className="text-gray-500 text-sm mb-6">Không thể tải thông tin booking. Vui lòng kiểm tra lại.</p>
               <div className="flex gap-3">
-                <button onClick={checkBookingStatus} className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                <button onClick={() => checkBookingStatus()} className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
                   <RefreshCw className="w-4 h-4" /> Thử lại
                 </button>
                 <button onClick={() => navigate('/customer/bookings')} className="flex-1 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all">
