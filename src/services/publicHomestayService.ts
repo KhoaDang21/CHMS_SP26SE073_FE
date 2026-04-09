@@ -45,6 +45,8 @@ export const publicHomestayService = {
         provinceName: it.provinceName ?? it.ProvinceName ?? "",
         city: it.city ?? it.City ?? "",
         country: it.country ?? it.Country ?? "",
+        latitude: it.latitude ?? it.Latitude,
+        longitude: it.longitude ?? it.Longitude,
         pricePerNight:
           it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
         maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
@@ -103,6 +105,8 @@ export const publicHomestayService = {
         provinceName: it.provinceName ?? it.ProvinceName ?? "",
         city: it.city ?? it.City ?? "",
         country: it.country ?? it.Country ?? "",
+        latitude: it.latitude ?? it.Latitude,
+        longitude: it.longitude ?? it.Longitude,
         pricePerNight:
           it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
         maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
@@ -155,6 +159,8 @@ export const publicHomestayService = {
         provinceName: it.provinceName ?? it.ProvinceName ?? "",
         city: it.city ?? it.City ?? "",
         country: it.country ?? it.Country ?? "",
+        latitude: it.latitude ?? it.Latitude,
+        longitude: it.longitude ?? it.Longitude,
         pricePerNight:
           it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
         maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,

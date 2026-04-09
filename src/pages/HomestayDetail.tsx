@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText } from 'lucide-react'
+import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText, MapPin, ExternalLink } from 'lucide-react'
 import MainLayout from '../layouts/MainLayout'
 import { publicHomestayService } from '../services/publicHomestayService'
 import { ImageWithFallback } from '../components/figma/ImageWithFallback'
@@ -231,6 +231,24 @@ export default function HomestayDetail() {
         return Math.round((sum / reviews.length) * 10) / 10
     }, [reviews])
 
+    const locationCoords = useMemo(() => {
+        const lat = Number(homestay?.latitude)
+        const lng = Number(homestay?.longitude)
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+        if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
+        return { lat, lng }
+    }, [homestay?.latitude, homestay?.longitude])
+
+    const googleMapEmbedUrl = useMemo(() => {
+        if (!locationCoords) return ''
+        return `https://www.google.com/maps?q=${locationCoords.lat},${locationCoords.lng}&z=15&output=embed`
+    }, [locationCoords])
+
+    const googleMapOpenUrl = useMemo(() => {
+        if (!locationCoords) return ''
+        return `https://www.google.com/maps/search/?api=1&query=${locationCoords.lat},${locationCoords.lng}`
+    }, [locationCoords])
+
     const formatMoney = (value: any) => {
         const n = typeof value === 'number' ? value : Number(value)
         if (!Number.isFinite(n)) return '—'
@@ -382,6 +400,45 @@ export default function HomestayDetail() {
 
                                 <div className="mt-6">
                                     <p className="text-gray-700">{homestay.description}</p>
+                                </div>
+
+                                <div className="mt-6">
+                                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 text-cyan-600" />
+                                        Vị trí trên bản đồ
+                                    </h4>
+
+                                    {locationCoords ? (
+                                        <>
+                                            <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
+                                                <iframe
+                                                    title={`Google Map - ${homestay.name}`}
+                                                    src={googleMapEmbedUrl}
+                                                    className="w-full h-72"
+                                                    loading="lazy"
+                                                    referrerPolicy="no-referrer-when-downgrade"
+                                                />
+                                            </div>
+                                            <div className="mt-2 flex items-center justify-between gap-3">
+                                                <p className="text-xs text-gray-500">
+                                                    Tọa độ: {locationCoords.lat.toFixed(6)}, {locationCoords.lng.toFixed(6)}
+                                                </p>
+                                                <a
+                                                    href={googleMapOpenUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center gap-1 text-sm text-cyan-700 hover:text-cyan-800 font-medium"
+                                                >
+                                                    Mở trên Google Maps
+                                                    <ExternalLink className="w-4 h-4" />
+                                                </a>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                                            Homestay này chưa có thông tin kinh độ/vĩ độ để hiển thị bản đồ.
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="mt-6 grid grid-cols-2 gap-4">
