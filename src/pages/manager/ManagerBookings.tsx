@@ -605,8 +605,14 @@ export default function ManagerBookings() {
                             <p className="text-2xl font-bold text-gray-900">
                               {booking.totalPrice.toLocaleString('vi-VN')} ₫
                             </p>
-                            {booking.status === 'confirmed' && booking.paymentStatus !== 'paid' && (
-                              <p className="text-xs text-orange-600 mt-1">Cần thanh toán đủ trước khi check-in/hoàn thành</p>
+                            {booking.paymentStatus === 'pending' && booking.depositAmount !== undefined && booking.depositAmount > 0 && (
+                              <p className="text-xs text-yellow-600 mt-1 font-medium">Cần cọc: {booking.depositAmount.toLocaleString('vi-VN')} ₫</p>
+                            )}
+                            {booking.paymentStatus === 'deposit_paid' && booking.remainingAmount !== undefined && booking.remainingAmount > 0 && (
+                              <p className="text-xs text-orange-600 mt-1 font-medium">Đã cọc — còn nợ: {booking.remainingAmount.toLocaleString('vi-VN')} ₫</p>
+                            )}
+                            {booking.paymentStatus === 'paid' && (
+                              <p className="text-xs text-green-600 mt-1 font-medium">Đã thanh toán đủ</p>
                             )}
                           </div>
 
@@ -670,77 +676,159 @@ export default function ManagerBookings() {
       )}
 
       {selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex items-center justify-between text-white">
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedBooking(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex items-start justify-between text-white rounded-t-2xl">
               <div>
-                <h2 className="text-2xl font-bold">Chi tiết đơn đặt phòng</h2>
-                <p className="text-blue-100 text-sm">{selectedBooking.bookingCode}</p>
+                <h2 className="text-lg font-bold">Chi tiết đơn đặt phòng</h2>
+                <p className="text-blue-100 text-sm">{selectedBooking.homestayName}</p>
+                {selectedBooking.bookingCode && !/^[0-9a-f]{8}(-[0-9a-f-]+)?$/i.test(selectedBooking.bookingCode) && (
+                  <p className="text-blue-200 text-xs mt-0.5">Mã đơn: {selectedBooking.bookingCode}</p>
+                )}
               </div>
-              <button
-                onClick={() => setSelectedBooking(null)}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6" />
+              <button onClick={() => setSelectedBooking(null)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors mt-0.5">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Thông tin homestay</h3>
-                <p className="font-medium text-blue-600">{selectedBooking.homestayName}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  {new Date(selectedBooking.checkInDate).toLocaleDateString('vi-VN')} -{' '}
-                  {new Date(selectedBooking.checkOutDate).toLocaleDateString('vi-VN')}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Thông tin khách hàng</h3>
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-medium">Họ tên:</span> {selectedBooking.customerName}
-                  </p>
-                  <p>
-                    <span className="font-medium">Email:</span> {selectedBooking.customerEmail}
-                  </p>
-                  <p>
-                    <span className="font-medium">SĐT:</span> {selectedBooking.customerPhone}
-                  </p>
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Homestay */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-blue-500" /> Thông tin homestay
+                </h3>
+                <div className="flex gap-4">
+                  {selectedBooking.homestayImage ? (
+                    <img src={selectedBooking.homestayImage} alt={selectedBooking.homestayName}
+                      className="w-28 h-24 object-cover rounded-lg flex-shrink-0" />
+                  ) : (
+                    <div className="w-28 h-24 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-7 h-7 text-gray-300" />
+                    </div>
+                  )}
+                  <div className="text-sm space-y-1">
+                    <p className="font-semibold text-gray-900">{selectedBooking.homestayName}</p>
+                    <p className="text-gray-500">Check-in: <span className="font-medium text-gray-800">{new Date(selectedBooking.checkInDate).toLocaleDateString('vi-VN')}</span></p>
+                    <p className="text-gray-500">Check-out: <span className="font-medium text-gray-800">{new Date(selectedBooking.checkOutDate).toLocaleDateString('vi-VN')}</span></p>
+                    <p className="text-gray-500">{selectedBooking.numberOfNights} đêm · {selectedBooking.numberOfGuests} khách</p>
+                  </div>
                 </div>
-              </div>
+              </section>
 
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Chi tiết đơn</h3>
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-medium">Số khách:</span> {selectedBooking.numberOfGuests}
-                  </p>
-                  <p>
-                    <span className="font-medium">Số đêm:</span> {selectedBooking.numberOfNights}
-                  </p>
-                  <p>
-                    <span className="font-medium">Tổng tiền:</span> {selectedBooking.totalPrice.toLocaleString('vi-VN')} ₫
-                  </p>
+              {/* Customer */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-500" /> Thông tin khách hàng
+                </h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-gray-400 text-xs mb-1">Họ và tên</p>
+                    <p className="font-medium text-gray-900">{selectedBooking.customerName}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-gray-400 text-xs mb-1 flex items-center gap-1"><Phone className="w-3 h-3" /> Số điện thoại</p>
+                    {selectedBooking.customerPhone
+                      ? <p className="font-medium text-gray-900">{selectedBooking.customerPhone}</p>
+                      : <p className="text-gray-400 italic text-xs">Không có thông tin</p>}
+                  </div>
+                  {selectedBooking.customerEmail && (
+                    <div className="bg-gray-50 rounded-lg p-3 col-span-2">
+                      <p className="text-gray-400 text-xs mb-1 flex items-center gap-1"><Mail className="w-3 h-3" /> Email</p>
+                      <p className="font-medium text-gray-900 break-all">{selectedBooking.customerEmail}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </section>
 
+              {/* Status */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-500" /> Trạng thái
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  <div className="bg-gray-50 rounded-lg p-3 flex-1 min-w-[120px]">
+                    <p className="text-gray-400 text-xs mb-1.5">Đơn đặt phòng</p>
+                    {getStatusBadge(selectedBooking.status)}
+                  </div>
+                  {selectedBooking.status !== 'pending' && (
+                    <div className="bg-gray-50 rounded-lg p-3 flex-1 min-w-[120px]">
+                      <p className="text-gray-400 text-xs mb-1.5">Thanh toán</p>
+                      {getPaymentStatusBadge(selectedBooking.paymentStatus)}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Payment detail */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-blue-500" /> Chi tiết thanh toán
+                </h3>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Giá phòng ({selectedBooking.numberOfNights} đêm)</span>
+                    <span className="font-medium">{(selectedBooking.pricePerNight * selectedBooking.numberOfNights).toLocaleString('vi-VN')} ₫</span>
+                  </div>
+                  {selectedBooking.discountAmount !== undefined && selectedBooking.discountAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-green-600">Giảm giá</span>
+                      <span className="font-medium text-green-600">-{selectedBooking.discountAmount.toLocaleString('vi-VN')} ₫</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-gray-200 pt-2 font-semibold">
+                    <span className="text-gray-900">Tổng cộng</span>
+                    <span className="text-blue-600 text-base">{selectedBooking.totalPrice.toLocaleString('vi-VN')} ₫</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    {selectedBooking.paymentStatus === 'pending' ? (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 col-span-2">
+                        <p className="text-[10px] font-bold text-yellow-700 uppercase mb-1">Cần cọc</p>
+                        <p className="text-sm font-black text-yellow-700">{(selectedBooking.depositAmount || 0).toLocaleString('vi-VN')} ₫</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-green-700 uppercase mb-1">Đã thanh toán</p>
+                          <p className="text-sm font-black text-green-700">{(selectedBooking.totalPrice - (selectedBooking.remainingAmount || 0)).toLocaleString('vi-VN')} ₫</p>
+                        </div>
+                        {selectedBooking.remainingAmount !== undefined && selectedBooking.remainingAmount > 0 && (
+                          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-orange-700 uppercase mb-1">Còn nợ</p>
+                            <p className="text-sm font-black text-orange-700">{selectedBooking.remainingAmount.toLocaleString('vi-VN')} ₫</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* Special requests */}
               {selectedBooking.specialRequests && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Yêu cầu đặc biệt</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+                <section>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-blue-500" /> Yêu cầu đặc biệt
+                  </h3>
+                  <p className="text-gray-700 bg-gray-50 rounded-lg p-3 text-sm whitespace-pre-wrap">
                     {buildDisplaySpecialRequests(selectedBooking.specialRequests)}
                   </p>
-                </div>
+                </section>
               )}
             </div>
 
-            <div className="border-t border-gray-200 p-6 flex justify-end gap-3">
+            <div className="border-t border-gray-100 px-6 py-4 flex justify-end gap-3">
               {selectedBooking.status === 'confirmed' && (
                 <button
                   onClick={() => void handleUpdateStatus(selectedBooking.id, 'checked_in')}
                   disabled={selectedBooking.paymentStatus !== 'paid'}
-                  className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle className="w-4 h-4" />
                   {selectedBooking.paymentStatus === 'paid' ? 'Check-in' : 'Chờ thanh toán đủ'}
@@ -749,16 +837,14 @@ export default function ManagerBookings() {
               {selectedBooking.status === 'checked_in' && (
                 <button
                   onClick={() => void handleUpdateStatus(selectedBooking.id, 'completed')}
-                  className="px-5 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium flex items-center gap-2"
+                  className="px-5 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Hoàn thành
                 </button>
               )}
-              <button
-                onClick={() => setSelectedBooking(null)}
-                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-              >
+              <button onClick={() => setSelectedBooking(null)}
+                className="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
                 Đóng
               </button>
             </div>

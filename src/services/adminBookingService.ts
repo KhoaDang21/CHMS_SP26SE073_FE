@@ -103,14 +103,16 @@ const toBooking = (item: any): Booking => {
       item?.homestayImage || item?.imageUrl || item?.homestay?.imageUrls?.[0],
     customerId: item?.customerId ? String(item.customerId) : undefined,
     customerName: String(item?.customerName || item?.guestName || "Khách hàng"),
-    customerEmail: String(item?.customerEmail || item?.email || item?.CustomerEmail || ""),
+    customerEmail: String(
+      item?.customerEmail || item?.email || item?.CustomerEmail || "",
+    ),
     customerPhone: String(
       item?.customerPhone ||
-      item?.contactPhone ||
-      item?.ContactPhone ||
-      item?.phoneNumber ||
-      item?.Phone ||
-      "",
+        item?.contactPhone ||
+        item?.ContactPhone ||
+        item?.phoneNumber ||
+        item?.Phone ||
+        "",
     ),
     checkInDate,
     checkOutDate,
@@ -266,7 +268,9 @@ export const adminBookingService = {
     if (missingPhoneBookings.length === 0) return enriched;
 
     try {
-      const res = await apiService.get<any>(apiConfig.endpoints.adminCustomers.list);
+      const res = await apiService.get<any>(
+        apiConfig.endpoints.adminCustomers.list,
+      );
       const customers: any[] = Array.isArray(res)
         ? res
         : Array.isArray(res?.data)
@@ -282,9 +286,19 @@ export const adminBookingService = {
       });
 
       return enriched.map((booking) => {
-        if ((booking.customerPhone && booking.customerEmail) || !booking.customerId) return booking;
-        const phone = booking.customerPhone || phoneById.get(String(booking.customerId)) || "";
-        const email = booking.customerEmail || emailById.get(String(booking.customerId)) || "";
+        if (
+          (booking.customerPhone && booking.customerEmail) ||
+          !booking.customerId
+        )
+          return booking;
+        const phone =
+          booking.customerPhone ||
+          phoneById.get(String(booking.customerId)) ||
+          "";
+        const email =
+          booking.customerEmail ||
+          emailById.get(String(booking.customerId)) ||
+          "";
         return { ...booking, customerPhone: phone, customerEmail: email };
       });
     } catch {

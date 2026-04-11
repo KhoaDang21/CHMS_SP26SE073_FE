@@ -3,38 +3,39 @@ import { AppRoutes } from './routes/AppRoutes';
 import { Toaster } from 'react-hot-toast';
 import AiChatWidget from './components/ai/AiChatWidget';
 import { WishlistProvider } from './contexts/WishlistContext';
+import './utils/connectionDebugger'; // Import for console debugging
 
 // Main App Component - Entry point for Figma Make
 export default function App() {
   return (
     <BrowserRouter>
       <WishlistProvider>
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
+        <Toaster
+          position="top-right"
+          toastOptions={{
             duration: 3000,
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
+            style: {
+              background: '#363636',
+              color: '#fff',
             },
-          },
-          error: {
-            duration: 4000,
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
             },
-          },
-        }}
-      />
-      <AppRoutes />
-      <AiChatWidget />
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+        <AppRoutes />
+        <AiChatWidget />
       </WishlistProvider>
     </BrowserRouter>
   );

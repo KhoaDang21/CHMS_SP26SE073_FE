@@ -16,6 +16,12 @@ export interface CreateExtraChargeRequest {
   note: string;
 }
 
+export interface UpdatePaymentRequest {
+  paymentMethod?: string;
+  paymentStatus?: string;
+  notes?: string;
+}
+
 const extractList = <T>(res: any): T[] => {
   if (Array.isArray(res)) return res as T[];
 
@@ -26,16 +32,23 @@ const extractList = <T>(res: any): T[] => {
 };
 
 const toExtraCharge = (item: any): ExtraCharge => ({
-  id: String(item?.id ?? ''),
-  bookingId: String(item?.bookingId ?? item?.BookingId ?? ''),
+  id: String(item?.id ?? ""),
+  bookingId: String(item?.bookingId ?? item?.BookingId ?? ""),
   amount: Number(item?.amount ?? item?.Amount ?? 0),
-  note: item?.description ?? item?.Description ?? item?.note ?? item?.Note ?? undefined,
+  note:
+    item?.description ??
+    item?.Description ??
+    item?.note ??
+    item?.Note ??
+    undefined,
   createdAt: item?.createdAt ?? item?.CreatedAt ?? undefined,
   createdBy: item?.createdBy ?? item?.CreatedBy ?? undefined,
 });
 
 export const extraChargeService = {
-  async create(data: CreateExtraChargeRequest): Promise<{ success: boolean; message: string; data?: ExtraCharge }> {
+  async create(
+    data: CreateExtraChargeRequest,
+  ): Promise<{ success: boolean; message: string; data?: ExtraCharge }> {
     try {
       // BE validation requires Description field (C# model), keep note for FE readability.
       const payload = {
@@ -44,26 +57,36 @@ export const extraChargeService = {
         description: data.note,
       };
 
-      const response = await apiService.post<any>(apiConfig.endpoints.extraCharges.create, payload);
+      const response = await apiService.post<any>(
+        apiConfig.endpoints.extraCharges.create,
+        payload,
+      );
       const responsePayload = response?.data ?? response?.result ?? response;
 
       return {
         success: response?.success ?? true,
-        message: response?.message ?? 'Đã lưu phí phát sinh',
+        message: response?.message ?? "Đã lưu phí phát sinh",
         data: responsePayload?.id ? responsePayload : undefined,
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Không thể lưu phí phát sinh',
+        message:
+          error instanceof Error
+            ? error.message
+            : "Không thể lưu phí phát sinh",
       };
     }
   },
 
   async listByBooking(bookingId: string): Promise<ExtraCharge[]> {
     try {
-      const response = await apiService.get<any>(apiConfig.endpoints.extraCharges.byBooking(bookingId));
-      return extractList<any>(response).map(toExtraCharge).filter((item) => Boolean(item.id || item.amount || item.note));
+      const response = await apiService.get<any>(
+        apiConfig.endpoints.extraCharges.byBooking(bookingId),
+      );
+      return extractList<any>(response)
+        .map(toExtraCharge)
+        .filter((item) => Boolean(item.id || item.amount || item.note));
     } catch {
       return [];
     }
@@ -71,15 +94,49 @@ export const extraChargeService = {
 
   async delete(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiService.delete<any>(apiConfig.endpoints.extraCharges.delete(id));
+      const response = await apiService.delete<any>(
+        apiConfig.endpoints.extraCharges.delete(id),
+      );
       return {
         success: response?.success ?? true,
-        message: response?.message ?? 'Đã xóa phí phát sinh',
+        message: response?.message ?? "Đã xóa phí phát sinh",
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Không thể xóa phí phát sinh',
+        message:
+          error instanceof Error
+            ? error.message
+            : "Không thể xóa phí phát sinh",
+      };
+    }
+  },
+
+  /** PUT /api/extra-charges/{id}/payment — cập nhật trạng thái thanh toán phí phát sinh */
+  async updatePayment(
+    id: string,
+    data: UpdatePaymentRequest,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await apiService.put<any>(
+        apiConfig.endpoints.extraCharges.updatePayment(id),
+        {
+          paymentMethod: data.paymentMethod,
+          paymentStatus: data.paymentStatus,
+          notes: data.notes,
+        },
+      );
+      return {
+        success: response?.success ?? true,
+        message: response?.message ?? "Đã cập nhật trạng thái thanh toán",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Không thể cập nhật thanh toán",
       };
     }
   },

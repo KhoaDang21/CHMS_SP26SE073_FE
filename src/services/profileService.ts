@@ -1,11 +1,10 @@
-import { apiService } from './apiService';
-import { apiConfig } from '../config/apiConfig';
+import { apiService } from "./apiService";
+import { apiConfig } from "../config/apiConfig";
 
 // BE GetUserProfileResponseDTO: { fullName, email, phone }
 // BE UpdateUserProfileRequestDTO: { fullName, phoneNumber, avatarUrl }
 // BE ChangePasswordRequestDTO: { currentPassword, newPassword, confirmPassword }
-// NOTE: Only GET /api/users/profile exists in BE currently.
-// PUT /api/users/profile and password change endpoints are not yet implemented.
+// PUT api/users/profile/avatar — IFormFile file
 
 export interface UserProfile {
   id?: string;
@@ -38,12 +37,14 @@ class ProfileService {
   /** GET /api/users/profile — lấy profile của user hiện tại */
   async getProfile(_userId?: string): Promise<ProfileResponse> {
     try {
-      const response = await apiService.get<any>(apiConfig.endpoints.userProfile.get);
+      const response = await apiService.get<any>(
+        apiConfig.endpoints.userProfile.get,
+      );
 
       if (!response?.success) {
         return {
           success: false,
-          message: response?.message || 'Failed to load profile',
+          message: response?.message || "Failed to load profile",
         };
       }
 
@@ -51,25 +52,28 @@ class ProfileService {
       const data = response.data ?? response.profile ?? response;
 
       if (!data) {
-        return { success: false, message: response.message || 'Profile not found' };
+        return {
+          success: false,
+          message: response.message || "Profile not found",
+        };
       }
 
       const profile: UserProfile = {
-        id: data.id ?? '',
-        fullName: data.fullName ?? data.name ?? '',
-        name: data.fullName ?? data.name ?? '',
-        email: data.email ?? '',
+        id: data.id ?? "",
+        fullName: data.fullName ?? data.name ?? "",
+        name: data.fullName ?? data.name ?? "",
+        email: data.email ?? "",
         // BE field is 'phone' (not phoneNumber)
-        phone: data.phone ?? data.phoneNumber ?? '',
-        avatar: data.avatar ?? data.avatarUrl ?? '',
-        dateOfBirth: data.dateOfBirth ?? '',
-        gender: data.gender ?? 'male',
-        nationality: data.nationality ?? '',
-        address: data.address ?? '',
-        city: data.city ?? '',
-        country: data.country ?? '',
-        language: data.language ?? 'vi',
-        currency: data.currency ?? 'VND',
+        phone: data.phone ?? data.phoneNumber ?? "",
+        avatar: data.avatar ?? data.avatarUrl ?? "",
+        dateOfBirth: data.dateOfBirth ?? "",
+        gender: data.gender ?? "male",
+        nationality: data.nationality ?? "",
+        address: data.address ?? "",
+        city: data.city ?? "",
+        country: data.country ?? "",
+        language: data.language ?? "vi",
+        currency: data.currency ?? "VND",
         emailNotifications: data.emailNotifications ?? true,
         smsNotifications: data.smsNotifications ?? false,
         marketingEmails: data.marketingEmails ?? false,
@@ -77,23 +81,32 @@ class ProfileService {
 
       return { success: true, message: response.message, profile };
     } catch {
-      return { success: false, message: 'Failed to load profile' };
+      return { success: false, message: "Failed to load profile" };
     }
   }
 
   /** PUT /api/users/profile — cập nhật profile
    * BE UpdateUserProfileRequestDTO: { fullName, phoneNumber, avatarUrl }
    */
-  async updateProfile(_userId: string | undefined, formData: Partial<UserProfile>): Promise<ProfileResponse> {
+  async updateProfile(
+    _userId: string | undefined,
+    formData: Partial<UserProfile>,
+  ): Promise<ProfileResponse> {
     try {
       const payload = {
-        fullName: formData.fullName ?? formData.name ?? '',
-        phoneNumber: formData.phone ?? '',   // BE field is 'phoneNumber'
-        avatarUrl: formData.avatar ?? '',
+        fullName: formData.fullName ?? formData.name ?? "",
+        phoneNumber: formData.phone ?? "", // BE field is 'phoneNumber'
+        avatarUrl: formData.avatar ?? "",
       };
-      const response = await apiService.put<any>(apiConfig.endpoints.userProfile.update, payload);
+      const response = await apiService.put<any>(
+        apiConfig.endpoints.userProfile.update,
+        payload,
+      );
       if (!response?.success) {
-        return { success: false, message: response?.message || 'Failed to update profile' };
+        return {
+          success: false,
+          message: response?.message || "Failed to update profile",
+        };
       }
       // BE UpdateUserProfileResponseDTO: { fullName, phone }
       const data = response.data ?? {};
@@ -102,40 +115,83 @@ class ProfileService {
         message: response.message,
         profile: {
           ...formData,
-          fullName: data.fullName ?? formData.fullName ?? '',
-          phone: data.phone ?? formData.phone ?? '',
+          fullName: data.fullName ?? formData.fullName ?? "",
+          phone: data.phone ?? formData.phone ?? "",
         } as UserProfile,
       };
     } catch {
-      return { success: false, message: 'Failed to update profile' };
+      return { success: false, message: "Failed to update profile" };
     }
   }
 
-  /** Upload avatar — BE không có endpoint riêng cho customer, chưa implement */
-  async uploadAvatar(_userId: string | undefined, _file: File): Promise<ProfileResponse> {
-    return { success: false, message: 'Chức năng upload avatar chưa được hỗ trợ.' };
+  /** PUT /api/users/profile/avatar — multipart field name: file */
+  async uploadAvatar(
+    _userId: string | undefined,
+    file: File,
+  ): Promise<ProfileResponse> {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await apiService.putForm<any>(
+        apiConfig.endpoints.userProfile.avatar,
+        form,
+      );
+      if (!response?.success) {
+        return {
+          success: false,
+          message: response?.message || "Upload avatar thất bại",
+        };
+      }
+      const url = response.data ?? response.result ?? response;
+      return {
+        success: true,
+        message: response.message,
+        avatarUrl: typeof url === "string" ? url : undefined,
+      };
+    } catch {
+      return { success: false, message: "Upload avatar thất bại" };
+    }
   }
 
-  async updatePreferences(_userId: string | undefined, _preferences: Partial<UserProfile>): Promise<ProfileResponse> {
-    return { success: false, message: 'Chức năng cập nhật preferences chưa được hỗ trợ.' };
+  async updatePreferences(
+    _userId: string | undefined,
+    _preferences: Partial<UserProfile>,
+  ): Promise<ProfileResponse> {
+    return {
+      success: false,
+      message: "Chức năng cập nhật preferences chưa được hỗ trợ.",
+    };
   }
 
   /** PUT /api/users/profile/password
    * BE ChangePasswordRequestDTO: { currentPassword, newPassword, confirmPassword }
    */
-  async updatePassword(_userId: string, formData: { currentPassword: string; newPassword: string; confirmPassword: string }): Promise<ProfileResponse> {
+  async updatePassword(
+    _userId: string,
+    formData: {
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+    },
+  ): Promise<ProfileResponse> {
     try {
-      const response = await apiService.put<any>(apiConfig.endpoints.userProfile.changePassword, {
-        currentPassword: formData.currentPassword,
-        newPassword: formData.newPassword,
-        confirmPassword: formData.confirmPassword,
-      });
+      const response = await apiService.put<any>(
+        apiConfig.endpoints.userProfile.changePassword,
+        {
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword,
+          confirmPassword: formData.confirmPassword,
+        },
+      );
       if (!response?.success) {
-        return { success: false, message: response?.message || 'Failed to update password' };
+        return {
+          success: false,
+          message: response?.message || "Failed to update password",
+        };
       }
       return { success: true, message: response.message };
     } catch {
-      return { success: false, message: 'Failed to update password' };
+      return { success: false, message: "Failed to update password" };
     }
   }
 }

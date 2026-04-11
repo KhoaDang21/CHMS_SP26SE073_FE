@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
+import { managerHomestayService } from '../../services/managerHomestayService';
 import type { Homestay, CreateHomestayDTO, UpdateHomestayDTO } from '../../types/homestay.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
@@ -55,7 +56,7 @@ export default function ManagerHomestayManagement() {
   const loadHomestays = async () => {
     setLoading(true);
     try {
-      const data = await homestayService.getAllAdminHomestays();
+      const data = await managerHomestayService.list();
       setHomestays(data);
     } catch (error) {
       console.error('Error loading homestays:', error);

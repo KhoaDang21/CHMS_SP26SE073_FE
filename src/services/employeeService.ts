@@ -246,20 +246,19 @@ export const employeeService = {
 
     try {
       try {
-        const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestays(id), cleanIds);
+        const res = await apiService.put<any>(
+          apiConfig.endpoints.employees.assignHomestays(id),
+          cleanIds,
+        );
         return res;
       } catch {
-        // Fallback to singular endpoint variant.
+        // PUT assign-homestay expects AssignHomestayRequestDTO: { homestayIds }
       }
 
-      try {
-        const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestay(id), { homestayIds: cleanIds });
-        return res;
-      } catch {
-        // Fallback to singular endpoint with raw array.
-      }
-
-      const res = await apiService.put<any>(apiConfig.endpoints.employees.assignHomestay(id), cleanIds);
+      const res = await apiService.put<any>(
+        apiConfig.endpoints.employees.assignHomestay(id),
+        { homestayIds: cleanIds },
+      );
       return res;
     } catch (error) {
       logDevError('Error assigning homestays:', error);
