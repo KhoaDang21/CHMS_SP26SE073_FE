@@ -332,4 +332,91 @@ export const bookingService = {
       };
     }
   },
+
+  /** POST /api/bookings/{id}/confirm-cash-payment */
+  async confirmCashPayment(
+    id: string,
+  ): Promise<{ success: boolean; message?: string }> {
+    const response = await apiService.post<any>(
+      apiConfig.endpoints.bookings.confirmCashPayment(id),
+    );
+    return {
+      success: response?.success ?? true,
+      message: response?.message,
+    };
+  },
+
+  /** PUT /api/bookings/{id}/check-in */
+  async checkIn(id: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiService.put<any>(
+      apiConfig.endpoints.bookings.checkIn(id),
+    );
+    return {
+      success: response?.success ?? true,
+      message: response?.message,
+    };
+  },
+
+  /** PUT /api/bookings/{id}/check-out */
+  async checkOut(id: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiService.put<any>(
+      apiConfig.endpoints.bookings.checkOut(id),
+    );
+    return {
+      success: response?.success ?? true,
+      message: response?.message,
+    };
+  },
+
+  /** POST /api/bookings/{id}/experiences — AddBookingExperienceRequestDTO */
+  async addExperienceToBooking(
+    bookingId: string,
+    body: {
+      localExperienceScheduleId: string;
+      quantity?: number;
+      note?: string;
+    },
+  ): Promise<any> {
+    return apiService.post<any>(
+      apiConfig.endpoints.bookings.addExperiences(bookingId),
+      {
+        localExperienceScheduleId: body.localExperienceScheduleId,
+        quantity: body.quantity ?? 1,
+        note: body.note,
+      },
+    );
+  },
+
+  /** PUT /api/bookings/my-experiences/{experienceBookingId}/cancel */
+  async cancelMyExperienceBooking(experienceBookingId: string): Promise<any> {
+    return apiService.put<any>(
+      apiConfig.endpoints.bookings.cancelMyExperience(experienceBookingId),
+    );
+  },
+
+  /** PATCH /api/bookings/experiences/{experienceBookingId}/status?status= — Admin */
+  async updateExperienceBookingStatus(
+    experienceBookingId: string,
+    status: string,
+  ): Promise<any> {
+    const q = new URLSearchParams({ status });
+    return apiService.patch<any>(
+      `${apiConfig.endpoints.bookings.updateExperienceBookingStatus(experienceBookingId)}?${q.toString()}`,
+      {},
+    );
+  },
+
+  /** GET /api/bookings/homestays/{homestayId}/occupied-dates */
+  async getOccupiedDates(homestayId: string): Promise<any> {
+    return apiService.get<any>(
+      apiConfig.endpoints.bookings.occupiedDates(homestayId),
+    );
+  },
+
+  /** GET /api/experiencebooking/available-schedules/{bookingId} */
+  async getAvailableExperienceSchedules(bookingId: string): Promise<any> {
+    return apiService.get<any>(
+      apiConfig.endpoints.experienceBooking.availableSchedules(bookingId),
+    );
+  },
 };

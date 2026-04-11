@@ -157,4 +157,12 @@ export const adminDashboardService = {
   async exportReports(payload: any) {
     return apiService.post<any>(apiConfig.endpoints.adminDashboard.exportReports, payload);
   },
+
+  /** GET /api/admin/dashboard/host-dashboard */
+  async getHostDashboard(params?: Record<string, string>) {
+    return apiService.get<any>(
+      apiConfig.endpoints.adminDashboard.hostDashboard,
+      params,
+    );
+  },
 };

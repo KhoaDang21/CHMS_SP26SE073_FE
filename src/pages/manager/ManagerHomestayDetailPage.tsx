@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
+import { managerHomestayService } from '../../services/managerHomestayService';
 import type { Homestay, UpdateHomestayDTO } from '../../types/homestay.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
@@ -53,7 +54,7 @@ export default function ManagerHomestayDetailPage() {
   const loadHomestayDetail = async (homestayId: string) => {
     setLoading(true);
     try {
-      const data = await homestayService.getAdminHomestayById(homestayId);
+      const data = await managerHomestayService.getById(homestayId);
       if (data) {
         setHomestay(data);
       } else {
@@ -103,7 +104,7 @@ export default function ManagerHomestayDetailPage() {
 
     setUpdatingHomestay(true);
     try {
-      const result = await homestayService.updateAdminHomestay(homestay.id, data);
+      const result = await managerHomestayService.update(homestay.id, data);
       if (result?.success === false) {
         toast.error(result.message || 'Khong the cap nhat homestay');
         return;

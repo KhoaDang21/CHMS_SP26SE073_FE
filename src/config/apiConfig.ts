@@ -19,7 +19,8 @@ export const apiConfig = {
       create: "/api/homestays",
       update: (id: string) => `/api/homestays/${id}`,
       delete: (id: string) => `/api/homestays/${id}`,
-      reviews: (id: string) => `/api/homestays/${id}/reviews`,
+      /** BE: reviews nằm ở PublicHomestayController */
+      reviews: (id: string) => `/api/public/homestays/${id}/reviews`,
     },
     adminHomestays: {
       list: "/api/admin/homestays",
@@ -35,7 +36,6 @@ export const apiConfig = {
     },
     amenities: {
       list: "/api/amenities",
-      detail: (id: string) => `/api/amenities/${id}`,
     },
     adminAmenities: {
       create: "/api/admin/amenities",
@@ -50,18 +50,33 @@ export const apiConfig = {
       detail: (id: string) => `/api/bookings/${id}`,
       create: "/api/bookings",
       cancel: (id: string) => `/api/bookings/${id}/cancel`,
-      // Extra endpoints present on BE
       calculate: "/api/bookings/calculate",
       modify: (id: string) => `/api/bookings/${id}/modify`,
       cancellationPolicy: (id: string) =>
         `/api/bookings/${id}/cancellation-policy`,
       specialRequests: (id: string) => `/api/bookings/${id}/special-requests`,
+      confirmCashPayment: (id: string) =>
+        `/api/bookings/${id}/confirm-cash-payment`,
+      checkIn: (id: string) => `/api/bookings/${id}/check-in`,
+      checkOut: (id: string) => `/api/bookings/${id}/check-out`,
+      addExperiences: (id: string) => `/api/bookings/${id}/experiences`,
+      cancelMyExperience: (experienceBookingId: string) =>
+        `/api/bookings/my-experiences/${experienceBookingId}/cancel`,
+      updateExperienceBookingStatus: (experienceBookingId: string) =>
+        `/api/bookings/experiences/${experienceBookingId}/status`,
+      occupiedDates: (homestayId: string) =>
+        `/api/bookings/homestays/${homestayId}/occupied-dates`,
+    },
+    experienceBooking: {
+      availableSchedules: (bookingId: string) =>
+        `/api/experiencebooking/available-schedules/${bookingId}`,
     },
     extraCharges: {
       create: "/api/extra-charges",
       byBooking: (bookingId: string) =>
         `/api/extra-charges/booking/${bookingId}`,
       delete: (id: string) => `/api/extra-charges/${id}`,
+      updatePayment: (id: string) => `/api/extra-charges/${id}/payment`,
     },
     users: {
       list: "/api/users",
@@ -150,6 +165,7 @@ export const apiConfig = {
       occupancy: "/api/admin/dashboard/reports/occupancy",
       customers: "/api/admin/dashboard/reports/customers",
       exportReports: "/api/admin/dashboard/reports/export",
+      hostDashboard: "/api/admin/dashboard/host-dashboard",
     },
     reviews: {
       create: "/api/reviews",
@@ -168,7 +184,8 @@ export const apiConfig = {
       list: "/api/districts",
     },
     provinces: {
-      list: "/api/provinces",
+      /** @deprecated Dùng locations.provinces — BE không có /api/provinces */
+      list: "/api/locations/provinces",
     },
     locations: {
       provinces: "/api/locations/provinces",
@@ -206,6 +223,7 @@ export const apiConfig = {
       get: "/api/users/profile",
       update: "/api/users/profile",
       changePassword: "/api/users/profile/password",
+      avatar: "/api/users/profile/avatar",
     },
     ai: {
       chat: "/api/ai/chat",
@@ -214,6 +232,12 @@ export const apiConfig = {
       recommendations: "/api/ai/recommendations",
       faq: "/api/ai/faq",
       askFaq: "/api/ai/faq/ask",
+      // Admin AI Management
+      adminAnalytics: "/api/admin/ai/analytics",
+      adminSettings: (key: string) => `/api/admin/ai/settings/${key}`,
+      adminKnowledgeBase: "/api/admin/ai/knowledge-base",
+      adminKnowledgeBaseDetail: (id: string) =>
+        `/api/admin/ai/knowledge-base/${id}`,
     },
     coupons: {
       validate: "/api/coupons/validate",
@@ -228,11 +252,97 @@ export const apiConfig = {
       categories: "/api/experiences/categories",
     },
     serviceCategory: {
-      list: "/api/ServiceCategory",
-      detail: (id: string) => `/api/ServiceCategory/${id}`,
-      create: "/api/ServiceCategory",
-      update: (id: string) => `/api/ServiceCategory/${id}`,
-      delete: (id: string) => `/api/ServiceCategory/${id}`,
+      list: "/api/servicecategory",
+      detail: (id: string) => `/api/servicecategory/${id}`,
+      create: "/api/servicecategory",
+      update: (id: string) => `/api/servicecategory/${id}`,
+      delete: (id: string) => `/api/servicecategory/${id}`,
+    },
+    invoices: {
+      detail: (bookingId: string) => `/api/invoice/booking/${bookingId}`,
+      download: (bookingId: string) =>
+        `/api/invoice/booking/${bookingId}/download`,
+      sendEmail: (bookingId: string) =>
+        `/api/invoice/booking/${bookingId}/send-email`,
+      staffAddCharge: (bookingId: string) =>
+        `/api/invoice/staff/invoices/${bookingId}/add-charge`,
+      adminAll: "/api/invoice/admin/all",
+      adminExport: "/api/invoice/admin/export",
+    },
+    managerBookings: {
+      list: "/api/manager/bookings",
+      calendar: "/api/manager/bookings/calendar",
+      statistics: "/api/manager/bookings/statistics",
+      arrivals: "/api/manager/arrivals",
+      departures: "/api/manager/departures",
+      inHouse: "/api/manager/in-house",
+    },
+    managerHomestays: {
+      list: "/api/manager/homestays",
+      detail: (id: string) => `/api/manager/homestays/${id}`,
+      update: (id: string) => `/api/manager/homestays/${id}`,
+    },
+    managerDashboard: {
+      dashboard: "/api/manager/dashboard",
+      revenueReport: "/api/manager/reports/revenue",
+      occupancyReport: "/api/manager/reports/occupancy",
+      reviewsReport: "/api/manager/reports/reviews",
+      exportReports: "/api/manager/reports/export",
+    },
+    managerCulturalGuides: {
+      pending: "/api/manager/cultural-guides/pending",
+      updateStatus: (id: string) => `/api/manager/cultural-guides/${id}/status`,
+    },
+    staffCustomers: {
+      search: "/api/staff/customers/search",
+      detail: (id: string) => `/api/staff/customers/${id}`,
+    },
+    staffHomestays: {
+      list: "/api/staff/homestays",
+    },
+    experienceSchedules: {
+      bulkCreate: "/api/localexperienceschedule/bulk-create",
+      participants: (scheduleId: string) =>
+        `/api/localexperienceschedule/${scheduleId}/participants`,
+    },
+    culturalGuides: {
+      publicList: "/api/public/cultural-guides",
+      publicDetail: (id: string) => `/api/public/cultural-guides/${id}`,
+      publicByHomestay: (homestayId: string) =>
+        `/api/public/homestays/${homestayId}/cultural-guides`,
+      customerCreate: "/api/customer/cultural-guides",
+      customerMyGuides: "/api/customer/cultural-guides/my-guides",
+      adminCreate: "/api/admin/cultural-guides",
+      adminDelete: (id: string) => `/api/admin/cultural-guides/${id}`,
+    },
+    adminCoupons: {
+      list: "/api/admin/coupons",
+      create: "/api/admin/coupons",
+      update: (id: string) => `/api/admin/coupons/${id}`,
+      delete: (id: string) => `/api/admin/coupons/${id}`,
+      usage: (id: string) => `/api/admin/coupons/${id}/usage`,
+    },
+    faqs: {
+      active: "/api/faqs/active",
+      list: "/api/faqs",
+      create: "/api/faqs",
+      update: (id: string) => `/api/faqs/${id}`,
+      delete: (id: string) => `/api/faqs/${id}`,
+      toggleStatus: (id: string) => `/api/faqs/${id}/status`,
+    },
+    homestayPricing: {
+      get: (homestayId: string) => `/api/admin/homestays/${homestayId}/pricing`,
+      update: (homestayId: string) =>
+        `/api/admin/homestays/${homestayId}/pricing`,
+      bulkUpdate: "/api/admin/pricing/bulk-update",
+      getSeasonalPricing: (homestayId: string) =>
+        `/api/admin/homestays/${homestayId}/seasonal-pricing`,
+      createSeasonalPricing: (homestayId: string) =>
+        `/api/admin/homestays/${homestayId}/seasonal-pricing`,
+      updateSeasonalPricing: (homestayId: string, priceId: string) =>
+        `/api/admin/homestays/${homestayId}/seasonal-pricing/${priceId}`,
+      deleteSeasonalPricing: (homestayId: string, priceId: string) =>
+        `/api/admin/homestays/${homestayId}/seasonal-pricing/${priceId}`,
     },
   },
 };
