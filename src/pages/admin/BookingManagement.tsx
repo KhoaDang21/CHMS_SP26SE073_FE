@@ -559,7 +559,7 @@ export default function BookingManagement() {
                   {selectedBooking.status !== 'pending' && (
                     <div className="bg-gray-50 rounded-lg p-3 flex-1 min-w-[120px]">
                       <p className="text-gray-400 text-xs mb-1.5">Thanh toán</p>
-                      {getPaymentStatusBadge(selectedBooking.paymentStatus)}
+                      {getPaymentStatusBadge(selectedBooking.paymentStatus, selectedBooking.totalPrice, selectedBooking.remainingAmount)}
                     </div>
                   )}
                   {selectedBooking.paymentMethod && (
