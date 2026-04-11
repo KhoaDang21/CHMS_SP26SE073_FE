@@ -339,10 +339,10 @@ export default function ManagerBookings() {
 
   const getPaymentStatusBadge = (status: Booking['paymentStatus']) => {
     const map: Record<string, { label: string; cls: string }> = {
-      pending:      { label: 'Chưa thanh toán', cls: 'bg-orange-100 text-orange-700' },
-      deposit_paid: { label: 'Đã cọc',          cls: 'bg-blue-100 text-blue-700' },
-      paid:         { label: 'Đã thanh toán đủ', cls: 'bg-green-100 text-green-700' },
-      refunded:     { label: 'Đã hoàn tiền',     cls: 'bg-red-100 text-red-700' },
+      pending: { label: 'Chưa thanh toán', cls: 'bg-orange-100 text-orange-700' },
+      deposit_paid: { label: 'Đã cọc', cls: 'bg-blue-100 text-blue-700' },
+      paid: { label: 'Đã thanh toán đủ', cls: 'bg-green-100 text-green-700' },
+      refunded: { label: 'Đã hoàn tiền', cls: 'bg-red-100 text-red-700' },
     };
     const s = map[status] ?? map.pending;
     return <span className={`px-3 py-1 rounded-full text-sm font-medium ${s.cls}`}>{s.label}</span>;
@@ -353,9 +353,8 @@ export default function ManagerBookings() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } bg-white shadow-lg w-64`}
+        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } bg-white shadow-lg w-64`}
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
@@ -381,9 +380,8 @@ export default function ManagerBookings() {
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
@@ -427,7 +425,7 @@ export default function ManagerBookings() {
                 <p className="text-gray-600 text-sm">Xem và xử lý các đơn đặt phòng</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => navigate('/manager/reviews')}
               className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
