@@ -127,6 +127,12 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
     if (!token) return;
 
     signalRService.connect(token).then((conn) => {
+      // If connection failed, fall back to polling
+      if (!conn) {
+        console.warn('SignalR connection failed, will use polling instead');
+        return;
+      }
+
       // Join vào group của user để nhận notification riêng
       if (userId) conn.invoke('JoinUserGroup', userId).catch(() => { });
 
@@ -143,6 +149,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
       });
     }).catch(() => {
       // SignalR không kết nối được — vẫn hoạt động bình thường qua REST
+      console.warn('SignalR connection error, app will work with REST API only');
     });
 
     return () => {

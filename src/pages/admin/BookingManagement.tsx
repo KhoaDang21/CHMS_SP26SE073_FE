@@ -164,17 +164,17 @@ export default function BookingManagement() {
       paid: 'bg-green-100 text-green-700 border border-green-200',
       refunded: 'bg-red-100 text-red-700 border border-red-200',
     };
-
     const labels: Record<string, string> = {
       pending: 'Chưa thanh toán',
       deposit_paid: 'Đã cọc',
       paid: 'Đã thanh toán đủ',
       refunded: 'Đã hoàn tiền',
     };
-
     const safe = status || 'pending';
-    const paidAmount = totalPrice - remainingAmount;
-    const percentage = totalPrice > 0 ? Math.round((paidAmount / totalPrice) * 100) : 0;
+
+    // Chỉ tính paidAmount khi thực sự đã có thanh toán
+    const paidAmount = safe === 'pending' ? 0 : (totalPrice - remainingAmount);
+    const percentage = (safe === 'pending' || totalPrice <= 0) ? 0 : Math.round((paidAmount / totalPrice) * 100);
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -396,28 +396,54 @@ export default function BookingManagement() {
 
                         {/* Row 3: Giá + action buttons */}
                         <div className="flex items-center justify-between gap-4 pt-2.5 border-t border-gray-100">
-                          {/* Price pills */}
+                          {/* Price pills — logic theo paymentStatus */}
                           <div className="flex items-center gap-2 flex-wrap">
+                            {/* Tổng tiền luôn hiện */}
                             <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg px-3 py-1.5 border border-gray-200">
                               <DollarSign className="w-3.5 h-3.5 text-gray-500" />
                               <span className="text-xs text-gray-500">Tổng</span>
                               <span className="text-sm font-bold text-gray-900">{(booking.totalPrice || 0).toLocaleString('vi-VN')} ₫</span>
                             </div>
 
-                            {/* Paid Amount */}
-                            <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
-                              <CheckCircle className="w-3.5 h-3.5 text-green-600" />
-                              <span className="text-xs text-green-700">Đã trả</span>
-                              <span className="text-sm font-bold text-green-700">
-                                {((booking.totalPrice || 0) - (booking.remainingAmount || 0)).toLocaleString('vi-VN')} ₫
-                              </span>
-                            </div>
+                            {/* pending: chưa trả gì → hiện cần cọc */}
+                            {booking.paymentStatus === 'pending' && booking.depositAmount !== undefined && booking.depositAmount > 0 && (
+                              <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-1.5">
+                                <Clock className="w-3.5 h-3.5 text-yellow-600" />
+                                <span className="text-xs text-yellow-700">Cần cọc</span>
+                                <span className="text-sm font-bold text-yellow-700">{booking.depositAmount.toLocaleString('vi-VN')} ₫</span>
+                              </div>
+                            )}
 
-                            {booking.remainingAmount !== undefined && booking.remainingAmount > 0 && (
-                              <div className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 animate-pulse">
-                                <AlertCircle className="w-3.5 h-3.5 text-orange-600" />
-                                <span className="text-xs text-orange-700">Còn nợ</span>
-                                <span className="text-sm font-bold text-orange-700">{booking.remainingAmount.toLocaleString('vi-VN')} ₫</span>
+                            {/* deposit_paid: đã cọc → hiện đã cọc + còn nợ */}
+                            {booking.paymentStatus === 'deposit_paid' && (
+                              <>
+                                <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+                                  <CheckCircle className="w-3.5 h-3.5 text-blue-600" />
+                                  <span className="text-xs text-blue-700">Đã cọc</span>
+                                  <span className="text-sm font-bold text-blue-700">{(booking.depositAmount || 0).toLocaleString('vi-VN')} ₫</span>
+                                </div>
+                                {booking.remainingAmount !== undefined && booking.remainingAmount > 0 && (
+                                  <div className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5">
+                                    <AlertCircle className="w-3.5 h-3.5 text-orange-600" />
+                                    <span className="text-xs text-orange-700">Còn nợ</span>
+                                    <span className="text-sm font-bold text-orange-700">{booking.remainingAmount.toLocaleString('vi-VN')} ₫</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+
+                            {/* paid: đã trả đủ */}
+                            {booking.paymentStatus === 'paid' && (
+                              <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                                <span className="text-xs text-green-700">Đã thanh toán đủ</span>
+                              </div>
+                            )}
+
+                            {/* refunded */}
+                            {booking.paymentStatus === 'refunded' && (
+                              <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+                                <span className="text-xs text-red-700">Đã hoàn tiền</span>
                               </div>
                             )}
 
@@ -479,7 +505,7 @@ export default function BookingManagement() {
           onClick={() => setSelectedBooking(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -496,7 +522,7 @@ export default function BookingManagement() {
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
               {/* Homestay info */}
               <section>
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
@@ -577,15 +603,17 @@ export default function BookingManagement() {
                   <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-blue-500" /> Chi tiết thanh toán
                   </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">Tiến độ:</span>
-                    <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-                      <div
-                        className="h-full bg-green-500 transition-all duration-500"
-                        style={{ width: `${Math.round(((selectedBooking.totalPrice - (selectedBooking.remainingAmount || 0)) / selectedBooking.totalPrice) * 100)}%` }}
-                      />
+                  {selectedBooking.paymentStatus !== 'pending' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Tiến độ:</span>
+                      <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                        <div
+                          className="h-full bg-green-500 transition-all duration-500"
+                          style={{ width: `${Math.round(((selectedBooking.totalPrice - (selectedBooking.remainingAmount || 0)) / selectedBooking.totalPrice) * 100)}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
                 <div className="bg-gray-50 rounded-2xl p-5 space-y-3 border border-gray-100">
                   <div className="flex justify-between text-sm">
@@ -608,18 +636,32 @@ export default function BookingManagement() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div className="bg-green-100/50 border border-green-200 rounded-xl p-3">
-                      <p className="text-[10px] font-bold text-green-700 uppercase mb-1">Đã thanh toán</p>
-                      <p className="text-sm font-black text-green-700">
-                        {(selectedBooking.totalPrice - (selectedBooking.remainingAmount || 0)).toLocaleString('vi-VN')} ₫
-                      </p>
-                    </div>
-                    <div className={`rounded-xl p-3 border ${selectedBooking.remainingAmount && selectedBooking.remainingAmount > 0 ? 'bg-orange-100/50 border-orange-200' : 'bg-gray-100/50 border-gray-200 opacity-50'}`}>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Còn nợ</p>
-                      <p className={`text-sm font-black ${selectedBooking.remainingAmount && selectedBooking.remainingAmount > 0 ? 'text-orange-700' : 'text-gray-400'}`}>
-                        {(selectedBooking.remainingAmount || 0).toLocaleString('vi-VN')} ₫
-                      </p>
-                    </div>
+                    {/* Đã thanh toán — chỉ hiện khi thực sự có thanh toán */}
+                    {selectedBooking.paymentStatus === 'pending' ? (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 col-span-2">
+                        <p className="text-[10px] font-bold text-yellow-700 uppercase mb-1">Cần cọc</p>
+                        <p className="text-sm font-black text-yellow-700">
+                          {(selectedBooking.depositAmount || 0).toLocaleString('vi-VN')} ₫
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="bg-green-100/50 border border-green-200 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-green-700 uppercase mb-1">Đã thanh toán</p>
+                          <p className="text-sm font-black text-green-700">
+                            {(selectedBooking.totalPrice - (selectedBooking.remainingAmount || 0)).toLocaleString('vi-VN')} ₫
+                          </p>
+                        </div>
+                        {selectedBooking.remainingAmount !== undefined && selectedBooking.remainingAmount > 0 && (
+                          <div className="bg-orange-100/50 border border-orange-200 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-orange-700 uppercase mb-1">Còn nợ</p>
+                            <p className="text-sm font-black text-orange-700">
+                              {selectedBooking.remainingAmount.toLocaleString('vi-VN')} ₫
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               </section>

@@ -1,22 +1,25 @@
-import { districtService } from './districtService';
-import type { Province } from '../types/homestay.types';
+import { apiService } from "./apiService";
+import { apiConfig } from "../config/apiConfig";
+import type { Province } from "../types/homestay.types";
 
 class ProvinceService {
+  /** GET /api/locations/provinces — đồng bộ BE LocationController */
   async getAllProvinces(): Promise<Province[]> {
     try {
-      const districts = await districtService.getAllDistricts();
-      // Extract unique province names from districts
-      const seen = new Set<string>();
-      const provinces: Province[] = [];
-      for (const d of districts) {
-        if (d.provinceName && !seen.has(d.provinceName)) {
-          seen.add(d.provinceName);
-          provinces.push({ id: d.provinceName, name: d.provinceName });
-        }
-      }
-      return provinces.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+      const res = await apiService.get<any>(
+        apiConfig.endpoints.locations.provinces,
+      );
+      const list: any[] = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+          ? res
+          : [];
+      return list.map((r: any) => ({
+        id: String(r.id ?? r.Id ?? ""),
+        name: r.name ?? r.Name ?? "",
+      }));
     } catch (error) {
-      console.error('Error fetching provinces:', error);
+      console.error("Error fetching provinces:", error);
       return [];
     }
   }
