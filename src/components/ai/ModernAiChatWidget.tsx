@@ -18,13 +18,13 @@ import {
     Bot,
     X,
     Send,
-    Trash2,
     Waves,
     Loader2,
     MessageCircle,
 } from "lucide-react";
-import { useChat } from "@/hooks/useChat";
-import { authService } from "@/services/authService";
+import { useChat } from "../../hooks/useChat";
+import { authService } from "../../services/authService";
+import type { ChatMessage } from "../../services/aiService";
 
 // Quick suggestions to show when chat is empty
 const QUICK_SUGGESTIONS = [
@@ -346,7 +346,7 @@ export default function ModernAiChatWidget() {
     }, [isAuthPage]);
 
     // Handle send message
-    const handleSendMessage = async (text: string = input) => {
+    const handleSendMessage = async (text: string = input): Promise<void> => {
         const trimmed = text.trim();
         if (!trimmed || loading || !isCustomer) return;
 
@@ -460,7 +460,7 @@ export default function ModernAiChatWidget() {
                         />
                     )}
 
-                    {messages.map((msg) => (
+                    {messages.map((msg: ChatMessage) => (
                         <MessageBubble
                             key={msg.timestamp}
                             sender={msg.sender as "User" | "AI"}

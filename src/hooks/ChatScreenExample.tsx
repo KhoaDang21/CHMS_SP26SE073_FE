@@ -5,8 +5,7 @@
  */
 
 import React, { useState } from "react";
-import { View, TextInput, FlatList, Text, TouchableOpacity } from "react-native";
-import { useChat } from "../hooks/useChat";
+import { useChat } from "./useChat";
 
 /**
  * Chat Screen Component
@@ -36,96 +35,112 @@ export const ChatScreen: React.FC = () => {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: "#fff" }}>
+        <div style={{ flex: 1, backgroundColor: "#fff", display: "flex", flexDirection: "column", height: "100vh" }}>
             {/* Header */}
-            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: "#eee" }}>
-                <Text style={{ fontSize: 18, fontWeight: "600" }}>AI Chat</Text>
-            </View>
+            <div style={{ padding: 16, borderBottom: "1px solid #eee" }}>
+                <h2 style={{ fontSize: 18, fontWeight: "600", margin: 0 }}>AI Chat</h2>
+            </div>
 
             {/* Error message */}
             {error && (
-                <View style={{ backgroundColor: "#ffebee", padding: 12, margin: 8 }}>
-                    <Text style={{ color: "#c62828" }}>{error}</Text>
-                </View>
+                <div style={{ backgroundColor: "#ffebee", padding: 12, margin: 8, color: "#c62828" }}>
+                    {error}
+                </div>
             )}
 
             {/* Messages list */}
-            <FlatList
-                data={messages}
-                keyExtractor={(_, index) => index.toString()}
-                renderItem={({ item }) => (
-                    <View
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 8px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                {messages.map((msg: any) => (
+                    <div
+                        key={msg.timestamp}
                         style={{
-                            marginVertical: 8,
-                            marginHorizontal: 12,
-                            flexDirection: item.sender === "User" ? "row-reverse" : "row",
+                            display: "flex",
+                            flexDirection: msg.sender === "User" ? "row-reverse" : "row" as const,
+                            gap: "8px",
+                            margin: "8px 12px",
                         }}
                     >
-                        <View
+                        <div
                             style={{
-                                backgroundColor: item.sender === "User" ? "#1976d2" : "#f5f5f5",
+                                backgroundColor: msg.sender === "User" ? "#1976d2" : "#f5f5f5",
                                 padding: 12,
                                 borderRadius: 8,
                                 maxWidth: "80%",
+                                wordBreak: "break-word",
                             }}
                         >
-                            <Text
+                            <p
                                 style={{
-                                    color: item.sender === "User" ? "#fff" : "#000",
+                                    color: msg.sender === "User" ? "#fff" : "#000",
                                     fontSize: 14,
+                                    margin: 0,
                                 }}
                             >
-                                {item.message}
-                            </Text>
-                        </View>
-                    </View>
-                )}
-                contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }}
-            />
+                                {msg.message}
+                            </p>
+                        </div>
+                    </div>
+                ))}
+                {loading && <div style={{ padding: "12px", color: "#999" }}>Loading...</div>}
+            </div>
 
             {/* Input area */}
-            <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: "#eee" }}>
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TextInput
+            <div style={{ padding: 12, borderTop: "1px solid #eee" }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                    <input
                         style={{
                             flex: 1,
-                            borderWidth: 1,
-                            borderColor: "#ddd",
+                            border: "1px solid #ddd",
                             borderRadius: 8,
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
+                            paddingLeft: 12,
+                            paddingRight: 12,
+                            paddingTop: 8,
+                            paddingBottom: 8,
                         }}
                         placeholder="Ask me anything..."
                         value={input}
-                        onChangeText={setInput}
-                        editable={!loading}
+                        onChange={(e) => setInput(e.target.value)}
+                        disabled={loading}
                     />
-                    <TouchableOpacity
-                        onPress={handleSendMessage}
+                    <button
+                        onClick={handleSendMessage}
                         disabled={loading || !input.trim()}
                         style={{
                             backgroundColor: "#1976d2",
-                            paddingHorizontal: 16,
+                            paddingLeft: 16,
+                            paddingRight: 16,
                             borderRadius: 8,
-                            justifyContent: "center",
+                            color: "#fff",
+                            fontWeight: "600",
+                            cursor: loading || !input.trim() ? "not-allowed" : "pointer",
                             opacity: loading || !input.trim() ? 0.5 : 1,
+                            border: "none",
                         }}
                     >
-                        <Text style={{ color: "#fff", fontWeight: "600" }}>Send</Text>
-                    </TouchableOpacity>
-                </View>
+                        Send
+                    </button>
+                </div>
 
                 {/* Clear button */}
-                <TouchableOpacity
-                    onPress={handleClear}
-                    style={{ marginTop: 12, paddingVertical: 8 }}
+                <button
+                    onClick={handleClear}
+                    style={{
+                        marginTop: 12,
+                        paddingTop: 8,
+                        paddingBottom: 8,
+                        color: "#d32f2f",
+                        textAlign: "center",
+                        fontSize: 14,
+                        width: "100%",
+                        border: "none",
+                        backgroundColor: "transparent",
+                        cursor: "pointer",
+                    }}
                 >
-                    <Text style={{ color: "#d32f2f", textAlign: "center", fontSize: 14 }}>
-                        Clear Chat
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </View>
+                    Clear Chat
+                </button>
+            </div>
+        </div>
     );
 };
 
