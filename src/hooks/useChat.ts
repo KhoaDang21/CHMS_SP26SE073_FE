@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer } from "react";
-import { aiService, ChatMessage } from "../services/aiService";
+import { aiService } from "../services/aiService";
+import type { ChatMessage } from "../services/aiService";
 
 /**
  * Chat state
