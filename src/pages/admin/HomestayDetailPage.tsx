@@ -4,6 +4,7 @@ import {
   Home,
   ArrowLeft,
   Edit,
+  Plus,
   MapPin,
   Users,
   DollarSign,
@@ -18,10 +19,14 @@ import {
   Shield,
   FileText,
   UserCheck,
+  Trash2,
 } from 'lucide-react';
 
 import { homestayService } from '../../services/homestayService';
 import type { Homestay, UpdateHomestayDTO } from '../../types/homestay.types';
+import { homestayPricingService } from '../../services/homestayPricingService';
+import SeasonalPricingModal from '../../components/admin/SeasonalPricingModal';
+import type { SeasonalPricing, SeasonalPricingCreateRequest } from '../../types/pricing.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
@@ -38,6 +43,12 @@ export default function HomestayDetailPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [seasonalPrices, setSeasonalPrices] = useState<SeasonalPricing[]>([]);
+  const [seasonalLoading, setSeasonalLoading] = useState(false);
+  const [seasonalSaving, setSeasonalSaving] = useState(false);
+  const [deletingSeasonalId, setDeletingSeasonalId] = useState<string | null>(null);
+  const [showSeasonalModal, setShowSeasonalModal] = useState(false);
+  const [editingSeasonalPrice, setEditingSeasonalPrice] = useState<SeasonalPricing | null>(null);
 
   const user = authService.getCurrentUser();
 
@@ -56,6 +67,7 @@ export default function HomestayDetailPage() {
       const data = await homestayService.getAdminHomestayById(homestayId);
       if (data) {
         setHomestay(data);
+        await loadSeasonalPricing(homestayId);
       } else {
         toast.error('Không tìm thấy homestay');
         navigate('/admin/homestays');
@@ -66,6 +78,119 @@ export default function HomestayDetailPage() {
       navigate('/admin/homestays');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSeasonalPricing = async (homestayId: string) => {
+    setSeasonalLoading(true);
+    try {
+      const data = await homestayPricingService.getSeasonalPricings(homestayId);
+      setSeasonalPrices(data);
+    } catch (error) {
+      console.error('Error loading seasonal pricing:', error);
+      setSeasonalPrices([]);
+    } finally {
+      setSeasonalLoading(false);
+    }
+  };
+
+  const parseDate = (value: string) => {
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const formatDate = (value: string) => {
+    const date = parseDate(value);
+    if (!date) return value || '-';
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const isSeasonalOverlap = (candidate: SeasonalPricingCreateRequest, excludeId?: string) => {
+    const candidateStart = parseDate(candidate.startDate);
+    const candidateEnd = parseDate(candidate.endDate);
+
+    if (!candidateStart || !candidateEnd) return false;
+
+    return seasonalPrices.some((item) => {
+      if (excludeId && item.id === excludeId) return false;
+
+      const itemStart = parseDate(item.startDate);
+      const itemEnd = parseDate(item.endDate);
+      if (!itemStart || !itemEnd) return false;
+
+      return candidateStart <= itemEnd && candidateEnd >= itemStart;
+    });
+  };
+
+  const openCreateSeasonalModal = () => {
+    setEditingSeasonalPrice(null);
+    setShowSeasonalModal(true);
+  };
+
+  const openEditSeasonalModal = (price: SeasonalPricing) => {
+    setEditingSeasonalPrice(price);
+    setShowSeasonalModal(true);
+  };
+
+  const handleSeasonalSubmit = async (data: SeasonalPricingCreateRequest) => {
+    if (!id) return;
+
+    const overlap = isSeasonalOverlap(data, editingSeasonalPrice?.id);
+    if (overlap) {
+      toast.error('Khoảng giá này bị trùng với một cấu hình giá theo mùa khác.');
+      return;
+    }
+
+    setSeasonalSaving(true);
+    try {
+      const result = editingSeasonalPrice
+        ? await homestayPricingService.updateSeasonalPricing(id, editingSeasonalPrice.id, data)
+        : await homestayPricingService.createSeasonalPricing(id, data);
+
+      if (result.success === false) {
+        toast.error(result.message || 'Không thể lưu giá theo mùa');
+        return;
+      }
+
+      toast.success(result.message || (editingSeasonalPrice ? 'Cập nhật giá theo mùa thành công' : 'Thêm giá theo mùa thành công'));
+      setShowSeasonalModal(false);
+      setEditingSeasonalPrice(null);
+      await loadSeasonalPricing(id);
+    } catch (error) {
+      console.error('Error saving seasonal pricing:', error);
+      toast.error('Không thể lưu giá theo mùa');
+    } finally {
+      setSeasonalSaving(false);
+    }
+  };
+
+  const handleDeleteSeasonalPrice = async (price: SeasonalPricing) => {
+    if (!id) return;
+
+    const confirmed = window.confirm(
+      `Xóa cấu hình giá theo mùa "${price.name || price.description || `${formatDate(price.startDate)} - ${formatDate(price.endDate)}`}"?`,
+    );
+    if (!confirmed) return;
+
+    setDeletingSeasonalId(price.id);
+    try {
+      const result = await homestayPricingService.deleteSeasonalPricing(id, price.id);
+      if (result.success === false) {
+        toast.error(result.message || 'Không thể xóa giá theo mùa');
+        return;
+      }
+
+      toast.success(result.message || 'Đã xóa giá theo mùa');
+      await loadSeasonalPricing(id);
+    } catch (error) {
+      console.error('Error deleting seasonal pricing:', error);
+      toast.error('Không thể xóa giá theo mùa');
+    } finally {
+      setDeletingSeasonalId(null);
     }
   };
 
@@ -425,6 +550,114 @@ export default function HomestayDetailPage() {
                 </div>
               </div>
 
+              {/* Seasonal Pricing */}
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+                      <DollarSign className="w-6 h-6 text-blue-600" />
+                      Giá theo mùa
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Tạo các khung giá riêng cho lễ, cuối tuần dài, mùa cao điểm hoặc ưu đãi.
+                    </p>
+                  </div>
+                  <button
+                    onClick={openCreateSeasonalModal}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Thêm giá theo mùa
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
+                    <p className="text-sm text-blue-700 mb-1">Giá cơ bản hiện tại</p>
+                    <p className="text-2xl font-bold text-blue-900">
+                      {homestay.pricePerNight.toLocaleString('vi-VN')} ₫
+                    </p>
+                    <p className="text-xs text-blue-700 mt-1">Dùng khi không có cấu hình giá theo mùa trùng ngày.</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-sm text-gray-700 mb-1">Quy tắc trùng lịch</p>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      Mỗi homestay chỉ có một mức giá theo mùa cho cùng một khoảng ngày. Hệ thống sẽ chặn overlap ngay trên UI và backend.
+                    </p>
+                  </div>
+                </div>
+
+                {seasonalLoading ? (
+                  <div className="py-10 text-center text-gray-500">Đang tải giá theo mùa...</div>
+                ) : seasonalPrices.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Khoảng thời gian</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Giá / đêm</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Mô tả</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Trạng thái</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {seasonalPrices.map((price) => (
+                          <tr key={price.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              <div className="font-medium">{formatDate(price.startDate)} - {formatDate(price.endDate)}</div>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-semibold text-gray-900">
+                              {(price.pricePerNight ?? price.price).toLocaleString('vi-VN')} ₫
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {price.name || price.description || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span
+                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                                  price.status === 'ACTIVE'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                {price.status === 'ACTIVE' ? 'Kích hoạt' : 'Tạm tắt'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  onClick={() => openEditSeasonalModal(price)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                  Sửa
+                                </button>
+                                <button
+                                  onClick={() => void handleDeleteSeasonalPrice(price)}
+                                  disabled={deletingSeasonalId === price.id}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  {deletingSeasonalId === price.id ? 'Đang xóa...' : 'Xóa'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center">
+                    <p className="text-gray-700 font-medium mb-1">Chưa có giá theo mùa</p>
+                    <p className="text-sm text-gray-500">
+                      Hãy thêm một khung giá để áp dụng cho các dịp lễ, cuối tuần hoặc mùa cao điểm.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Amenities */}
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -574,6 +807,18 @@ export default function HomestayDetailPage() {
         loading={updatingHomestay}
         onClose={() => setShowEditModal(false)}
         onSubmit={handleUpdateHomestay}
+      />
+
+      <SeasonalPricingModal
+        isOpen={showSeasonalModal}
+        onClose={() => {
+          setShowSeasonalModal(false);
+          setEditingSeasonalPrice(null);
+        }}
+        onSubmit={handleSeasonalSubmit}
+        loading={seasonalSaving}
+        initialData={editingSeasonalPrice}
+        homestayName={homestay.name}
       />
     </div>
   );
