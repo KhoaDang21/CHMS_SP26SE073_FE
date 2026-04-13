@@ -9,6 +9,11 @@ export interface PagedHomestays {
   TotalCount: number;
 }
 
+export interface OccupiedDateRange {
+  checkIn: string;
+  checkOut: string;
+}
+
 export const publicHomestayService = {
   // simple in-memory cache for last fetched list
   _cache: {
@@ -193,6 +198,31 @@ export const publicHomestayService = {
     } catch (error) {
       console.error("Error searching homestays:", error);
       return { Items: [], CurrentPage: 1, PageSize: 10, TotalCount: 0 };
+    }
+  },
+
+  /** GET /api/bookings/homestays/{homestayId}/occupied-dates */
+  async getOccupiedDates(homestayId: string): Promise<OccupiedDateRange[]> {
+    try {
+      const res = await apiService.get<any>(
+        apiConfig.endpoints.bookings.occupiedDates(homestayId),
+      );
+
+      const rawList: any[] = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+          ? res
+          : [];
+
+      return rawList
+        .map((item) => ({
+          checkIn: String(item?.checkIn ?? item?.CheckIn ?? '').slice(0, 10),
+          checkOut: String(item?.checkOut ?? item?.CheckOut ?? '').slice(0, 10),
+        }))
+        .filter((item) => item.checkIn && item.checkOut);
+    } catch (error) {
+      console.error('Error fetching occupied dates:', error);
+      return [];
     }
   },
 };

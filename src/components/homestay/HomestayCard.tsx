@@ -113,6 +113,9 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
                   : '-'}
               </span>
               <span className="text-sm text-gray-500">/đêm</span>
+              <div className="mt-1 text-[11px] text-amber-700">
+                Giá có thể tăng vào cuối tuần/lễ theo mùa.
+              </div>
             </div>
             {reviewCount > 0 && (
               <span className="text-xs text-gray-400">{reviewCount} đánh giá</span>

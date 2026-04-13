@@ -19,6 +19,7 @@ import type { Promotion } from '../types/promotion.types'
 import { experienceService } from '../services/experienceService'
 import type { LocalExperience } from '../types/experience.types'
 import { buildSpecialRequestsWithExperiences } from '../utils/bookingExperience'
+import type { OccupiedDateRange } from '../services/publicHomestayService'
 
 export default function HomestayDetail() {
     const { id } = useParams()
@@ -31,6 +32,8 @@ export default function HomestayDetail() {
     const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
     const [checkIn, setCheckIn] = useState('')
     const [checkOut, setCheckOut] = useState('')
+    const [occupiedDateRanges, setOccupiedDateRanges] = useState<OccupiedDateRange[]>([])
+    const [occupiedDatesLoading, setOccupiedDatesLoading] = useState(false)
     const [guests, setGuests] = useState(1)
     const [contactPhone, setContactPhone] = useState('')
     const [specialRequests, setSpecialRequests] = useState('')
@@ -79,6 +82,28 @@ export default function HomestayDetail() {
             }
         }
         load()
+        return () => { mounted = false }
+    }, [id])
+
+    useEffect(() => {
+        if (!id) return
+        let mounted = true
+
+        const loadOccupiedDates = async () => {
+            setOccupiedDatesLoading(true)
+            try {
+                const ranges = await publicHomestayService.getOccupiedDates(id)
+                if (!mounted) return
+                setOccupiedDateRanges(Array.isArray(ranges) ? ranges : [])
+            } catch (err) {
+                console.error('Load occupied dates error', err)
+                if (mounted) setOccupiedDateRanges([])
+            } finally {
+                if (mounted) setOccupiedDatesLoading(false)
+            }
+        }
+
+        loadOccupiedDates()
         return () => { mounted = false }
     }, [id])
 
@@ -193,6 +218,44 @@ export default function HomestayDetail() {
         return diff > 0 ? diff : 0
     }, [checkIn, checkOut])
 
+    const parseYmdToDate = (value: string): Date | null => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+        const [year, month, day] = value.split('-').map(Number)
+        const dt = new Date(year, month - 1, day)
+        dt.setHours(0, 0, 0, 0)
+        return Number.isNaN(dt.getTime()) ? null : dt
+    }
+
+    const isDateInsideOccupiedRanges = (date: Date) => {
+        return occupiedDateRanges.some((range) => {
+            const occupiedStart = parseYmdToDate(range.checkIn)
+            const occupiedEnd = parseYmdToDate(range.checkOut)
+            if (!occupiedStart || !occupiedEnd || occupiedEnd <= occupiedStart) return false
+            return date >= occupiedStart && date < occupiedEnd
+        })
+    }
+
+    const isCheckInOccupied = useMemo(() => {
+        const selectedStart = parseYmdToDate(checkIn)
+        if (!selectedStart) return false
+        return isDateInsideOccupiedRanges(selectedStart)
+    }, [checkIn, occupiedDateRanges])
+
+    const hasOccupiedConflict = useMemo(() => {
+        const selectedStart = parseYmdToDate(checkIn)
+        const selectedEnd = parseYmdToDate(checkOut)
+        if (!selectedStart || !selectedEnd || selectedEnd <= selectedStart) return false
+
+        return occupiedDateRanges.some((range) => {
+            const occupiedStart = parseYmdToDate(range.checkIn)
+            const occupiedEnd = parseYmdToDate(range.checkOut)
+            if (!occupiedStart || !occupiedEnd || occupiedEnd <= occupiedStart) return false
+            return selectedStart < occupiedEnd && selectedEnd > occupiedStart
+        })
+    }, [checkIn, checkOut, occupiedDateRanges])
+
+    const hasDateBlocked = isCheckInOccupied || hasOccupiedConflict
+
     useEffect(() => {
         let alive = true
         const run = async () => {
@@ -278,6 +341,24 @@ export default function HomestayDetail() {
         if (typeof price === 'number' && nights > 0) return price * nights
         return undefined
     }, [homestay?.pricePerNight, nights])
+
+    const effectivePricePerNight = useMemo(() => {
+        if (!nights || nights <= 0) return undefined
+        if (computedTotal === undefined || !Number.isFinite(computedTotal)) return undefined
+        return computedTotal / nights
+    }, [computedTotal, nights])
+
+    const isSeasonalPriceApplied = useMemo(() => {
+        if (computedTotal === undefined || baseBookingTotal === undefined) return false
+        return Math.abs(computedTotal - baseBookingTotal) >= 1
+    }, [baseBookingTotal, computedTotal])
+
+    const seasonalDelta = useMemo(() => {
+        if (!isSeasonalPriceApplied || computedTotal === undefined || baseBookingTotal === undefined) {
+            return 0
+        }
+        return computedTotal - baseBookingTotal
+    }, [baseBookingTotal, computedTotal, isSeasonalPriceApplied])
 
     const selectedPromotion = useMemo(
         () => availablePromotions.find((promotion) => promotion.id === selectedPromotionId) ?? null,
@@ -559,6 +640,9 @@ export default function HomestayDetail() {
                                 <div className="flex items-baseline justify-between">
                                     <div>
                                         <div className="text-2xl font-bold">{homestay.pricePerNight?.toLocaleString('vi-VN')}đ <span className="text-sm font-medium text-gray-600">/ đêm</span></div>
+                                        <div className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 inline-block">
+                                            Giá thực tế có thể thay đổi theo mùa/lễ. Chọn ngày để xem đơn giá áp dụng.
+                                        </div>
                                     </div>
                                     <div className="text-right text-sm text-gray-600">
                                         {avgRating !== null ? `${avgRating} ★` : ''}
@@ -566,28 +650,47 @@ export default function HomestayDetail() {
                                 </div>
 
                                 {/* Step 1: Chọn ngày */}
-                                <div className="mt-5 grid grid-cols-2 gap-3">
+                                <div className={`mt-5 grid grid-cols-2 gap-3 ${hasDateBlocked ? 'opacity-70' : ''}`}>
                                     <div>
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4 text-gray-500" />
                                             Ngày nhận
                                         </label>
-                                        <input value={checkIn} onChange={(e) => setCheckIn(e.target.value)} type="date" min={new Date().toISOString().slice(0, 10)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent" />
+                                        <input value={checkIn} onChange={(e) => setCheckIn(e.target.value)} type="date" min={new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
                                     </div>
                                     <div>
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4 text-gray-500" />
                                             Ngày trả
                                         </label>
-                                        <input value={checkOut} onChange={(e) => setCheckOut(e.target.value)} type="date" min={checkIn || new Date().toISOString().slice(0, 10)} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent" />
+                                        <input value={checkOut} onChange={(e) => setCheckOut(e.target.value)} type="date" min={checkIn || new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
                                     </div>
                                 </div>
+                                {occupiedDatesLoading && (
+                                    <div className="mt-2 text-xs text-gray-500">Đang tải lịch phòng đã đặt...</div>
+                                )}
+                                {hasDateBlocked && (
+                                    <div className="mt-2 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded-lg px-3 py-2">
+                                        {isCheckInOccupied && !checkOut
+                                            ? 'Ngày nhận đã có khách đặt. Vui lòng chọn ngày nhận khác.'
+                                            : 'Khoảng ngày đã chọn trùng với lịch đã đặt của homestay. Vui lòng chọn khoảng khác.'}
+                                    </div>
+                                )}
 
                                 {/* Tóm tắt số đêm */}
                                 {nights > 0 && (
                                     <div className="mt-2 flex items-center gap-2 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2">
                                         <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
-                                        <span>{nights} đêm · {homestay.pricePerNight?.toLocaleString('vi-VN')}đ × {nights} = <span className="font-semibold">{(homestay.pricePerNight * nights).toLocaleString('vi-VN')}đ</span></span>
+                                        <span>
+                                            {nights} đêm · {(effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × {nights} = <span className="font-semibold">{formatMoney(computedTotal ?? (homestay.pricePerNight * nights))}</span>
+                                        </span>
+                                    </div>
+                                )}
+                                {nights > 0 && isSeasonalPriceApplied && (
+                                    <div className={`mt-2 text-xs rounded-lg px-3 py-2 border ${seasonalDelta > 0 ? 'text-red-700 bg-red-50 border-red-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'}`}>
+                                        {seasonalDelta > 0
+                                            ? `Giá theo mùa đang cao hơn giá niêm yết ${formatMoney(seasonalDelta)} cho ${nights} đêm đã chọn.`
+                                            : `Giá theo mùa đang thấp hơn giá niêm yết ${formatMoney(Math.abs(seasonalDelta))} cho ${nights} đêm đã chọn.`}
                                     </div>
                                 )}
 
@@ -697,13 +800,19 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
-                                <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                                <div className={`mt-5 rounded-xl border p-4 ${hasDateBlocked ? 'border-gray-300 bg-gray-100 opacity-80' : 'border-gray-100 bg-gray-50'}`}>
                                     <div className="flex items-center justify-between text-sm text-gray-700">
-                                        <span>{nights > 0 ? `${homestay.pricePerNight?.toLocaleString('vi-VN')}đ × ${nights} đêm` : 'Chọn ngày để tính giá'}</span>
+                                        <span>{nights > 0 ? `${(effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × ${nights} đêm` : 'Chọn ngày để tính giá'}</span>
                                         <span className="font-medium">
-                                            {nights > 0 && homestay.pricePerNight ? formatMoney(homestay.pricePerNight * nights) : '—'}
+                                            {nights > 0 ? formatMoney(computedTotal ?? (homestay.pricePerNight * nights)) : '—'}
                                         </span>
                                     </div>
+                                    {nights > 0 && isSeasonalPriceApplied && baseBookingTotal !== undefined && (
+                                        <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                                            <span>Giá niêm yết ban đầu</span>
+                                            <span className="line-through">{formatMoney(baseBookingTotal)}</span>
+                                        </div>
+                                    )}
                                     <div className="mt-2 flex items-center justify-between text-sm text-gray-700">
                                         <span>Khách</span>
                                         <span className="font-medium">{guests}</span>
@@ -803,6 +912,10 @@ export default function HomestayDetail() {
                                         toast.error('Ngày trả phải sau ngày nhận');
                                         return
                                     }
+                                    if (hasDateBlocked) {
+                                        toast.error('Khoảng ngày đã chọn trùng với lịch đã đặt, vui lòng chọn ngày khác')
+                                        return
+                                    }
                                     if (!contactPhone.trim()) {
                                         toast.error('Vui lòng nhập số điện thoại liên hệ');
                                         return
@@ -858,7 +971,7 @@ export default function HomestayDetail() {
                                                 checkOut,
                                                 totalNights: nights,
                                                 guestsCount: guests,
-                                                pricePerNight: homestay!.pricePerNight,
+                                                pricePerNight: effectivePricePerNight ?? homestay!.pricePerNight,
                                                 bookingTotal,
                                                 amountDue: depositAmount,  // lần đầu luôn là cọc
                                                 depositAmount,
@@ -876,7 +989,7 @@ export default function HomestayDetail() {
                                     } finally {
                                         setIsBooking(false)
                                     }
-                                }} disabled={isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim()} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
+                                }} disabled={isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
                                     {isBooking ? (
                                         <>
                                             <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
