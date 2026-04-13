@@ -150,17 +150,23 @@ export default function AiChatWidget() {
     setLoading(true);
 
     try {
-      const reply = await aiService.chat(msg);
+      // Send to /api/ai/chat - backend handles ALL logic
+      // (intent detection, FAQ routing, recommendations, etc.)
+      const aiResponse = await aiService.chat(msg);
 
       setMessages(prev => [...prev, {
         id: `ai-${Date.now()}`, sender: 'AI',
-        message: reply || 'Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này.',
+        message: aiResponse || 'Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này.',
         timestamp: new Date().toISOString(),
       }]);
     } catch (e: any) {
-      // Xóa tin nhắn user vừa thêm nếu gửi thất bại, trả lại input
-      setMessages(prev => prev.filter(m => m.id !== userMsg.id));
-      setInput(msg);
+      // Hiển thị error message cho user
+      const errorMessage = e?.message || 'Có lỗi xảy ra, vui lòng thử lại.';
+      setMessages(prev => [...prev, {
+        id: `err-${Date.now()}`, sender: 'AI',
+        message: `❌ ${errorMessage}`,
+        timestamp: new Date().toISOString(),
+      }]);
     } finally {
       setLoading(false);
     }
