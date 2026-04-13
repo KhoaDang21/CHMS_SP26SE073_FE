@@ -1,54 +1,99 @@
 import { apiService } from "./apiService";
 import { apiConfig } from "../config/apiConfig";
+import type {
+  BasePrice,
+  BulkBasePriceUpdateRequest,
+  BulkPricingUpdateLegacy,
+  PricingOverviewResponse,
+  SeasonalPricing,
+  SeasonalPricingCreateRequest,
+  SeasonalPricingUpdateRequest,
+  ServiceResult,
+} from "../types/pricing.types";
 
-export interface BasePrice {
-  pricePerNight: number;
-  minStay?: number;
-  maxGuests?: number;
-}
+const mapBasePrice = (raw: any): BasePrice => ({
+  pricePerNight: Number(raw?.pricePerNight ?? raw?.price ?? 0),
+  minStay: raw?.minStay,
+  maxGuests: raw?.maxGuests,
+});
 
-export interface SeasonalPricing {
-  id: string;
-  startDate: string;
-  endDate: string;
-  pricePerNight: number;
-  description?: string;
-  status?: string;
-}
+const mapSeasonalPricing = (item: any): SeasonalPricing => ({
+  id: item?.id ?? "",
+  name: item?.name ?? item?.description ?? "",
+  startDate: item?.startDate ?? "",
+  endDate: item?.endDate ?? "",
+  price: Number(item?.price ?? item?.pricePerNight ?? 0),
+  pricePerNight: Number(item?.pricePerNight ?? item?.price ?? 0),
+  description: item?.description ?? item?.name ?? "",
+  status: item?.status ?? "ACTIVE",
+});
 
-export interface BulkPricingUpdate {
-  homestayId: string;
-  startDate: string;
-  endDate: string;
-  pricePerNight: number;
-}
+const extractSeasonalPrices = (payload: any): SeasonalPricing[] => {
+  const rawList = Array.isArray(payload?.seasonalPrices)
+    ? payload.seasonalPrices
+    : Array.isArray(payload?.seasonalPricings)
+      ? payload.seasonalPricings
+      : Array.isArray(payload)
+        ? payload
+        : [];
+
+  return rawList.map(mapSeasonalPricing);
+};
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error && error.message?.trim()) {
+    return error.message;
+  }
+  return fallback;
+};
+
+export type BulkPricingUpdate = BulkPricingUpdateLegacy;
+
+export type {
+  BasePrice,
+  BulkBasePriceUpdateRequest,
+  PricingOverviewResponse,
+  SeasonalPricing,
+  SeasonalPricingCreateRequest,
+  SeasonalPricingUpdateRequest,
+};
 
 export const homestayPricingService = {
-  /** GET /api/admin/homestays/{homestayId}/pricing — lấy giá cơ bản */
-  async getBasePrice(homestayId: string): Promise<BasePrice | null> {
+  /** GET /api/admin/homestays/{homestayId}/pricing — lấy overview (base + seasonal) */
+  async getPricingOverview(
+    homestayId: string,
+  ): Promise<PricingOverviewResponse | null> {
     try {
       const response = await apiService.get<any>(
         apiConfig.endpoints.homestayPricing.get(homestayId),
       );
-      const data = response?.data ?? response;
-      if (!data) return null;
+      const payload = response?.data ?? response;
+      if (!payload) return null;
+
+      const baseCandidate =
+        payload?.basePrice ?? payload?.basePricing ?? payload?.base ?? payload;
 
       return {
-        pricePerNight: data.pricePerNight ?? data.price ?? 0,
-        minStay: data.minStay ?? 1,
-        maxGuests: data.maxGuests ?? 10,
+        basePrice: mapBasePrice(baseCandidate),
+        seasonalPrices: extractSeasonalPrices(payload),
       };
     } catch (error) {
-      console.error("Get base price error:", error);
+      console.error("Get pricing overview error:", error);
       return null;
     }
+  },
+
+  /** Backward-compatible wrapper: chỉ lấy base price từ API overview */
+  async getBasePrice(homestayId: string): Promise<BasePrice | null> {
+    const overview = await this.getPricingOverview(homestayId);
+    return overview?.basePrice ?? null;
   },
 
   /** PUT /api/admin/homestays/{homestayId}/pricing — cập nhật giá cơ bản */
   async updateBasePrice(
     homestayId: string,
     data: BasePrice,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<ServiceResult> {
     try {
       const response = await apiService.put<any>(
         apiConfig.endpoints.homestayPricing.update(homestayId),
@@ -66,20 +111,33 @@ export const homestayPricingService = {
       console.error("Update base price error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Lỗi khi cập nhật giá",
+        message: getErrorMessage(error, "Lỗi khi cập nhật giá"),
       };
     }
   },
 
-  /** POST /api/admin/pricing/bulk-update — cập nhật giá hàng loạt */
+  /**
+   * POST /api/admin/pricing/bulk-update — cập nhật giá hàng loạt
+   * Preferred payload: { homestayIds: string[], newBasePrice: number }
+   * Legacy payload is still accepted for compatibility.
+   */
   async bulkUpdatePricing(
-    updates: BulkPricingUpdate[],
-  ): Promise<{ success: boolean; message: string }> {
+    request: BulkBasePriceUpdateRequest | BulkPricingUpdateLegacy[],
+  ): Promise<ServiceResult> {
     try {
+      const payload = Array.isArray(request)
+        ? {
+            homestayIds: request.map((item) => item.homestayId).filter(Boolean),
+            newBasePrice: Number(request[0]?.pricePerNight ?? 0),
+          }
+        : {
+            homestayIds: request.homestayIds,
+            newBasePrice: Number(request.newBasePrice),
+          };
+
       const response = await apiService.post<any>(
         apiConfig.endpoints.homestayPricing.bulkUpdate,
-        { pricings: updates },
+        payload,
       );
       return {
         success: response?.success ?? true,
@@ -89,10 +147,7 @@ export const homestayPricingService = {
       console.error("Bulk update pricing error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Lỗi khi cập nhật giá hàng loạt",
+        message: getErrorMessage(error, "Lỗi khi cập nhật giá hàng loạt"),
       };
     }
   },
@@ -103,20 +158,8 @@ export const homestayPricingService = {
       const response = await apiService.get<any>(
         apiConfig.endpoints.homestayPricing.getSeasonalPricing(homestayId),
       );
-      const rawList = Array.isArray(response?.data)
-        ? response.data
-        : Array.isArray(response)
-          ? response
-          : [];
-
-      return rawList.map((item: any) => ({
-        id: item.id ?? "",
-        startDate: item.startDate ?? "",
-        endDate: item.endDate ?? "",
-        pricePerNight: item.pricePerNight ?? item.price ?? 0,
-        description: item.description ?? item.name ?? "",
-        status: item.status ?? "ACTIVE",
-      }));
+      const payload = response?.data ?? response;
+      return extractSeasonalPrices(payload);
     } catch (error) {
       console.error("Get seasonal pricings error:", error);
       return [];
@@ -126,40 +169,29 @@ export const homestayPricingService = {
   /** POST /api/admin/homestays/{homestayId}/seasonal-pricing — thêm giá theo mùa */
   async createSeasonalPricing(
     homestayId: string,
-    data: Omit<SeasonalPricing, "id">,
-  ): Promise<{ success: boolean; message: string; data?: SeasonalPricing }> {
+    data: SeasonalPricingCreateRequest,
+  ): Promise<ServiceResult<SeasonalPricing>> {
     try {
       const response = await apiService.post<any>(
         apiConfig.endpoints.homestayPricing.createSeasonalPricing(homestayId),
         {
+          name: data.name,
           startDate: data.startDate,
           endDate: data.endDate,
-          pricePerNight: data.pricePerNight,
-          description: data.description,
-          status: data.status ?? "ACTIVE",
+          price: data.price ?? data.pricePerNight,
         },
       );
       const item = response?.data ?? response;
       return {
         success: response?.success ?? true,
         message: response?.message ?? "Thêm giá theo mùa thành công!",
-        data: item?.id
-          ? {
-              id: item.id ?? "",
-              startDate: item.startDate ?? "",
-              endDate: item.endDate ?? "",
-              pricePerNight: item.pricePerNight ?? 0,
-              description: item.description ?? "",
-              status: item.status ?? "ACTIVE",
-            }
-          : undefined,
+        data: item?.id ? mapSeasonalPricing(item) : undefined,
       };
     } catch (error) {
       console.error("Create seasonal pricing error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Lỗi khi thêm giá theo mùa",
+        message: getErrorMessage(error, "Lỗi khi thêm giá theo mùa"),
       };
     }
   },
@@ -168,8 +200,8 @@ export const homestayPricingService = {
   async updateSeasonalPricing(
     homestayId: string,
     priceId: string,
-    data: Partial<SeasonalPricing>,
-  ): Promise<{ success: boolean; message: string }> {
+    data: SeasonalPricingUpdateRequest,
+  ): Promise<ServiceResult> {
     try {
       const response = await apiService.put<any>(
         apiConfig.endpoints.homestayPricing.updateSeasonalPricing(
@@ -177,11 +209,10 @@ export const homestayPricingService = {
           priceId,
         ),
         {
+          name: data.name,
           startDate: data.startDate,
           endDate: data.endDate,
-          pricePerNight: data.pricePerNight,
-          description: data.description,
-          status: data.status,
+          price: data.price ?? data.pricePerNight,
         },
       );
       return {
@@ -192,10 +223,7 @@ export const homestayPricingService = {
       console.error("Update seasonal pricing error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Lỗi khi cập nhật giá theo mùa",
+        message: getErrorMessage(error, "Lỗi khi cập nhật giá theo mùa"),
       };
     }
   },
@@ -204,7 +232,7 @@ export const homestayPricingService = {
   async deleteSeasonalPricing(
     homestayId: string,
     priceId: string,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<ServiceResult> {
     try {
       const response = await apiService.delete<any>(
         apiConfig.endpoints.homestayPricing.deleteSeasonalPricing(
@@ -220,8 +248,7 @@ export const homestayPricingService = {
       console.error("Delete seasonal pricing error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Lỗi khi xóa giá theo mùa",
+        message: getErrorMessage(error, "Lỗi khi xóa giá theo mùa"),
       };
     }
   },
