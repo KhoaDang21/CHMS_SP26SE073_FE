@@ -8,6 +8,7 @@ import { authService } from '../../services/authService';
 import { authConfig } from '../../config/authConfig';
 import { minDelay } from '../../utils/minDelay';
 import toast from 'react-hot-toast';
+import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -146,6 +147,9 @@ export default function LoginPage() {
             <span className="text-sm text-cyan-700">Trang chủ</span>
           </Link>
         </Button>
+      </div>
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSwitcher />
       </div>
       {/* Left side - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50">

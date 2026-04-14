@@ -6,8 +6,11 @@ import {
   Bell,
   Calendar,
   ClipboardList,
+  Download,
+  FileText,
   Home,
   LogOut,
+  Mail,
   Menu,
   MessageSquare,
   Phone,
@@ -26,6 +29,7 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
 import { buildDisplaySpecialRequests } from '../../utils/bookingExperience';
+import { invoiceService, type Invoice } from '../../services/invoiceService';
 
 type FilterStatus = 'all' | 'checkin-today' | 'checkout-today' | 'confirmed' | 'completed';
 
@@ -52,6 +56,12 @@ export default function StaffBookings() {
   const [extendBooking, setExtendBooking] = useState<Booking | null>(null);
   const [newCheckOutDate, setNewCheckOutDate] = useState('');
   const [extendSubmitting, setExtendSubmitting] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceSending, setInvoiceSending] = useState(false);
+  const [invoiceDownloading, setInvoiceDownloading] = useState(false);
+  const [selectedInvoiceBooking, setSelectedInvoiceBooking] = useState<Booking | null>(null);
+  const [invoiceData, setInvoiceData] = useState<Invoice | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const loadBookings = async () => {
@@ -281,6 +291,79 @@ export default function StaffBookings() {
       toast.error('Không thể gia hạn booking');
     } finally {
       setExtendSubmitting(false);
+    }
+  };
+
+  const canExportInvoice = (booking: Booking) =>
+    booking.status === 'checked_out' || booking.status === 'completed';
+
+  const handleOpenInvoiceModal = async (booking: Booking) => {
+    setSelectedInvoiceBooking(booking);
+    setShowInvoiceModal(true);
+    setInvoiceLoading(true);
+    setInvoiceData(null);
+
+    try {
+      const invoice = await invoiceService.getInvoice(booking.id);
+      if (!invoice) {
+        toast.error('Chưa lấy được dữ liệu hóa đơn cho booking này');
+        return;
+      }
+      setInvoiceData(invoice);
+    } catch (error) {
+      console.error('Open invoice modal error:', error);
+      toast.error('Không thể tải thông tin hóa đơn');
+    } finally {
+      setInvoiceLoading(false);
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
+    if (!selectedInvoiceBooking) return;
+
+    setInvoiceDownloading(true);
+    try {
+      const blob = await invoiceService.downloadInvoice(selectedInvoiceBooking.id);
+      if (!blob) {
+        toast.error('Không thể tải file hóa đơn');
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const fileName = `invoice-${invoiceData?.bookingCode || selectedInvoiceBooking.bookingCode || selectedInvoiceBooking.id}.pdf`;
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Đã tải hóa đơn thành công');
+    } catch (error) {
+      console.error('Download invoice error:', error);
+      toast.error('Không thể tải hóa đơn');
+    } finally {
+      setInvoiceDownloading(false);
+    }
+  };
+
+  const handleSendInvoiceEmail = async () => {
+    if (!selectedInvoiceBooking) return;
+
+    setInvoiceSending(true);
+    try {
+      const result = await invoiceService.sendInvoiceEmail(selectedInvoiceBooking.id);
+      if (!result.success) {
+        toast.error(result.message || 'Không thể gửi hóa đơn qua email');
+        return;
+      }
+
+      toast.success(result.message || 'Đã gửi hóa đơn qua email');
+    } catch (error) {
+      console.error('Send invoice email error:', error);
+      toast.error('Không thể gửi hóa đơn qua email');
+    } finally {
+      setInvoiceSending(false);
     }
   };
 
@@ -542,6 +625,16 @@ export default function StaffBookings() {
                             Gia hạn ngày ở
                           </button>
                         )}
+                        {canExportInvoice(booking) && (
+                          <button
+                            onClick={() => void handleOpenInvoiceModal(booking)}
+                            type="button"
+                            className="px-4 py-2 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Xuất bill
+                          </button>
+                        )}
                         {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && (
                           <div className="px-3 py-2 rounded-lg bg-red-50 text-red-700 text-xs font-medium text-center">
                             Chờ khách thanh toán cọc
@@ -677,13 +770,152 @@ export default function StaffBookings() {
             </div>
 
             <div className="p-6 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row gap-3">
+                {canExportInvoice(bookingDetail) && (
+                  <button
+                    onClick={() => void handleOpenInvoiceModal(bookingDetail)}
+                    type="button"
+                    className="sm:w-auto w-full px-4 py-2 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Xem / Xuất bill
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowBookingDetailModal(false);
+                    setBookingDetail(null);
+                  }}
+                  type="button"
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInvoiceModal && selectedInvoiceBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Hóa đơn booking</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedInvoiceBooking.homestayName} · {selectedInvoiceBooking.customerName}
+                </p>
+              </div>
               <button
                 onClick={() => {
-                  setShowBookingDetailModal(false);
-                  setBookingDetail(null);
+                  if (invoiceSending || invoiceDownloading) return;
+                  setShowInvoiceModal(false);
+                  setSelectedInvoiceBooking(null);
+                  setInvoiceData(null);
                 }}
                 type="button"
-                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                className="p-2 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-auto">
+              {invoiceLoading ? (
+                <div className="py-10 text-center text-gray-500">Đang tải hóa đơn...</div>
+              ) : !invoiceData ? (
+                <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+                  Không tìm thấy dữ liệu hóa đơn cho booking này.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Mã invoice</div>
+                      <div className="font-semibold text-gray-900 mt-1 break-all">{invoiceData.id}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Mã booking</div>
+                      <div className="font-semibold text-gray-900 mt-1">{invoiceData.bookingCode || invoiceData.bookingId}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Check-in</div>
+                      <div className="font-semibold text-gray-900 mt-1">{invoiceData.checkIn ? new Date(invoiceData.checkIn).toLocaleDateString('vi-VN') : '-'}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Check-out</div>
+                      <div className="font-semibold text-gray-900 mt-1">{invoiceData.checkOut ? new Date(invoiceData.checkOut).toLocaleDateString('vi-VN') : '-'}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                      <div className="text-gray-500">Trạng thái thanh toán</div>
+                      <div className="font-semibold text-gray-900 mt-1">{invoiceData.paymentStatus || '-'}</div>
+                    </div>
+                    <div className="rounded-lg bg-cyan-50 border border-cyan-200 p-3">
+                      <div className="text-cyan-700">Tổng tiền</div>
+                      <div className="font-bold text-cyan-900 mt-1 text-lg">{(invoiceData.totalAmount || 0).toLocaleString('vi-VN')} VND</div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 p-4 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Tạm tính</span>
+                        <span className="font-medium text-gray-900">{(invoiceData.subtotal || 0).toLocaleString('vi-VN')} VND</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Giảm giá</span>
+                        <span className="font-medium text-gray-900">-{(invoiceData.discountAmount || 0).toLocaleString('vi-VN')} VND</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Thuế / phí</span>
+                        <span className="font-medium text-gray-900">{(invoiceData.tax || 0).toLocaleString('vi-VN')} VND</span>
+                      </div>
+                      <div className="border-t border-gray-200 pt-2 flex items-center justify-between">
+                        <span className="font-semibold text-gray-900">Tổng thanh toán</span>
+                        <span className="font-bold text-gray-900">{(invoiceData.totalAmount || 0).toLocaleString('vi-VN')} VND</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {invoiceData.notes && (
+                    <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-900">
+                      <span className="font-semibold">Ghi chú: </span>
+                      {invoiceData.notes}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => void handleDownloadInvoice()}
+                type="button"
+                disabled={invoiceLoading || invoiceDownloading || !invoiceData}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                {invoiceDownloading ? 'Đang tải...' : 'Tải PDF'}
+              </button>
+              <button
+                onClick={() => void handleSendInvoiceEmail()}
+                type="button"
+                disabled={invoiceLoading || invoiceSending || !invoiceData}
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <Mail className="w-4 h-4" />
+                {invoiceSending ? 'Đang gửi...' : 'Gửi qua email'}
+              </button>
+              <button
+                onClick={() => {
+                  if (invoiceSending || invoiceDownloading) return;
+                  setShowInvoiceModal(false);
+                  setSelectedInvoiceBooking(null);
+                  setInvoiceData(null);
+                }}
+                type="button"
+                className="sm:w-auto w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
                 Đóng
               </button>

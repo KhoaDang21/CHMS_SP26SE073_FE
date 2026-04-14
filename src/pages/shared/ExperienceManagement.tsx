@@ -13,6 +13,7 @@ import {
   X,
   Pencil,
   Tag,
+  CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
@@ -29,6 +30,7 @@ import { adminNavItems } from '../../config/adminNavItems';
 import { managerNavItems } from '../../config/managerNavItems';
 import { homestayService } from '../../services/homestayService';
 import type { Homestay } from '../../types/homestay.types';
+import ExperienceScheduleModal from '../../components/admin/ExperienceScheduleModal';
 
 const initialServiceForm: ExperiencePayload = {
   homestayId: '',
@@ -89,6 +91,9 @@ export default function ExperienceManagement() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExperienceCategory | null>(null);
   const [categoryForm, setCategoryForm] = useState<ServiceCategoryPayload>(initialCategoryForm);
+
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleExperience, setScheduleExperience] = useState<LocalExperience | null>(null);
 
   const navItems = isAdmin ? adminNavItems : managerNavItems;
 
@@ -311,6 +316,11 @@ export default function ExperienceManagement() {
     await loadData();
   };
 
+  const openScheduleModal = (item: LocalExperience) => {
+    setScheduleExperience(item);
+    setShowScheduleModal(true);
+  };
+
   const handleLogout = () => {
     authService.logout();
     navigate('/auth/login');
@@ -493,6 +503,14 @@ export default function ExperienceManagement() {
                         >
                           <Pencil className="w-4 h-4" />
                           Sửa
+                        </button>
+                        <button
+                          onClick={() => openScheduleModal(item)}
+                          className="px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center justify-center gap-2"
+                          title="Quản lý timeline hoạt động"
+                        >
+                          <CalendarDays className="w-4 h-4" />
+                          Lịch
                         </button>
                         <button
                           onClick={() => handleDeleteService(item)}
@@ -782,6 +800,15 @@ export default function ExperienceManagement() {
           </div>
         </div>
       )}
+
+      <ExperienceScheduleModal
+        isOpen={showScheduleModal}
+        onClose={() => {
+          setShowScheduleModal(false);
+          setScheduleExperience(null);
+        }}
+        experience={scheduleExperience}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Star, MapPin, DollarSign } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 interface RecommendedHomestay {
@@ -161,7 +161,6 @@ function HomestayCard({ homestay }: { homestay: RecommendedHomestay }) {
 export default function AiBubbleContent({
     message,
     recommendedHomestays,
-    isRecommendation,
 }: AiBubbleContentProps) {
     const lines = formatMessage(message);
     const hasHomestays = Boolean(recommendedHomestays?.length);
