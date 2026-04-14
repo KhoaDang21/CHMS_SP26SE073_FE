@@ -121,13 +121,13 @@ export const useChat = () => {
         dispatch({ type: "SET_LOADING", payload: true });
         dispatch({ type: "SET_ERROR", payload: null });
 
-        // Send to backend
-        const aiResponse = await aiService.chat(message);
+        // Send to backend (returns ChatWrapperResponse)
+        const response = await aiService.chat(message);
 
         // Add AI response
         dispatch({
           type: "ADD_AI_MESSAGE",
-          payload: aiResponse || "Xin lỗi, tôi chưa hiểu.",
+          payload: response.replyMessage || "Xin lỗi, tôi chưa hiểu.",
         });
       } catch (error) {
         const errorMsg =
