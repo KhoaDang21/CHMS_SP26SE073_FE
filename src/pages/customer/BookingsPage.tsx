@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
@@ -26,6 +27,9 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
 
 export default function BookingsPage() {
   const navigate = useNavigate();
+  const { i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+  const tr = (vi: string, en: string) => (isEn ? en : vi);
   const pageSize = 10;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +103,7 @@ export default function BookingsPage() {
       }
     } catch (e) {
       console.error(e);
-      toast.error('Không thể tải danh sách booking');
+      toast.error(tr('Không thể tải danh sách booking', 'Cannot load booking list'));
     } finally {
       setLoading(false);
     }
@@ -152,12 +156,12 @@ export default function BookingsPage() {
       }
       const policy = await bookingService.getCancellationPolicy(b.id);
       if (!policy) {
-        toast.error('Không lấy được chính sách hủy');
+        toast.error(tr('Không lấy được chính sách hủy', 'Cannot load cancellation policy'));
       }
       setCancellationPolicy(policy);
     } catch (e) {
       console.error(e);
-      toast.error('Không thể tải chi tiết booking');
+      toast.error(tr('Không thể tải chi tiết booking', 'Cannot load booking details'));
     } finally {
       setDetailLoading(false);
     }
@@ -173,7 +177,7 @@ export default function BookingsPage() {
       setExtraDetailCharges(list);
     } catch (error) {
       console.error('Load extra charges error:', error);
-      toast.error('Không thể tải chi tiết phát sinh');
+      toast.error(tr('Không thể tải chi tiết phát sinh', 'Cannot load extra charges details'));
       setExtraDetailCharges([]);
     } finally {
       setExtraChargeDetailLoading(false);
@@ -233,13 +237,13 @@ export default function BookingsPage() {
 
   const getStatusText = (status: string) => {
     switch (status.toUpperCase()) {
-      case 'CONFIRMED': return 'Đã xác nhận';
-      case 'CHECKED_IN': return 'Đang lưu trú';
-      case 'PENDING': return 'Chờ thanh toán cọc';
-      case 'CANCELLED': return 'Đã hủy';
-      case 'COMPLETED': return 'Hoàn thành';
-      case 'REJECTED': return 'Bị từ chối';
-      default: return 'Trạng thái';
+      case 'CONFIRMED': return tr('Đã xác nhận', 'Confirmed');
+      case 'CHECKED_IN': return tr('Đang lưu trú', 'Staying');
+      case 'PENDING': return tr('Chờ thanh toán cọc', 'Awaiting deposit');
+      case 'CANCELLED': return tr('Đã hủy', 'Cancelled');
+      case 'COMPLETED': return tr('Hoàn thành', 'Completed');
+      case 'REJECTED': return tr('Bị từ chối', 'Rejected');
+      default: return tr('Trạng thái', 'Status');
     }
   };
 
@@ -249,8 +253,8 @@ export default function BookingsPage() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Đặt Phòng Của Tôi</h1>
-              <p className="text-gray-600 mt-1">Quản lý các booking của bạn.</p>
+              <h1 className="text-3xl font-bold text-gray-900">{tr('Đặt Phòng Của Tôi', 'My Bookings')}</h1>
+              <p className="text-gray-600 mt-1">{tr('Quản lý các booking của bạn.', 'Manage your bookings.')}</p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -258,13 +262,13 @@ export default function BookingsPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-medium"
               >
                 <RefreshCcw className="w-4 h-4" />
-                Tải lại
+                {tr('Tải lại', 'Reload')}
               </button>
               <Link
                 to="/customer/dashboard"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold"
               >
-                Tìm homestay
+                {tr('Tìm homestay', 'Find homestay')}
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -273,12 +277,12 @@ export default function BookingsPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 mb-6">
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {([
-                { key: 'all', label: 'Tất cả' },
-                { key: 'pending', label: 'Chờ thanh toán cọc' },
-                { key: 'confirmed', label: 'Đã xác nhận' },
-                { key: 'staying', label: 'Đang lưu trú' },
-                { key: 'completed', label: 'Hoàn thành' },
-                { key: 'cancelled', label: 'Đã hủy' },
+                { key: 'all', label: tr('Tất cả', 'All') },
+                { key: 'pending', label: tr('Chờ thanh toán cọc', 'Awaiting deposit') },
+                { key: 'confirmed', label: tr('Đã xác nhận', 'Confirmed') },
+                { key: 'staying', label: tr('Đang lưu trú', 'Staying') },
+                { key: 'completed', label: tr('Hoàn thành', 'Completed') },
+                { key: 'cancelled', label: tr('Đã hủy', 'Cancelled') },
               ] as const).map(t => (
                 <button
                   key={t.key}
@@ -297,17 +301,17 @@ export default function BookingsPage() {
           {loading ? (
             <div className="text-center py-10">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <p className="mt-3 text-gray-600">Đang tải booking...</p>
+              <p className="mt-3 text-gray-600">{tr('Đang tải booking...', 'Loading bookings...')}</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
-              <p className="text-gray-700 font-semibold">Chưa có booking nào.</p>
-              <p className="text-gray-600 mt-1">Hãy chọn một homestay và đặt phòng để bắt đầu.</p>
+              <p className="text-gray-700 font-semibold">{tr('Chưa có booking nào.', 'No bookings yet.')}</p>
+              <p className="text-gray-600 mt-1">{tr('Hãy chọn một homestay và đặt phòng để bắt đầu.', 'Choose a homestay and book to get started.')}</p>
               <Link
                 to="/customer/dashboard"
                 className="inline-flex mt-6 items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold"
               >
-                Đi tìm homestay
+                {tr('Đi tìm homestay', 'Find homestays')}
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -340,18 +344,18 @@ export default function BookingsPage() {
                         </span>
                         {/* Payment status badges */}
                         {b.status === 'PENDING' && b.paymentStatus === 'UNPAID' && typeof b.depositAmount === 'number' && b.depositAmount > 0 && (
-                          <span title={`Cọc ${b.depositPercentage || 20}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
-                            Cọc: {b.depositAmount.toLocaleString('vi-VN')}đ
+                          <span title={`${tr('Cọc', 'Deposit')} ${b.depositPercentage || 20}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                            {tr('Cọc', 'Deposit')}: {b.depositAmount.toLocaleString('vi-VN')}đ
                           </span>
                         )}
                         {b.status === 'CONFIRMED' && b.paymentStatus === 'DEPOSIT_PAID' && (
-                          <span title={`Còn lại: ${(b.remainingAmount || 0).toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
-                            Còn lại: {(b.remainingAmount || 0).toLocaleString('vi-VN')}đ
+                          <span title={`${tr('Còn lại', 'Remaining')}: ${(b.remainingAmount || 0).toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                            {tr('Còn lại', 'Remaining')}: {(b.remainingAmount || 0).toLocaleString('vi-VN')}đ
                           </span>
                         )}
                         {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && b.paymentStatus === 'FULLY_PAID' && (
                           <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Thanh toán đủ
+                            <Check className="w-3 h-3" /> {tr('Thanh toán đủ', 'Fully paid')}
                           </span>
                         )}
                       </div>
@@ -381,7 +385,7 @@ export default function BookingsPage() {
                               if (hs?.address) return hs.address;
                               const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
                               if (cityCountry) return cityCountry;
-                              return 'Đang cập nhật';
+                              return tr('Đang cập nhật', 'Updating');
                             })()}
                           </span>
                         </div>
@@ -395,7 +399,7 @@ export default function BookingsPage() {
                             <span className="text-xs">Check-in</span>
                           </div>
                           <div className="font-semibold text-gray-900 text-sm">
-                            {new Date(b.checkIn).toLocaleDateString('vi-VN')}
+                            {new Date(b.checkIn).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}
                           </div>
                         </div>
                         <div className="bg-gray-50 rounded-lg p-3">
@@ -404,7 +408,7 @@ export default function BookingsPage() {
                             <span className="text-xs">Check-out</span>
                           </div>
                           <div className="font-semibold text-gray-900 text-sm">
-                            {new Date(b.checkOut).toLocaleDateString('vi-VN')}
+                            {new Date(b.checkOut).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}
                           </div>
                         </div>
                       </div>
@@ -413,11 +417,11 @@ export default function BookingsPage() {
                       <div className="flex items-center justify-between mb-4 text-sm">
                         <div className="flex items-center gap-2 text-gray-600">
                           <Users className="w-4 h-4" />
-                          <span>{b.guestsCount} khách</span>
+                          <span>{b.guestsCount} {tr('khách', 'guests')}</span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                           <Clock className="w-4 h-4" />
-                          <span>{nights(b.checkIn, b.checkOut)} đêm</span>
+                          <span>{nights(b.checkIn, b.checkOut)} {tr('đêm', 'nights')}</span>
                         </div>
                       </div>
 
@@ -425,7 +429,7 @@ export default function BookingsPage() {
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                         {typeof b.totalPrice === 'number' ? (
                           <div>
-                            <div className="text-xs text-gray-500">Tổng tiền</div>
+                            <div className="text-xs text-gray-500">{tr('Tổng tiền', 'Total')}</div>
                             <div className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
                               {b.totalPrice.toLocaleString('vi-VN')}đ
                             </div>
@@ -441,7 +445,7 @@ export default function BookingsPage() {
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
                             >
                               <Plus className="w-4 h-4" />
-                              Thêm dịch vụ
+                              {tr('Thêm dịch vụ', 'Add services')}
                             </button>
                           )}
                           {(() => {
@@ -453,7 +457,7 @@ export default function BookingsPage() {
                                   className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
                                 >
                                   <Star className="w-4 h-4 text-yellow-400" />
-                                  Đã đánh giá
+                                  {tr('Đã đánh giá', 'Reviewed')}
                                 </button>
                               );
                             }
@@ -467,7 +471,7 @@ export default function BookingsPage() {
                                   className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
                                 >
                                   <Star className="w-4 h-4" />
-                                  Đánh giá
+                                  {tr('Đánh giá', 'Review')}
                                 </button>
                               );
                             }
@@ -477,7 +481,7 @@ export default function BookingsPage() {
                             onClick={() => openDetail(b)}
                             className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
                           >
-                            Chi tiết
+                              {tr('Chi tiết', 'Details')}
                             <ChevronRight className="w-4 h-4" />
                           </button>
                         </div>
@@ -522,7 +526,7 @@ export default function BookingsPage() {
                   {detailLoading ? (
                     <div className="text-center py-8">
                       <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                      <p className="mt-2 text-gray-600">Đang tải chi tiết...</p>
+                      <p className="mt-2 text-gray-600">{tr('Đang tải chi tiết...', 'Loading details...')}</p>
                     </div>
                   ) : (
                     <>
@@ -551,14 +555,14 @@ export default function BookingsPage() {
 
                           <div className="md:w-80">
                             <h2 className="text-lg font-bold truncate">{detailHomestay?.name || selected.homestayName}</h2>
-                            <div className="text-sm text-gray-600 mt-1 mb-3 truncate">{detailHomestay?.address || detailHomestay?.city || homestayMap[selected.homestayId]?.address || 'Đang cập nhật'}</div>
+                            <div className="text-sm text-gray-600 mt-1 mb-3 truncate">{detailHomestay?.address || detailHomestay?.city || homestayMap[selected.homestayId]?.address || tr('Đang cập nhật', 'Updating')}</div>
                             <div className="text-sm text-gray-700 mb-3 line-clamp-4">{detailHomestay?.description || homestayMap[selected.homestayId]?.description || '—'}</div>
 
                             <div className="text-sm text-gray-600 space-y-1">
-                              <div>Giá/đêm: <span className="font-medium text-gray-900">{detailHomestay?.pricePerNight ? `${detailHomestay.pricePerNight.toLocaleString('vi-VN')}đ` : (homestayMap[selected.homestayId]?.pricePerNight ? `${homestayMap[selected.homestayId].pricePerNight.toLocaleString('vi-VN')}đ` : '—')}</span></div>
-                              <div>Số khách: <span className="font-medium text-gray-900">{detailHomestay?.maxGuests ?? homestayMap[selected.homestayId]?.maxGuests ?? '—'}</span></div>
+                              <div>{tr('Giá/đêm', 'Price/night')}: <span className="font-medium text-gray-900">{detailHomestay?.pricePerNight ? `${detailHomestay.pricePerNight.toLocaleString('vi-VN')}đ` : (homestayMap[selected.homestayId]?.pricePerNight ? `${homestayMap[selected.homestayId].pricePerNight.toLocaleString('vi-VN')}đ` : '—')}</span></div>
+                              <div>{tr('Số khách', 'Guests')}: <span className="font-medium text-gray-900">{detailHomestay?.maxGuests ?? homestayMap[selected.homestayId]?.maxGuests ?? '—'}</span></div>
                               <div className="pt-2">
-                                <div className="text-sm font-semibold mb-2">Tiện nghi</div>
+                                <div className="text-sm font-semibold mb-2">{tr('Tiện nghi', 'Amenities')}</div>
                                 <div className="flex flex-wrap gap-2">
                                   {(detailHomestay?.amenities || homestayMap[selected.homestayId]?.amenities || []).slice(0, 8).map((a, i) => (
                                     <div key={i} className="text-sm bg-gray-100 px-3 py-1 rounded">{a}</div>
@@ -581,26 +585,26 @@ export default function BookingsPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Check-in</div>
-                            <div className="font-semibold text-gray-900">{new Date(selected.checkIn).toLocaleDateString('vi-VN')}</div>
+                            <div className="font-semibold text-gray-900">{new Date(selected.checkIn).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</div>
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Check-out</div>
-                            <div className="font-semibold text-gray-900">{new Date(selected.checkOut).toLocaleDateString('vi-VN')}</div>
+                            <div className="font-semibold text-gray-900">{new Date(selected.checkOut).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 mb-1">Số khách</div>
-                            <div className="font-semibold text-gray-900">{selected.guestsCount} người</div>
+                            <div className="text-xs text-gray-500 mb-1">{tr('Số khách', 'Guests')}</div>
+                            <div className="font-semibold text-gray-900">{selected.guestsCount} {tr('người', 'people')}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 mb-1">Số đêm</div>
-                            <div className="font-semibold text-gray-900">{nights(selected.checkIn, selected.checkOut)} đêm</div>
+                            <div className="text-xs text-gray-500 mb-1">{tr('Số đêm', 'Nights')}</div>
+                            <div className="font-semibold text-gray-900">{nights(selected.checkIn, selected.checkOut)} {tr('đêm', 'nights')}</div>
                           </div>
                         </div>
 
                         {selected.contactPhone && (
                           <div className="mt-4 pt-4 border-t border-blue-200">
                             <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                              <Phone className="w-3 h-3" /> Số điện thoại liên hệ
+                              <Phone className="w-3 h-3" /> {tr('Số điện thoại liên hệ', 'Contact phone')}
                             </div>
                             <div className="font-semibold text-gray-900">{selected.contactPhone}</div>
                           </div>
@@ -609,7 +613,7 @@ export default function BookingsPage() {
                         {typeof selected.totalPrice === 'number' && (
                           <div className="mt-4 pt-4 border-t border-blue-200 space-y-2">
                             <div className="flex items-center justify-between">
-                              <div className="font-semibold text-gray-900">Tổng tiền</div>
+                              <div className="font-semibold text-gray-900">{tr('Tổng tiền', 'Total')}</div>
                               <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
                                 {selected.totalPrice.toLocaleString('vi-VN')}đ
                               </div>
@@ -618,29 +622,29 @@ export default function BookingsPage() {
                             {selected.totalPrice && (
                               <div className="text-xs text-gray-500 mt-2 space-y-1">
                                 <div className="flex justify-between">
-                                  <span>Cọc ({selected.depositPercentage || 20}%)</span>
+                                  <span>{tr('Cọc', 'Deposit')} ({selected.depositPercentage || 20}%)</span>
                                   <span className="font-medium">{(selected.depositAmount || 0).toLocaleString('vi-VN')}đ</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span>Còn lại ({100 - (selected.depositPercentage || 20)}%)</span>
+                                  <span>{tr('Còn lại', 'Remaining')} ({100 - (selected.depositPercentage || 20)}%)</span>
                                   <span className="font-medium">{(selected.remainingAmount || 0).toLocaleString('vi-VN')}đ</span>
                                 </div>
                               </div>
                             )}
                             {selected.paymentStatus === 'UNPAID' && typeof selected.depositAmount === 'number' && (
                               <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-100">
-                                <span className="text-orange-600 font-medium">Cần cọc ngay</span>
+                                <span className="text-orange-600 font-medium">{tr('Cần cọc ngay', 'Deposit required now')}</span>
                                 <span className="font-bold text-orange-600">{selected.depositAmount.toLocaleString('vi-VN')}đ</span>
                               </div>
                             )}
                             {selected.paymentStatus === 'DEPOSIT_PAID' && typeof selected.remainingAmount === 'number' && (
                               <div className="flex items-center justify-between text-sm pt-2 border-t border-blue-100">
-                                <span className="text-blue-600 font-medium">Còn lại cần thanh toán</span>
+                                <span className="text-blue-600 font-medium">{tr('Còn lại cần thanh toán', 'Remaining amount due')}</span>
                                 <span className="font-bold text-blue-600">{selected.remainingAmount.toLocaleString('vi-VN')}đ</span>
                               </div>
                             )}
                             {selected.paymentStatus === 'FULLY_PAID' && (
-                              <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ Đã thanh toán đầy đủ</div>
+                              <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ {tr('Đã thanh toán đầy đủ', 'Fully paid')}</div>
                             )}
                           </div>
                         )}
@@ -650,7 +654,7 @@ export default function BookingsPage() {
                       <div>
                         <div className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-3">
                           <MessageSquareText className="w-4 h-4 text-blue-500" />
-                          Yêu cầu đặc biệt
+                          {tr('Yêu cầu đặc biệt', 'Special requests')}
                         </div>
                         {buildDisplaySpecialRequests(selected.specialRequests) ? (
                           <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-xl border border-gray-100 p-4">
@@ -659,14 +663,14 @@ export default function BookingsPage() {
                         ) : (
                           <div className="flex flex-col items-center justify-center gap-2 bg-gray-50 rounded-xl border border-dashed border-gray-200 p-5 text-center">
                             <MessageSquareText className="w-6 h-6 text-gray-300" />
-                            <p className="text-sm text-gray-400 italic">Không có yêu cầu đặc biệt</p>
+                            <p className="text-sm text-gray-400 italic">{tr('Không có yêu cầu đặc biệt', 'No special requests')}</p>
                           </div>
                         )}
                       </div>
 
                       {/* Chính sách hủy */}
                       <div>
-                        <div className="text-sm font-semibold text-gray-900 mb-3">Chính sách hủy</div>
+                        <div className="text-sm font-semibold text-gray-900 mb-3">{tr('Chính sách hủy', 'Cancellation policy')}</div>
                         <div className="text-sm text-gray-700 bg-gray-50 rounded-xl border border-gray-100 p-4">
                           {cancellationPolicy ? (
                             typeof cancellationPolicy === 'string' ? (
@@ -685,7 +689,7 @@ export default function BookingsPage() {
                       {/* Thao tác - Edit Mode */}
                       {editMode ? (
                         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
-                          <h3 className="font-semibold text-gray-900">Chỉnh sửa booking</h3>
+                          <h3 className="font-semibold text-gray-900">{tr('Chỉnh sửa booking', 'Edit booking')}</h3>
 
                           <div>
                             <label className="text-xs font-semibold text-gray-600">Check-in</label>
@@ -710,7 +714,7 @@ export default function BookingsPage() {
                           </div>
 
                           <div>
-                            <label className="text-xs font-semibold text-gray-600">Số khách</label>
+                            <label className="text-xs font-semibold text-gray-600">{tr('Số khách', 'Guests')}</label>
                             <input
                               value={editGuests}
                               onChange={(e) => setEditGuests(Number(e.target.value))}
@@ -722,7 +726,7 @@ export default function BookingsPage() {
                           </div>
 
                           <div>
-                            <label className="text-xs font-semibold text-gray-600">SĐT liên hệ</label>
+                            <label className="text-xs font-semibold text-gray-600">{tr('SĐT liên hệ', 'Contact phone')}</label>
                             <input
                               value={editPhone}
                               onChange={(e) => setEditPhone(e.target.value)}
@@ -731,7 +735,7 @@ export default function BookingsPage() {
                           </div>
 
                           <div>
-                            <label className="text-xs font-semibold text-gray-600">Yêu cầu đặc biệt</label>
+                            <label className="text-xs font-semibold text-gray-600">{tr('Yêu cầu đặc biệt', 'Special requests')}</label>
                             <textarea
                               value={editSpecialRequests}
                               onChange={(e) => setEditSpecialRequests(e.target.value)}
@@ -743,15 +747,15 @@ export default function BookingsPage() {
                           {/* Live calc preview when editing dates */}
                           <div className="mt-2 bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm text-gray-700">
                             <div className="flex items-center justify-between">
-                              <div>Số đêm</div>
+                              <div>{tr('Số đêm', 'Nights')}</div>
                               <div className="font-medium">{editNights(editCheckIn, editCheckOut) || '—'}</div>
                             </div>
                             <div className="flex items-center justify-between mt-2">
-                              <div>Giá/đêm</div>
+                              <div>{tr('Giá/đêm', 'Price/night')}</div>
                               <div className="font-medium">{detailHomestay?.pricePerNight ? `${detailHomestay.pricePerNight.toLocaleString('vi-VN')}đ` : '—'}</div>
                             </div>
                             <div className="flex items-center justify-between mt-2 border-t pt-2">
-                              <div className="font-semibold">Tổng (ước tính)</div>
+                              <div className="font-semibold">{tr('Tổng (ước tính)', 'Estimated total')}</div>
                               <div className="font-semibold">{computedEditTotal !== undefined ? `${computedEditTotal.toLocaleString('vi-VN')}đ` : '—'}</div>
                             </div>
                           </div>
@@ -765,16 +769,16 @@ export default function BookingsPage() {
                                 const inDate = new Date(editCheckIn); inDate.setHours(0, 0, 0, 0);
                                 const outDate = new Date(editCheckOut); outDate.setHours(0, 0, 0, 0);
                                 if (!editCheckIn || !editCheckOut || isNaN(inDate.getTime()) || isNaN(outDate.getTime()) || outDate <= inDate) {
-                                  toast.error('Ngày không hợp lệ');
+                                  toast.error(tr('Ngày không hợp lệ', 'Invalid dates'));
                                   return;
                                 }
                                 if (inDate < today) {
-                                  toast.error('Ngày nhận không được chọn trong quá khứ');
+                                  toast.error(tr('Ngày nhận không được chọn trong quá khứ', 'Check-in date cannot be in the past'));
                                   return;
                                 }
                                 const maxG = detailHomestay?.maxGuests ?? 100;
                                 if (editGuests < 1 || editGuests > maxG) {
-                                  toast.error(`Số khách phải từ 1 đến ${maxG}`);
+                                  toast.error(isEn ? `Guests must be between 1 and ${maxG}` : `Số khách phải từ 1 đến ${maxG}`);
                                   return;
                                 }
                                 setSaving(true);
@@ -787,7 +791,7 @@ export default function BookingsPage() {
                                     ...(editPhone ? { contactPhone: editPhone } : {}),
                                   });
                                   if (res?.success) {
-                                    toast.success(res.message || 'Đã cập nhật booking');
+                                    toast.success(res.message || tr('Đã cập nhật booking', 'Booking updated'));
                                     // update special requests via dedicated endpoint
                                     const currentParsed = extractBookingExperienceData(selected.specialRequests);
                                     const mergedSpecialRequests = buildSpecialRequestsWithExperiences(
@@ -797,7 +801,7 @@ export default function BookingsPage() {
                                     if (mergedSpecialRequests !== (selected.specialRequests || '')) {
                                       const sr = await bookingService.updateSpecialRequests(selected.id, mergedSpecialRequests || '');
                                       if (!sr?.success) {
-                                        toast.error(sr?.message || 'Cập nhật yêu cầu đặc biệt thất bại');
+                                        toast.error(sr?.message || tr('Cập nhật yêu cầu đặc biệt thất bại', 'Failed to update special requests'));
                                       }
                                     }
                                     await load();
@@ -805,11 +809,11 @@ export default function BookingsPage() {
                                     if (refreshed) setSelected(refreshed);
                                     setEditMode(false);
                                   } else {
-                                    toast.error(res?.message || 'Cập nhật booking thất bại');
+                                    toast.error(res?.message || tr('Cập nhật booking thất bại', 'Failed to update booking'));
                                   }
                                 } catch (e) {
                                   console.error(e);
-                                  toast.error('Đã xảy ra lỗi khi cập nhật booking');
+                                  toast.error(tr('Đã xảy ra lỗi khi cập nhật booking', 'An error occurred while updating booking'));
                                 } finally {
                                   setSaving(false);
                                 }
@@ -817,14 +821,14 @@ export default function BookingsPage() {
                               disabled={saving}
                               className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold"
                             >
-                              {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                              {saving ? tr('Đang lưu...', 'Saving...') : tr('Lưu thay đổi', 'Save changes')}
                             </button>
                             <button
                               onClick={() => setEditMode(false)}
                               disabled={saving}
                               className="px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-semibold text-gray-700"
                             >
-                              Hủy
+                              {tr('Hủy', 'Cancel')}
                             </button>
                           </div>
                         </div>
@@ -837,7 +841,7 @@ export default function BookingsPage() {
                               className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700"
                             >
                               <Plus className="w-4 h-4" />
-                              Thêm dịch vụ cho booking này
+                              {tr('Thêm dịch vụ cho booking này', 'Add services for this booking')}
                             </button>
                           )}
                           {/* Nút Thanh toán — PENDING (chưa cọc) hoặc CONFIRMED + DEPOSIT_PAID (còn lại) */}
@@ -863,28 +867,28 @@ export default function BookingsPage() {
                                   depositAmount: selected.depositAmount,
                                   remainingAmount: selected.remainingAmount,
                                   depositPercentage: selected.depositPercentage,
-                                  paymentLabel: isDeposit ? 'Đặt cọc' : 'Thanh toán còn lại',
+                                  paymentLabel: isDeposit ? tr('Đặt cọc', 'Deposit') : tr('Thanh toán còn lại', 'Pay remaining'),
                                 });
                               }}
                               disabled={saving}
                               className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white disabled:from-gray-400 disabled:to-gray-500"
                             >
                               <CreditCard className="w-4 h-4" />
-                              {selected.status === 'PENDING' ? `Đặt cọc ngay (${(selected.depositAmount ?? 0).toLocaleString('vi-VN')}đ)` : `Thanh toán còn lại (${(selected.remainingAmount ?? 0).toLocaleString('vi-VN')}đ)`}
+                              {selected.status === 'PENDING' ? `${tr('Đặt cọc ngay', 'Pay deposit now')} (${(selected.depositAmount ?? 0).toLocaleString('vi-VN')}đ)` : `${tr('Thanh toán còn lại', 'Pay remaining')} (${(selected.remainingAmount ?? 0).toLocaleString('vi-VN')}đ)`}
                             </button>
                           )}
 
                           {/* Booking Status Timeline Info */}
                           <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
-                            <div className="text-sm font-semibold text-blue-900 mb-3">Trạng thái booking</div>
+                            <div className="text-sm font-semibold text-blue-900 mb-3">{tr('Trạng thái booking', 'Booking status')}</div>
                             <div className="space-y-2 text-sm">
                               <div className="flex items-center gap-3">
                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${selected.status === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>
                                   {selected.status === 'PENDING' ? '1' : <Check className="w-4 h-4" />}
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-gray-900">Đặt phòng</div>
-                                  <div className="text-gray-600 text-xs">Đã tạo lúc {new Date(selected.createdAt || '').toLocaleDateString('vi-VN')}</div>
+                                  <div className="font-semibold text-gray-900">{tr('Đặt phòng', 'Booking')}</div>
+                                  <div className="text-gray-600 text-xs">{tr('Đã tạo lúc', 'Created at')} {new Date(selected.createdAt || '').toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</div>
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
@@ -892,9 +896,9 @@ export default function BookingsPage() {
                                   {['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(selected.status) ? <Check className="w-4 h-4" /> : '2'}
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-gray-900">Thanh toán cọc</div>
-                                  {selected.paymentStatus !== 'UNPAID' && <div className="text-gray-600 text-xs">Đã thanh toán {(selected.depositAmount ?? 0).toLocaleString('vi-VN')}đ</div>}
-                                  {selected.paymentStatus === 'UNPAID' && <div className="text-orange-600 text-xs font-medium">Chưa thanh toán</div>}
+                                  <div className="font-semibold text-gray-900">{tr('Thanh toán cọc', 'Deposit payment')}</div>
+                                  {selected.paymentStatus !== 'UNPAID' && <div className="text-gray-600 text-xs">{tr('Đã thanh toán', 'Paid')} {(selected.depositAmount ?? 0).toLocaleString('vi-VN')}đ</div>}
+                                  {selected.paymentStatus === 'UNPAID' && <div className="text-orange-600 text-xs font-medium">{tr('Chưa thanh toán', 'Unpaid')}</div>}
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
@@ -902,9 +906,9 @@ export default function BookingsPage() {
                                   {selected.paymentStatus === 'FULLY_PAID' ? <Check className="w-4 h-4" /> : '3'}
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-gray-900">Thanh toán còn lại</div>
-                                  {selected.paymentStatus === 'FULLY_PAID' && <div className="text-gray-600 text-xs">Đã thanh toán {(selected.remainingAmount ?? 0).toLocaleString('vi-VN')}đ</div>}
-                                  {selected.paymentStatus !== 'FULLY_PAID' && <div className="text-orange-600 text-xs font-medium">Thanh toán trước check-in</div>}
+                                  <div className="font-semibold text-gray-900">{tr('Thanh toán còn lại', 'Remaining payment')}</div>
+                                  {selected.paymentStatus === 'FULLY_PAID' && <div className="text-gray-600 text-xs">{tr('Đã thanh toán', 'Paid')} {(selected.remainingAmount ?? 0).toLocaleString('vi-VN')}đ</div>}
+                                  {selected.paymentStatus !== 'FULLY_PAID' && <div className="text-orange-600 text-xs font-medium">{tr('Thanh toán trước check-in', 'Pay before check-in')}</div>}
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
@@ -912,15 +916,15 @@ export default function BookingsPage() {
                                   {selected.status === 'COMPLETED' ? <Check className="w-4 h-4" /> : '4'}
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-gray-900">Check-in & Lưu trú</div>
-                                  {selected.status === 'CHECKED_IN' ? <div className="text-blue-600 text-xs font-medium">Đang lưu trú</div> : selected.status === 'COMPLETED' ? <div className="text-gray-600 text-xs">Đã hoàn thành</div> : <div className="text-gray-600 text-xs">Chờ đến ngày check-in</div>}
+                                  <div className="font-semibold text-gray-900">{tr('Check-in & Lưu trú', 'Check-in & Stay')}</div>
+                                  {selected.status === 'CHECKED_IN' ? <div className="text-blue-600 text-xs font-medium">{tr('Đang lưu trú', 'Staying')}</div> : selected.status === 'COMPLETED' ? <div className="text-gray-600 text-xs">{tr('Đã hoàn thành', 'Completed')}</div> : <div className="text-gray-600 text-xs">{tr('Chờ đến ngày check-in', 'Waiting for check-in date')}</div>}
                                 </div>
                               </div>
                               {selected.status === 'CHECKED_IN' && (
                                 <div className="mt-3 pt-3 border-t border-blue-100 flex items-start gap-2 bg-white rounded p-2">
                                   <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                                   <div className="text-xs text-blue-700">
-                                    <strong>Check-in được xử lý bởi nhân viên.</strong> Họ sẽ cập nhật trạng thái khi bạn đến phòng.
+                                    <strong>{tr('Check-in được xử lý bởi nhân viên.', 'Check-in is handled by staff.')}</strong> {tr('Họ sẽ cập nhật trạng thái khi bạn đến phòng.', 'They will update the status when you arrive.')}
                                   </div>
                                 </div>
                               )}
@@ -933,7 +937,7 @@ export default function BookingsPage() {
                               onClick={() => handleViewExtraDetail(selected)}
                               className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 transition-colors"
                             >
-                              Chi tiết phí phát sinh
+                              {tr('Chi tiết phí phát sinh', 'Extra charges details')}
                               <ChevronRight className="w-4 h-4" />
                             </button>
                           )}
@@ -943,14 +947,14 @@ export default function BookingsPage() {
                             <button
                               onClick={startEdit}
                               disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
-                              title={selected.status !== 'PENDING' ? 'Chỉ có thể sửa booking khi chưa thanh toán cọc' : ''}
+                              title={selected.status !== 'PENDING' ? tr('Chỉ có thể sửa booking khi chưa thanh toán cọc', 'You can edit only before paying deposit') : ''}
                               className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status !== 'PENDING'
                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 : 'bg-gray-900 hover:bg-black text-white'
                                 }`}
                             >
                               <Pencil className="w-4 h-4" />
-                              Sửa booking
+                              {tr('Sửa booking', 'Edit booking')}
                             </button>
                             <button
                               onClick={async () => {
@@ -959,28 +963,28 @@ export default function BookingsPage() {
                                 try {
                                   const res = await bookingService.cancelBooking(selected.id);
                                   if (res?.success) {
-                                    toast.success(res.message || 'Đã hủy booking');
+                                    toast.success(res.message || tr('Đã hủy booking', 'Booking cancelled'));
                                     await load();
                                     setSelected(null);
                                   } else {
-                                    toast.error(res?.message || 'Hủy booking thất bại');
+                                    toast.error(res?.message || tr('Hủy booking thất bại', 'Failed to cancel booking'));
                                   }
                                 } catch (e) {
                                   console.error(e);
-                                  toast.error('Đã xảy ra lỗi khi hủy booking');
+                                  toast.error(tr('Đã xảy ra lỗi khi hủy booking', 'An error occurred while cancelling booking'));
                                 } finally {
                                   setSaving(false);
                                 }
                               }}
                               disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
-                              title={selected.status !== 'PENDING' ? 'Chỉ có thể hủy booking khi chưa thanh toán cọc' : ''}
+                              title={selected.status !== 'PENDING' ? tr('Chỉ có thể hủy booking khi chưa thanh toán cọc', 'You can cancel only before paying deposit') : ''}
                               className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status !== 'PENDING'
                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 : 'bg-red-600 hover:bg-red-700 text-white'
                                 }`}
                             >
                               <XCircle className="w-4 h-4" />
-                              Hủy booking
+                              {tr('Hủy booking', 'Cancel booking')}
                             </button>
                           </div>
                         </div>
@@ -1005,14 +1009,14 @@ export default function BookingsPage() {
           bookingId={reviewingBooking.id}
           homestayName={reviewingBooking.homestayName}
           onClose={() => setReviewingBooking(null)}
-          onSuccess={() => { setReviewingBooking(null); toast.success('Đánh giá đã được gửi, chờ kiểm duyệt!'); load(); }}
+          onSuccess={() => { setReviewingBooking(null); toast.success(tr('Đánh giá đã được gửi, chờ kiểm duyệt!', 'Review submitted and pending approval!')); load(); }}
         />
       )}
       {editingReview && (
         <ReviewModal
           existing={editingReview}
           onClose={() => setEditingReview(null)}
-          onSuccess={() => { setEditingReview(null); toast.success('Đánh giá đã được cập nhật, chờ kiểm duyệt!'); load(); }}
+          onSuccess={() => { setEditingReview(null); toast.success(tr('Đánh giá đã được cập nhật, chờ kiểm duyệt!', 'Review updated and pending approval!')); load(); }}
         />
       )}
       {showExtraDetailModal && extraDetailBooking && (
@@ -1020,7 +1024,7 @@ export default function BookingsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b border-gray-200 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Chi tiết phí phát sinh</h3>
+                <h3 className="text-lg font-bold text-gray-900">{tr('Chi tiết phí phát sinh', 'Extra charges details')}</h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {extraDetailBooking.homestayName}
                 </p>
@@ -1040,26 +1044,26 @@ export default function BookingsPage() {
 
             <div className="p-6 overflow-auto">
               <div className="mb-4 p-4 rounded-lg bg-orange-50 border border-orange-100">
-                <p className="text-sm text-orange-800">Tổng phí phát sinh</p>
+                <p className="text-sm text-orange-800">{tr('Tổng phí phát sinh', 'Total extra charges')}</p>
                 <p className="text-2xl font-bold text-orange-900 mt-1">{totalExtraDetailAmount.toLocaleString('vi-VN')} VND</p>
               </div>
 
               {extraChargeDetailLoading ? (
-                <div className="py-10 text-center text-gray-500">Đang tải chi tiết...</div>
+                <div className="py-10 text-center text-gray-500">{tr('Đang tải chi tiết...', 'Loading details...')}</div>
               ) : extraDetailCharges.length === 0 ? (
-                <div className="py-10 text-center text-gray-500">Booking này chưa có khoản phát sinh.</div>
+                <div className="py-10 text-center text-gray-500">{tr('Booking này chưa có khoản phát sinh.', 'No extra charges for this booking yet.')}</div>
               ) : (
                 <div className="space-y-3">
                   {extraDetailCharges.map((item, index) => (
                     <div key={item.id || `${extraDetailBooking.id}-${index}`} className="p-4 border border-gray-200 rounded-lg">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-gray-900">Khoản #{index + 1}</p>
+                        <p className="text-sm font-medium text-gray-900">{tr('Khoản', 'Item')} #{index + 1}</p>
                         <p className="text-sm font-bold text-orange-600">+{(Number(item.amount) || 0).toLocaleString('vi-VN')} VND</p>
                       </div>
-                      <p className="text-sm text-gray-700 mt-2">{item.note || 'Không có mô tả'}</p>
+                      <p className="text-sm text-gray-700 mt-2">{item.note || tr('Không có mô tả', 'No description')}</p>
                       {item.createdAt && (
                         <p className="text-xs text-gray-500 mt-2">
-                          Tạo lúc: {new Date(item.createdAt).toLocaleString('vi-VN')}
+                          {tr('Tạo lúc', 'Created at')}: {new Date(item.createdAt).toLocaleString(isEn ? 'en-US' : 'vi-VN')}
                         </p>
                       )}
                     </div>
@@ -1078,7 +1082,7 @@ export default function BookingsPage() {
                 type="button"
                 className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
-                Đóng
+                {tr('Đóng', 'Close')}
               </button>
             </div>
           </div>

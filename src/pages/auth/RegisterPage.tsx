@@ -8,6 +8,7 @@ import { authService } from '../../services/authService';
 import { authConfig } from '../../config/authConfig';
 import OTPModal from '../../components/auth/OTPModal';
 import { minDelay } from '../../utils/minDelay';
+import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -120,6 +121,9 @@ export default function RegisterPage() {
             <span className="text-sm text-cyan-700">Trang chủ</span>
           </Link>
         </Button>
+      </div>
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSwitcher />
       </div>
       {/* Left side - Register Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-cyan-50">

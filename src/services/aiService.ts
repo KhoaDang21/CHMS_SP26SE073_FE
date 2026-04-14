@@ -48,26 +48,54 @@ export interface RecommendResponse {
 export const aiService = {
   /**
    * Unwrap common backend ApiResponse envelopes (data/Data) recursively.
+   * Handles multiple nesting levels and various response shapes.
    */
   normalizePayload(input: any): any {
     let payload = input;
+    const visited = new Set(); // Prevent infinite loops
 
     // Limit depth to avoid accidental infinite loops on malformed payloads
-    for (let i = 0; i < 3; i += 1) {
-      if (payload && typeof payload === "object") {
-        if (payload.data && typeof payload.data === "object") {
-          payload = payload.data;
-          continue;
-        }
-        if (payload.Data && typeof payload.Data === "object") {
-          payload = payload.Data;
-          continue;
-        }
+    for (let i = 0; i < 5; i += 1) {
+      if (payload === null || payload === undefined) {
+        break;
       }
+
+      if (visited.has(payload)) {
+        break; // Already seen this object
+      }
+
+      if (typeof payload !== "object" || Array.isArray(payload)) {
+        break; // Stop at non-objects or arrays
+      }
+
+      visited.add(payload);
+
+      // Try common wrapper properties
+      if (payload.data && typeof payload.data === "object") {
+        payload = payload.data;
+        continue;
+      }
+
+      if (payload.Data && typeof payload.Data === "object") {
+        payload = payload.Data;
+        continue;
+      }
+
+      if (payload.result && typeof payload.result === "object") {
+        payload = payload.result;
+        continue;
+      }
+
+      if (payload.Result && typeof payload.Result === "object") {
+        payload = payload.Result;
+        continue;
+      }
+
+      // No more unwrapping possible
       break;
     }
 
-    return payload;
+    return payload ?? input;
   },
 
   /**
@@ -84,18 +112,46 @@ export const aiService = {
       Message: message,
     });
 
-    const data = this.normalizePayload(res);
-    const homestays = data?.recommendedHomestays ?? data?.RecommendedHomestays;
+    let data = this.normalizePayload(res);
 
-    return {
+    // BE might return nested data — unwrap more if needed
+    if (data?.data && typeof data.data === "object") {
+      data = data.data;
+    }
+
+    // Extract homestays — handle both camelCase and PascalCase + nested structures
+    let homestays =
+      data?.recommendedHomestays ??
+      data?.RecommendedHomestays ??
+      data?.recommended_homestays ??
+      null;
+
+    // If still not found, try to extract from other possible locations
+    if (!Array.isArray(homestays) && data) {
+      const keys = Object.keys(data);
+      const homestaayKey = keys.find(
+        (k) => k.toLowerCase().includes("homestay") && Array.isArray(data[k]),
+      );
+      if (homestaayKey) {
+        homestays = data[homestaayKey];
+      }
+    }
+
+    const result = {
       replyMessage: String(
-        data?.replyMessage ?? data?.ReplyMessage ?? data?.message ?? "",
+        data?.replyMessage ??
+          data?.ReplyMessage ??
+          data?.message ??
+          data?.Message ??
+          "",
       ),
       isRecommendation: Boolean(
         data?.isRecommendation ?? data?.IsRecommendation ?? false,
       ),
       recommendedHomestays: Array.isArray(homestays) ? homestays : undefined,
     };
+
+    return result;
   },
 
   /**

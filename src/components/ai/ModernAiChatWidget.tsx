@@ -28,10 +28,11 @@ import type { ChatMessage } from "../../services/aiService";
 
 // Quick suggestions to show when chat is empty
 const QUICK_SUGGESTIONS = [
-    "Homestay view biển đẹp?",
-    "Giá phòng rẻ nhất?",
-    "Chính sách hủy phòng?",
-    "Cách đặt phòng?",
+    "Homestay cho 4 người ở Đà Lạt?",
+    "Homestay view biển giá rẻ?",
+    "Chính sách hủy phòng như thế nào?",
+    "Có homestay nào gần trung tâm không?",
+    "Cách đặt phòng và thanh toán?",
 ];
 
 /**
@@ -70,6 +71,33 @@ interface BubbleProps {
 function MessageBubble({ sender, message, timestamp }: BubbleProps) {
     const isUser = sender === "User";
 
+    // Parse AI message: bold **text**, bullet lines starting with - or *
+    const renderAiMessage = (text: string) => {
+        const lines = text.split('\n').filter((l) => l.trim() !== '')
+        return (
+            <div className="space-y-1.5">
+                {lines.map((line, i) => {
+                    const isBullet = /^[-*•]\s+/.test(line.trim())
+                    const content = line.replace(/^[-*•]\s+/, '').trim()
+                    // parse **bold**
+                    const parts = content.split(/\*\*(.*?)\*\*/g)
+                    const rendered = parts.map((part, j) =>
+                        j % 2 === 1 ? <strong key={j} className="font-semibold text-gray-900">{part}</strong> : part
+                    )
+                    if (isBullet) {
+                        return (
+                            <div key={i} className="flex items-start gap-2">
+                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
+                                <span>{rendered}</span>
+                            </div>
+                        )
+                    }
+                    return <p key={i}>{rendered}</p>
+                })}
+            </div>
+        )
+    }
+
     return (
         <div className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
             {!isUser && (
@@ -84,9 +112,12 @@ function MessageBubble({ sender, message, timestamp }: BubbleProps) {
                         : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
                     }`}
             >
-                <p className="whitespace-pre-wrap break-words">{message}</p>
+                {isUser
+                    ? <p className="whitespace-pre-wrap break-words">{message}</p>
+                    : renderAiMessage(message)
+                }
                 <p
-                    className={`text-[10px] mt-1 ${isUser ? "text-blue-100 text-right" : "text-gray-400"
+                    className={`text-[10px] mt-1.5 ${isUser ? "text-blue-100 text-right" : "text-gray-400"
                         }`}
                 >
                     {new Date(timestamp).toLocaleTimeString("vi-VN", {

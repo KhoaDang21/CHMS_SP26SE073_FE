@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowRight,
   Filter,
@@ -60,6 +61,9 @@ const canonicalProvince = (value?: string | null): string => {
 };
 
 export default function LocalExperiencesPage() {
+  const { i18n } = useTranslation();
+  const isEn = i18n.language.startsWith('en');
+  const tr = (vi: string, en: string) => (isEn ? en : vi);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -91,7 +95,7 @@ export default function LocalExperiencesPage() {
       } catch (loadError) {
         console.error('Load local experiences page error:', loadError);
         if (mounted) {
-          setError('Không thể tải dữ liệu dịch vụ địa phương.');
+          setError(tr('Không thể tải dữ liệu dịch vụ địa phương.', 'Cannot load local experience data.'));
         }
       } finally {
         if (mounted) setLoading(false);
@@ -179,19 +183,21 @@ export default function LocalExperiencesPage() {
           <div className="relative flex flex-col items-center text-center space-y-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-white/80 px-4 py-2 text-sm font-bold text-cyan-700 shadow-sm backdrop-blur">
               <Sparkles className="h-4 w-4" />
-              Dịch vụ địa phương theo tỉnh
+              {tr('Dịch vụ địa phương theo tỉnh', 'Local services by province')}
             </div>
 
             <div className="space-y-4">
               <h1 className="max-w-4xl text-4xl font-black tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
-                Khám phá dịch vụ
+                {tr('Khám phá dịch vụ', 'Explore services')}
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-700">
-                  theo từng tỉnh thành
+                  {tr('theo từng tỉnh thành', 'by province')}
                 </span>
               </h1>
               <p className="mx-auto max-w-2xl text-base leading-relaxed text-gray-600 sm:text-lg">
-                Tổng hợp các trải nghiệm địa phương nổi bật quanh homestay, giúp bạn lọc theo tỉnh và
-                tìm nhanh hoạt động phù hợp trước khi lên lịch chuyến đi.
+                {tr(
+                  'Tổng hợp các trải nghiệm địa phương nổi bật quanh homestay, giúp bạn lọc theo tỉnh và tìm nhanh hoạt động phù hợp trước khi lên lịch chuyến đi.',
+                  'Curated local experiences around homestays, helping you filter by province and quickly find activities before your trip.',
+                )}
               </p>
             </div>
 
@@ -204,7 +210,7 @@ export default function LocalExperiencesPage() {
                     <input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Tên dịch vụ, homestay, địa phương..."
+                      placeholder={tr('Tên dịch vụ, homestay, địa phương...', 'Service name, homestay, location...')}
                       className="w-full border-0 bg-transparent p-0 text-sm font-medium text-gray-900 outline-none placeholder:text-gray-400"
                     />
                   </div>
@@ -220,7 +226,7 @@ export default function LocalExperiencesPage() {
                       onChange={(e) => setSelectedProvince(e.target.value)}
                       className="w-full appearance-none border-0 bg-transparent p-0 text-sm font-bold text-gray-900 outline-none cursor-pointer"
                     >
-                      <option value="all">Tất cả tỉnh thành</option>
+                      <option value="all">{tr('Tất cả tỉnh thành', 'All provinces')}</option>
                       {provinces.map((province) => (
                         <option key={province.id} value={province.name}>
                           {province.name}
@@ -234,7 +240,7 @@ export default function LocalExperiencesPage() {
                   type="button"
                   className="rounded-full bg-gray-900 px-8 py-3.5 text-sm font-bold text-white transition hover:bg-cyan-600 hover:shadow-lg active:scale-95 sm:w-auto"
                 >
-                  Tìm kiếm ngay
+                  {tr('Tìm kiếm ngay', 'Search now')}
                 </button>
               </div>
             </div>
@@ -243,7 +249,7 @@ export default function LocalExperiencesPage() {
             <div className="flex flex-wrap justify-center gap-6 pt-4 sm:gap-12">
               <div className="flex flex-col items-center gap-1">
                 <div className="text-3xl font-black text-gray-900">{provinces.length}</div>
-                <div className="text-xs font-bold uppercase tracking-widest text-gray-400">Tỉnh/Thành</div>
+                <div className="text-xs font-bold uppercase tracking-widest text-gray-400">{tr('Tỉnh/Thành', 'Province')}</div>
               </div>
               <div className="h-10 w-px bg-gray-200 hidden sm:block" />
               <div className="flex flex-col items-center gap-1">
@@ -253,7 +259,7 @@ export default function LocalExperiencesPage() {
               <div className="h-10 w-px bg-gray-200 hidden sm:block" />
               <div className="flex flex-col items-center gap-1">
                 <div className="text-3xl font-black text-gray-900">{experiences.length}</div>
-                <div className="text-xs font-bold uppercase tracking-widest text-gray-400">Dịch vụ</div>
+                <div className="text-xs font-bold uppercase tracking-widest text-gray-400">{tr('Dịch vụ', 'Services')}</div>
               </div>
             </div>
           </div>
@@ -261,7 +267,7 @@ export default function LocalExperiencesPage() {
 
         {loading ? (
           <div className="rounded-[1.75rem] border border-gray-100 bg-white p-10 text-center text-gray-500 shadow-sm">
-            Đang tải dữ liệu dịch vụ địa phương...
+            {tr('Đang tải dữ liệu dịch vụ địa phương...', 'Loading local experience data...')}
           </div>
         ) : error ? (
           <div className="rounded-[1.75rem] border border-red-100 bg-white p-10 text-center text-red-600 shadow-sm">
@@ -269,17 +275,19 @@ export default function LocalExperiencesPage() {
           </div>
         ) : cards.length === 0 ? (
           <div className="rounded-[1.75rem] border border-gray-100 bg-white p-10 text-center text-gray-500 shadow-sm">
-            Không tìm thấy dịch vụ phù hợp với bộ lọc hiện tại.
+            {tr('Không tìm thấy dịch vụ phù hợp với bộ lọc hiện tại.', 'No services match the current filter.')}
           </div>
         ) : (
           <section className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                  {selectedProvince === 'all' ? 'Tất cả dịch vụ' : `Dịch vụ tại ${selectedProvince}`}
+                  {selectedProvince === 'all'
+                    ? tr('Tất cả dịch vụ', 'All services')
+                    : `${tr('Dịch vụ tại', 'Services in')} ${selectedProvince}`}
                 </h2>
                 <p className="mt-1 text-sm text-gray-600">
-                  {cards.length} trải nghiệm địa phương đang được hiển thị.
+                  {cards.length} {tr('trải nghiệm địa phương đang được hiển thị.', 'local experiences are shown.')}
                 </p>
               </div>
             </div>
@@ -322,28 +330,28 @@ export default function LocalExperiencesPage() {
 
                     <div className="min-h-[72px]">
                       <p className="line-clamp-3 text-sm leading-6 text-gray-600">
-                        {card.experience.description || 'Trải nghiệm địa phương đang chờ bạn khám phá.'}
+                        {card.experience.description || tr('Trải nghiệm địa phương đang chờ bạn khám phá.', 'A local experience is waiting for you to discover.')}
                       </p>
                     </div>
 
                     <div className="flex min-h-[32px] flex-wrap items-center gap-2">
                       <span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600">
-                        {card.experience.categoryName || 'Dịch vụ địa phương'}
+                        {card.experience.categoryName || tr('Dịch vụ địa phương', 'Local service')}
                       </span>
                       {typeof card.experience.price === 'number' && (
                         <span className="rounded-full bg-cyan-50 px-3 py-1.5 text-xs font-medium text-cyan-700">
-                          Từ {card.experience.price.toLocaleString('vi-VN')}đ
+                            {tr('Từ', 'From')} {card.experience.price.toLocaleString('vi-VN')}đ
                         </span>
                       )}
                       <span className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
                         <Users className="mr-1 inline-block h-3.5 w-3.5" />
-                        {card.homestay?.maxGuests || 0} khách
+                        {card.homestay?.maxGuests || 0} {tr('khách', 'guests')}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
                       <div>
-                        <div className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Khu vực</div>
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">{tr('Khu vực', 'Area')}</div>
                         <div className="text-sm font-bold text-gray-900">{card.provinceName}</div>
                       </div>
 
@@ -352,7 +360,7 @@ export default function LocalExperiencesPage() {
                         onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center gap-2 rounded-full bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-600 shadow-md"
                       >
-                        Xem homestay
+                        {tr('Xem homestay', 'View homestay')}
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </div>
@@ -366,10 +374,12 @@ export default function LocalExperiencesPage() {
         <section className="rounded-[1.75rem] border border-gray-100 bg-gradient-to-r from-gray-900 via-slate-900 to-cyan-900 px-6 py-8 text-white shadow-xl sm:px-8">
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <h2 className="text-2xl font-bold sm:text-3xl">Muốn xem theo tỉnh khác?</h2>
+              <h2 className="text-2xl font-bold sm:text-3xl">{tr('Muốn xem theo tỉnh khác?', 'Want to browse another province?')}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/75">
-                Chỉ cần đổi tỉnh ở phía trên là danh sách cập nhật ngay. Nếu cần, mình có thể làm thêm
-                bộ lọc theo loại dịch vụ hoặc gợi ý theo ngân sách.
+                {tr(
+                  'Chỉ cần đổi tỉnh ở phía trên là danh sách cập nhật ngay. Nếu cần, mình có thể làm thêm bộ lọc theo loại dịch vụ hoặc gợi ý theo ngân sách.',
+                  'Just change the province above and the list updates immediately. We can also add service-type filters or budget suggestions.',
+                )}
               </p>
             </div>
             <div className="flex gap-3">
@@ -378,13 +388,13 @@ export default function LocalExperiencesPage() {
                 onClick={() => setSelectedProvince('all')}
                 className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100"
               >
-                Xem toàn bộ
+                {tr('Xem toàn bộ', 'View all')}
               </button>
               <Link
                 to="/customer/bookings"
                 className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Về booking
+                {tr('Về booking', 'Go to bookings')}
               </Link>
             </div>
           </div>
@@ -405,7 +415,7 @@ export default function LocalExperiencesPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6 text-white">
                   <Badge className="mb-3 bg-cyan-500/90 text-white hover:bg-cyan-500 border-none">
-                    {selectedExperienceCard.experience.categoryName || 'Dịch vụ địa phương'}
+                    {selectedExperienceCard.experience.categoryName || tr('Dịch vụ địa phương', 'Local service')}
                   </Badge>
                   <h2 className="text-3xl font-black leading-tight sm:text-4xl">
                     {selectedExperienceCard.experience.name}
@@ -418,7 +428,7 @@ export default function LocalExperiencesPage() {
                   <DialogTitle className="sr-only">{selectedExperienceCard.experience.name}</DialogTitle>
                   <div className="flex items-center gap-2 text-cyan-600 font-bold text-sm uppercase tracking-widest">
                     <Sparkles className="h-4 w-4" />
-                    Chi tiết trải nghiệm
+                    {tr('Chi tiết trải nghiệm', 'Experience details')}
                   </div>
                 </DialogHeader>
 
