@@ -147,14 +147,15 @@ export default function ExperienceScheduleModal({ isOpen, onClose, experience }:
 
     setSaving(true);
     try {
+      const schedulesDates = getDateRangePreview(startDate, endDate, daysOfWeek);
       const result = await experienceSchedulesService.bulkCreateSchedules({
-        localExperienceId: experience.id,
-        startDate,
-        endDate,
-        daysOfWeek,
-        startTime,
-        endTime,
-        maxQuantity: quantity,
+        experienceId: experience.id,
+        schedules: schedulesDates.map((date) => ({
+          date,
+          startTime,
+          endTime,
+          maxParticipants: quantity,
+        })),
       });
 
       if (!result.success) {
@@ -350,7 +351,7 @@ export default function ExperienceScheduleModal({ isOpen, onClose, experience }:
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="font-medium text-gray-900">
-                              {schedule.date ? formatDisplayDate(schedule.date) : `${formatDisplayDate(schedule.startDate)} - ${formatDisplayDate(schedule.endDate)}`}
+                              {formatDisplayDate(schedule.date)}
                             </div>
                             <div className="text-gray-600 mt-1">
                               <Clock3 className="inline-block w-4 h-4 mr-1 align-text-bottom" />
@@ -358,7 +359,7 @@ export default function ExperienceScheduleModal({ isOpen, onClose, experience }:
                             </div>
                           </div>
                           <div className="text-right text-gray-600">
-                            <div>{schedule.maxQuantity ?? schedule.maxParticipants ?? maxQuantity} chỗ</div>
+                            <div>{schedule.maxParticipants ?? maxQuantity} chỗ</div>
                             {schedule.status && <div className="text-xs">{schedule.status}</div>}
                           </div>
                         </div>
