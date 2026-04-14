@@ -24,6 +24,15 @@ export interface RecommendRequest {
 }
 
 /**
+ * Chat wrapper response from backend
+ */
+export interface ChatWrapperResponse {
+  replyMessage: string;
+  isRecommendation: boolean;
+  recommendedHomestays?: any[];
+}
+
+/**
  * Recommendation response from backend
  */
 export interface RecommendResponse {
@@ -38,21 +47,55 @@ export interface RecommendResponse {
  */
 export const aiService = {
   /**
+   * Unwrap common backend ApiResponse envelopes (data/Data) recursively.
+   */
+  normalizePayload(input: any): any {
+    let payload = input;
+
+    // Limit depth to avoid accidental infinite loops on malformed payloads
+    for (let i = 0; i < 3; i += 1) {
+      if (payload && typeof payload === "object") {
+        if (payload.data && typeof payload.data === "object") {
+          payload = payload.data;
+          continue;
+        }
+        if (payload.Data && typeof payload.Data === "object") {
+          payload = payload.Data;
+          continue;
+        }
+      }
+      break;
+    }
+
+    return payload;
+  },
+
+  /**
    * POST /api/ai/chat
    * Send message to AI - backend handles ALL logic:
    * - Intent detection
    * - FAQ routing
    * - Recommendations
    * - General Q&A
+   * Returns: ChatWrapperResponseDTO with replyMessage, isRecommendation, and optional recommendedHomestays
    */
-  async chat(message: string): Promise<string> {
+  async chat(message: string): Promise<ChatWrapperResponse> {
     const res = await apiService.post<any>(apiConfig.endpoints.ai.chat, {
       Message: message,
     });
 
-    // Normalize response - handle different property cases
-    const text = res?.data ?? res?.Data ?? res;
-    return typeof text === "string" ? text : "";
+    const data = this.normalizePayload(res);
+    const homestays = data?.recommendedHomestays ?? data?.RecommendedHomestays;
+
+    return {
+      replyMessage: String(
+        data?.replyMessage ?? data?.ReplyMessage ?? data?.message ?? "",
+      ),
+      isRecommendation: Boolean(
+        data?.isRecommendation ?? data?.IsRecommendation ?? false,
+      ),
+      recommendedHomestays: Array.isArray(homestays) ? homestays : undefined,
+    };
   },
 
   /**
