@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText, MapPin, ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { format, startOfDay, addDays } from 'date-fns'
+import { DayPicker } from 'react-day-picker'
 import MainLayout from '../layouts/MainLayout'
 import { publicHomestayService } from '../services/publicHomestayService'
 import { ImageWithFallback } from '../components/figma/ImageWithFallback'
@@ -59,6 +61,8 @@ export default function HomestayDetail() {
     const [isBooking, setIsBooking] = useState(false)
     const [reviews, setReviews] = useState<Review[]>([])
     const [reviewsLoading, setReviewsLoading] = useState(false)
+    const [showCalendar, setShowCalendar] = useState<'checkIn' | 'checkOut' | null>(null)
+    const calendarRef = useRef<HTMLDivElement>(null)
 
     const getInitials = (name?: string) => {
         if (!name) return ''
@@ -240,6 +244,38 @@ export default function HomestayDetail() {
         })
     }
 
+    // Merge các occupied ranges liền kề/chồng nhau thành các block lớn hơn
+    // VD: [15-16] + [17-18] → [15-18] vì checkout của range trước = checkin của range sau (liền kề)
+    const mergedOccupiedRanges = useMemo(() => {
+        const parsed = occupiedDateRanges
+            .map((r) => ({ from: parseYmdToDate(r.checkIn), to: parseYmdToDate(r.checkOut) }))
+            .filter((r): r is { from: Date; to: Date } => r.from !== null && r.to !== null && r.to > r.from)
+            .sort((a, b) => a.from.getTime() - b.from.getTime())
+
+        const merged: { from: Date; to: Date }[] = []
+        for (const range of parsed) {
+            const last = merged[merged.length - 1]
+            // Merge nếu range mới bắt đầu <= ngày kết thúc của range trước (liền kề hoặc chồng)
+            if (last && range.from <= last.to) {
+                last.to = range.to > last.to ? range.to : last.to
+            } else {
+                merged.push({ from: new Date(range.from), to: new Date(range.to) })
+            }
+        }
+        return merged
+    }, [occupiedDateRanges])
+
+    // Tính danh sách ngày bị disable cho DayPicker
+    const disabledDays = useMemo(() => {
+        const today = startOfDay(new Date())
+        const rules: any[] = [{ before: today }]
+        mergedOccupiedRanges.forEach(({ from, to }) => {
+            // disable từ checkIn đến checkOut - 1 (ngày checkOut = ngày nhận được của booking tiếp theo)
+            rules.push({ from, to: addDays(to, -1) })
+        })
+        return rules
+    }, [mergedOccupiedRanges])
+
     const isCheckInOccupied = useMemo(() => {
         const selectedStart = parseYmdToDate(checkIn)
         if (!selectedStart) return false
@@ -260,6 +296,17 @@ export default function HomestayDetail() {
     }, [checkIn, checkOut, occupiedDateRanges])
 
     const hasDateBlocked = isCheckInOccupied || hasOccupiedConflict
+
+    // Close calendar when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+                setShowCalendar(null)
+            }
+        }
+        if (showCalendar !== null) document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [showCalendar])
 
     useEffect(() => {
         let alive = true
@@ -403,671 +450,705 @@ export default function HomestayDetail() {
 
     return (
         <>
-        <MainLayout>
-            <div className="max-w-[1600px] mx-auto px-4 py-8">
-                {/* Back Button */}
-                <button
-                    onClick={() => navigate(-1)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm mb-6"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="font-medium">{t('common.backButton')}</span>
-                </button>
+            <MainLayout>
+                <div className="max-w-[1600px] mx-auto px-4 py-8">
+                    {/* Back Button */}
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm mb-6"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="font-medium">{t('common.backButton')}</span>
+                    </button>
 
-                {loading && <div className="py-8 text-center">{tr('Đang tải...', 'Loading...')}</div>}
-                {error && <div className="py-8 text-center text-red-600">{t('homestay.loadingSchedule')}</div>}
+                    {loading && <div className="py-8 text-center">{tr('Đang tải...', 'Loading...')}</div>}
+                    {error && <div className="py-8 text-center text-red-600">{t('homestay.loadingSchedule')}</div>}
 
-                {homestay && (
-                    <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Left / Main: images + details (span 2 columns on lg) */}
-                        <div className="lg:col-span-2">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                                <div className="lg:col-span-2">
-                                    <div className="rounded-xl overflow-hidden h-96 bg-gray-100 cursor-pointer" onClick={() => setLightboxSrc(images[selectedIndex] ?? '')}>
-                                        <ImageWithFallback
-                                            src={images[selectedIndex] ?? ''}
-                                            alt={homestay.name}
-                                            className="w-full h-full object-cover"
+                    {homestay && (
+                        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Left / Main: images + details (span 2 columns on lg) */}
+                            <div className="lg:col-span-2">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                                    <div className="lg:col-span-2">
+                                        <div className="rounded-xl overflow-hidden h-96 bg-gray-100 cursor-pointer" onClick={() => setLightboxSrc(images[selectedIndex] ?? '')}>
+                                            <ImageWithFallback
+                                                src={images[selectedIndex] ?? ''}
+                                                alt={homestay.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="hidden lg:block h-96">
+                                        <div className="flex flex-col justify-between h-full">
+                                            {Array.from({ length: 4 }).map((_, idx) => {
+                                                const img = images[idx + 1] ?? images[(idx + 1) % images.length]
+                                                return (
+                                                    <div key={idx} onClick={() => setLightboxSrc(img ?? '')} className="h-24 rounded overflow-hidden cursor-pointer border">
+                                                        <ImageWithFallback src={img ?? ''} alt={`${homestay.name}-${idx}`} className="w-full h-full object-cover" />
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 bg-white rounded-xl p-6 shadow">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <h1 className="text-2xl font-bold">{homestay.name}</h1>
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                {homestay.address}
+                                                {homestay.districtName ? `, ${homestay.districtName}` : ''}
+                                                {homestay.provinceName ? `, ${homestay.provinceName}` : ''}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            {avgRating !== null && (
+                                                <div className="flex items-center gap-1 bg-white/90 px-3 py-1 rounded-full shadow">
+                                                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                                                    <span className="text-sm font-medium">{avgRating}</span>
+                                                    <span className="text-xs text-gray-500">({reviews.length})</span>
+                                                </div>
+                                            )}
+                                            {authService.isAuthenticated() && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!homestay) return;
+                                                        const isFav = favorites.has(homestay.id);
+                                                        try {
+                                                            await toggle(homestay.id);
+                                                            toast.success(isFav ? tr('Đã bỏ thích', 'Removed from wishlist') : tr('Đã lưu yêu thích', 'Saved to wishlist'));
+                                                        } catch {
+                                                            toast.error(tr('Không thể thay đổi trạng thái yêu thích', 'Cannot update wishlist status'));
+                                                        }
+                                                    }}
+                                                    className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
+                                                    title={homestay && favorites.has(homestay.id) ? tr('Bỏ thích', 'Remove from wishlist') : tr('Lưu yêu thích', 'Save to wishlist')}
+                                                >
+                                                    <Heart className={`w-5 h-5 transition-colors ${homestay && favorites.has(homestay.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {homestay.ownerName && (
+                                        <div className="mt-4 flex items-center gap-4 border-t pt-4">
+                                            <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-lg font-medium text-gray-700">
+                                                {getInitials(homestay.ownerName)}
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-medium">{tr('Chủ nhà', 'Host')}: {homestay.ownerName}</div>
+                                                {/* If backend provides more host info, render here (e.g., host.title, years) */}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-6">
+                                        <p className="text-gray-700">{homestay.description}</p>
+                                    </div>
+
+                                    <div className="mt-6">
+                                        <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                            <MapPin className="w-4 h-4 text-cyan-600" />
+                                            {tr('Vị trí trên bản đồ', 'Location on map')}
+                                        </h4>
+
+                                        {locationCoords ? (
+                                            <>
+                                                <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
+                                                    <iframe
+                                                        title={`Google Map - ${homestay.name}`}
+                                                        src={googleMapEmbedUrl}
+                                                        className="w-full h-72"
+                                                        loading="lazy"
+                                                        referrerPolicy="no-referrer-when-downgrade"
+                                                    />
+                                                </div>
+                                                <div className="mt-2 flex items-center justify-between gap-3">
+                                                    <p className="text-xs text-gray-500">
+                                                        {tr('Tọa độ', 'Coordinates')}: {locationCoords.lat.toFixed(6)}, {locationCoords.lng.toFixed(6)}
+                                                    </p>
+                                                    <a
+                                                        href={googleMapOpenUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="inline-flex items-center gap-1 text-sm text-cyan-700 hover:text-cyan-800 font-medium"
+                                                    >
+                                                        {tr('Mở trên Google Maps', 'Open in Google Maps')}
+                                                        <ExternalLink className="w-4 h-4" />
+                                                    </a>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                                                {tr('Homestay này chưa có thông tin kinh độ/vĩ độ để hiển thị bản đồ.', 'This homestay does not have latitude/longitude data to display the map yet.')}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-6 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <h4 className="font-semibold">{tr('Số khách', 'Guests')}</h4>
+                                            <p className="text-sm text-gray-600">{homestay.maxGuests} {tr('khách', 'guests')}</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold">{tr('Phòng ngủ', 'Bedrooms')}</h4>
+                                            <p className="text-sm text-gray-600">{homestay.bedrooms ?? 0} {tr('phòng', 'rooms')}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6">
+                                        <h4 className="font-semibold mb-2">{tr('Tiện nghi', 'Amenities')}</h4>
+                                        {homestay.amenities && homestay.amenities.length > 0 ? (
+                                            <div className="flex flex-wrap gap-2">
+                                                {homestay.amenities.map((a, i) => (
+                                                    <div key={i} className="text-sm bg-gray-100 px-3 py-1 rounded">{a}</div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-gray-500">{tr('Không có thông tin tiện nghi', 'No amenity information')}</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Reviews Section */}
+                                <div className="mt-6 bg-white rounded-xl p-6 shadow">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold">{tr('Đánh giá', 'Reviews')}</h3>
+                                        {avgRating !== null && (
+                                            <div className="flex items-center gap-2">
+                                                <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                                                <span className="text-xl font-bold">{avgRating}</span>
+                                                <span className="text-sm text-gray-500">({reviews.length} {tr('đánh giá', 'reviews')})</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Sub-category averages — chỉ hiện khi có data */}
+                                    {reviews.length > 0 && (() => {
+                                        const hasSubRatings = reviews.some(r =>
+                                            r.cleanlinessRating > 0 || r.locationRating > 0 ||
+                                            r.valueRating > 0 || r.communicationRating > 0
+                                        );
+                                        if (!hasSubRatings) return null;
+                                        const avg = (key: keyof typeof reviews[0]) =>
+                                            Math.round(reviews.reduce((s, r) => s + (r[key] as number), 0) / reviews.length * 10) / 10
+                                        const cats = [
+                                            { label: tr('Vệ sinh', 'Cleanliness'), val: avg('cleanlinessRating') },
+                                            { label: tr('Vị trí', 'Location'), val: avg('locationRating') },
+                                            { label: tr('Giá trị', 'Value'), val: avg('valueRating') },
+                                            { label: tr('Giao tiếp', 'Communication'), val: avg('communicationRating') },
+                                        ]
+                                        return (
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-4 bg-gray-50 rounded-xl">
+                                                {cats.map(c => (
+                                                    <div key={c.label} className="text-center">
+                                                        <div className="text-lg font-bold text-gray-800">{c.val}</div>
+                                                        <div className="text-xs text-gray-500 mt-0.5">{c.label}</div>
+                                                        <div className="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${(c.val / 5) * 100}%` }} />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )
+                                    })()}
+
+                                    {reviewsLoading && (
+                                        <div className="py-6 text-center text-gray-500 text-sm">{tr('Đang tải đánh giá...', 'Loading reviews...')}</div>
+                                    )}
+
+                                    {!reviewsLoading && reviews.length === 0 && (
+                                        <div className="py-6 text-center text-gray-400 text-sm">{tr('Chưa có đánh giá nào cho homestay này.', 'No reviews for this homestay yet.')}</div>
+                                    )}
+
+                                    {!reviewsLoading && reviews.length > 0 && (
+                                        <div className="space-y-5">
+                                            {reviews.map(r => (
+                                                <div key={r.id} className="border-b border-gray-100 pb-5 last:border-0 last:pb-0">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                                                            {getInitials(r.customerName)}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className="font-medium text-sm">{r.customerName}</span>
+                                                                <span className="text-xs text-gray-400 flex-shrink-0">
+                                                                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-0.5 mt-0.5">
+                                                                {Array.from({ length: 5 }).map((_, i) => (
+                                                                    <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} />
+                                                                ))}
+                                                            </div>
+                                                            <p className="mt-2 text-sm text-gray-700 leading-relaxed">{r.comment}</p>
+                                                            {r.replyFromOwner && (
+                                                                <div className="mt-3 bg-gray-50 border-l-4 border-cyan-400 rounded-r-lg p-3">
+                                                                    <div className="text-xs font-semibold text-cyan-700 mb-1">{tr('Phản hồi từ chủ nhà', 'Host reply')}</div>
+                                                                    <p className="text-sm text-gray-600">{r.replyFromOwner}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right: booking card */}
+                            <div className="lg:col-span-1">
+                                <div className="sticky top-24 bg-white rounded-2xl p-5 shadow border border-gray-100">
+                                    <div className="flex items-baseline justify-between">
+                                        <div>
+                                            <div className="text-2xl font-bold">
+                                                {hasSeasonalPricing && seasonalDisplayPrice !== undefined
+                                                    ? `${seasonalDisplayPrice.toLocaleString('vi-VN')}đ`
+                                                    : `${homestay.pricePerNight?.toLocaleString('vi-VN')}đ`}
+                                                <span className="text-sm font-medium text-gray-600"> {t('common.pricePerNight')}</span>
+                                            </div>
+                                            {hasSeasonalPricing ? (
+                                                <div className="mt-1 space-y-1">
+                                                    <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1 inline-block">
+                                                        {t('common.seasonalPriceNote')}{seasonalPricingToShow?.name ? ` · ${seasonalPricingToShow.name}` : ''}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {t('homestay.basePrice')}: <span className="line-through">{homestay.pricePerNight?.toLocaleString('vi-VN')}đ</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 inline-block">
+                                                    {t('homestay.priceCanChange')}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-right text-sm text-gray-600">
+                                            {avgRating !== null ? `${avgRating} ★` : ''}
+                                        </div>
+                                    </div>
+
+                                    {/* Step 1: Chọn ngày */}
+                                    <div className="mt-5 grid grid-cols-2 gap-3">
+                                        {/* Ngày nhận */}
+                                        <div className="relative">
+                                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                                <CalendarDays className="w-4 h-4 text-gray-500" />
+                                                Ngày nhận
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCalendar((v) => v === 'checkIn' ? null : 'checkIn')}
+                                                className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-cyan-500 ${checkIn ? 'text-gray-900 border-gray-300' : 'text-gray-400 border-gray-300'}`}
+                                            >
+                                                {checkIn ? format(new Date(checkIn), 'dd/MM/yyyy') : 'Chọn ngày'}
+                                            </button>
+                                            {showCalendar === 'checkIn' && (
+                                                <div ref={calendarRef} className="absolute z-50 mt-1 left-0 bg-white rounded-xl shadow-xl border border-gray-200 p-2 chms-calendar">
+                                                    <DayPicker
+                                                        mode="single"
+                                                        selected={checkIn ? new Date(checkIn) : undefined}
+                                                        onSelect={(date) => {
+                                                            if (!date) return
+                                                            const val = format(date, 'yyyy-MM-dd')
+                                                            setCheckIn(val)
+                                                            // reset checkout nếu checkout <= checkin mới
+                                                            if (checkOut && checkOut <= val) setCheckOut('')
+                                                            setShowCalendar(null)
+                                                        }}
+                                                        disabled={disabledDays}
+                                                        modifiersClassNames={{ today: 'rdp-today' }}
+                                                    />
+                                                    {occupiedDateRanges.length > 0 && (
+                                                        <div className="px-3 pb-2 text-xs text-gray-400 flex items-center gap-1.5">
+                                                            <span className="inline-block w-4 border-t border-gray-400" />
+                                                            Ngày đã có khách đặt
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Ngày trả */}
+                                        <div className="relative">
+                                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                                <CalendarDays className="w-4 h-4 text-gray-500" />
+                                                {tr('Ngày trả', 'Check-out')}
+                                            </label>
+                                            <input value={checkOut} onChange={(e) => setCheckOut(e.target.value)} type="date" min={checkIn || new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
+                                        </div>
+                                    </div>
+                                    {occupiedDatesLoading && (
+                                        <div className="mt-2 text-xs text-gray-500">Đang tải lịch phòng đã đặt...</div>
+                                    )}
+                                    {hasDateBlocked && (
+                                        <div className="mt-2 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded-lg px-3 py-2">
+                                            {isCheckInOccupied && !checkOut
+                                                ? tr('Ngày nhận đã có khách đặt. Vui lòng chọn ngày nhận khác.', 'The check-in date is already booked. Please choose another date.')
+                                                : tr('Khoảng ngày đã chọn trùng với lịch đã đặt của homestay. Vui lòng chọn khoảng khác.', 'The selected date range overlaps with existing bookings. Please choose another range.')}
+                                        </div>
+                                    )}
+
+
+                                    {/* Tóm tắt số đêm */}
+                                    {nights > 0 && (
+                                        <div className="mt-2 flex items-center gap-2 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2">
+                                            <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                                            <span>
+                                                {nights} {t('homestay.nights')} · {(selectedSeasonalPricing?.price ?? effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × {nights} = <span className="font-semibold">{formatMoney(computedTotal ?? (homestay.pricePerNight * nights))}</span>
+                                            </span>
+                                        </div>
+                                    )}
+                                    {seasonalPricingToShow && hasSeasonalPricing && (
+                                        <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                                            {seasonalPricingToShow.name ? `${seasonalPricingToShow.name}: ` : `${t('common.seasonalPrice')}: `}
+                                            {seasonalPricingToShow.price.toLocaleString('vi-VN')}đ/{tr('đêm', 'night')} {tr('được áp dụng cho khoảng ngày đã chọn.', 'is applied for the selected dates.')}
+                                        </div>
+                                    )}
+                                    {nights > 0 && isSeasonalPriceApplied && !hasSeasonalPricing && (
+                                        <div className={`mt-2 text-xs rounded-lg px-3 py-2 border ${seasonalDelta > 0 ? 'text-red-700 bg-red-50 border-red-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'}`}>
+                                            {seasonalDelta > 0
+                                                ? tr(`Giá theo mùa đang cao hơn giá niêm yết ${formatMoney(seasonalDelta)} cho ${nights} đêm đã chọn.`, `Seasonal price is higher than listed price by ${formatMoney(seasonalDelta)} for ${nights} selected nights.`)
+                                                : tr(`Giá theo mùa đang thấp hơn giá niêm yết ${formatMoney(Math.abs(seasonalDelta))} cho ${nights} đêm đã chọn.`, `Seasonal price is lower than listed price by ${formatMoney(Math.abs(seasonalDelta))} for ${nights} selected nights.`)}
+                                        </div>
+                                    )}
+
+                                    {/* Step 2: Số khách */}
+                                    <div className="mt-4">
+                                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                            <Users className="w-4 h-4 text-gray-500" />
+                                            {tr('Số khách', 'Guests')}
+                                        </label>
+                                        <select value={guests} onChange={(e) => setGuests(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                                            {Array.from({ length: Math.max(1, Math.min(20, homestay.maxGuests || 6)) }).map((_, idx) => {
+                                                const n = idx + 1
+                                                return <option key={n} value={n}>{n} {tr('khách', 'guests')}</option>
+                                            })}
+                                        </select>
+                                    </div>
+
+                                    {/* Step 3: Promotion */}
+                                    <div className="mt-4">
+                                        <PromotionPicker
+                                            promotions={availablePromotions}
+                                            loading={promotionsLoading}
+                                            selectedPromotionId={selectedPromotionId}
+                                            bookingTotal={baseBookingTotal}
+                                            onSelectPromotion={setSelectedPromotionId}
                                         />
                                     </div>
-                                </div>
 
-                                <div className="hidden lg:block h-96">
-                                    <div className="flex flex-col justify-between h-full">
-                                        {Array.from({ length: 4 }).map((_, idx) => {
-                                            const img = images[idx + 1] ?? images[(idx + 1) % images.length]
-                                            return (
-                                                <div key={idx} onClick={() => setLightboxSrc(img ?? '')} className="h-24 rounded overflow-hidden cursor-pointer border">
-                                                    <ImageWithFallback src={img ?? ''} alt={`${homestay.name}-${idx}`} className="w-full h-full object-cover" />
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-6 bg-white rounded-xl p-6 shadow">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <h1 className="text-2xl font-bold">{homestay.name}</h1>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            {homestay.address}
-                                            {homestay.districtName ? `, ${homestay.districtName}` : ''}
-                                            {homestay.provinceName ? `, ${homestay.provinceName}` : ''}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                        {avgRating !== null && (
-                                            <div className="flex items-center gap-1 bg-white/90 px-3 py-1 rounded-full shadow">
-                                                <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                                                <span className="text-sm font-medium">{avgRating}</span>
-                                                <span className="text-xs text-gray-500">({reviews.length})</span>
+                                    {/* Step 4: Dịch vụ địa phương */}
+                                    <div className="mt-4">
+                                        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h4 className="text-sm font-semibold text-gray-900">{tr('Dịch vụ địa phương', 'Local services')}</h4>
+                                                <span className="text-xs text-cyan-700 font-medium">{tr('Có thể chọn ngay khi đặt phòng', 'Can be selected when booking')}</span>
                                             </div>
-                                        )}
-                                        {authService.isAuthenticated() && (
-                                        <button
-                                            onClick={async () => {
-                                                if (!homestay) return;
-                                                const isFav = favorites.has(homestay.id);
-                                                try {
-                                                    await toggle(homestay.id);
-                                                    toast.success(isFav ? tr('Đã bỏ thích', 'Removed from wishlist') : tr('Đã lưu yêu thích', 'Saved to wishlist'));
-                                                } catch {
-                                                    toast.error(tr('Không thể thay đổi trạng thái yêu thích', 'Cannot update wishlist status'));
-                                                }
-                                            }}
-                                            className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
-                                            title={homestay && favorites.has(homestay.id) ? tr('Bỏ thích', 'Remove from wishlist') : tr('Lưu yêu thích', 'Save to wishlist')}
-                                        >
-                                            <Heart className={`w-5 h-5 transition-colors ${homestay && favorites.has(homestay.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-                                        </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                        {homestay.ownerName && (
-                                            <div className="mt-4 flex items-center gap-4 border-t pt-4">
-                                                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-lg font-medium text-gray-700">
-                                                    {getInitials(homestay.ownerName)}
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-medium">{tr('Chủ nhà', 'Host')}: {homestay.ownerName}</div>
-                                                    {/* If backend provides more host info, render here (e.g., host.title, years) */}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                <div className="mt-6">
-                                    <p className="text-gray-700">{homestay.description}</p>
-                                </div>
-
-                                <div className="mt-6">
-                                    <h4 className="font-semibold mb-2 flex items-center gap-2">
-                                        <MapPin className="w-4 h-4 text-cyan-600" />
-                                        {tr('Vị trí trên bản đồ', 'Location on map')}
-                                    </h4>
-
-                                    {locationCoords ? (
-                                        <>
-                                            <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
-                                                <iframe
-                                                    title={`Google Map - ${homestay.name}`}
-                                                    src={googleMapEmbedUrl}
-                                                    className="w-full h-72"
-                                                    loading="lazy"
-                                                    referrerPolicy="no-referrer-when-downgrade"
-                                                />
-                                            </div>
-                                            <div className="mt-2 flex items-center justify-between gap-3">
-                                                <p className="text-xs text-gray-500">
-                                                    {tr('Tọa độ', 'Coordinates')}: {locationCoords.lat.toFixed(6)}, {locationCoords.lng.toFixed(6)}
-                                                </p>
-                                                <a
-                                                    href={googleMapOpenUrl}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="inline-flex items-center gap-1 text-sm text-cyan-700 hover:text-cyan-800 font-medium"
-                                                >
-                                                    {tr('Mở trên Google Maps', 'Open in Google Maps')}
-                                                    <ExternalLink className="w-4 h-4" />
-                                                </a>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-                                            {tr('Homestay này chưa có thông tin kinh độ/vĩ độ để hiển thị bản đồ.', 'This homestay does not have latitude/longitude data to display the map yet.')}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="mt-6 grid grid-cols-2 gap-4">
-                                    <div>
-                                        <h4 className="font-semibold">{tr('Số khách', 'Guests')}</h4>
-                                        <p className="text-sm text-gray-600">{homestay.maxGuests} {tr('khách', 'guests')}</p>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold">{tr('Phòng ngủ', 'Bedrooms')}</h4>
-                                        <p className="text-sm text-gray-600">{homestay.bedrooms ?? 0} {tr('phòng', 'rooms')}</p>
-                                    </div>
-                                </div>
-
-                                <div className="mt-6">
-                                    <h4 className="font-semibold mb-2">{tr('Tiện nghi', 'Amenities')}</h4>
-                                    {homestay.amenities && homestay.amenities.length > 0 ? (
-                                        <div className="flex flex-wrap gap-2">
-                                            {homestay.amenities.map((a, i) => (
-                                                <div key={i} className="text-sm bg-gray-100 px-3 py-1 rounded">{a}</div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-sm text-gray-500">{tr('Không có thông tin tiện nghi', 'No amenity information')}</div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Reviews Section */}
-                            <div className="mt-6 bg-white rounded-xl p-6 shadow">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold">{tr('Đánh giá', 'Reviews')}</h3>
-                                    {avgRating !== null && (
-                                        <div className="flex items-center gap-2">
-                                            <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                                            <span className="text-xl font-bold">{avgRating}</span>
-                                            <span className="text-sm text-gray-500">({reviews.length} {tr('đánh giá', 'reviews')})</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                {/* Sub-category averages — chỉ hiện khi có data */}
-                                {reviews.length > 0 && (() => {
-                                    const hasSubRatings = reviews.some(r =>
-                                        r.cleanlinessRating > 0 || r.locationRating > 0 ||
-                                        r.valueRating > 0 || r.communicationRating > 0
-                                    );
-                                    if (!hasSubRatings) return null;
-                                    const avg = (key: keyof typeof reviews[0]) =>
-                                        Math.round(reviews.reduce((s, r) => s + (r[key] as number), 0) / reviews.length * 10) / 10
-                                    const cats = [
-                                        { label: tr('Vệ sinh', 'Cleanliness'), val: avg('cleanlinessRating') },
-                                        { label: tr('Vị trí', 'Location'), val: avg('locationRating') },
-                                        { label: tr('Giá trị', 'Value'), val: avg('valueRating') },
-                                        { label: tr('Giao tiếp', 'Communication'), val: avg('communicationRating') },
-                                    ]
-                                    return (
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-4 bg-gray-50 rounded-xl">
-                                            {cats.map(c => (
-                                                <div key={c.label} className="text-center">
-                                                    <div className="text-lg font-bold text-gray-800">{c.val}</div>
-                                                    <div className="text-xs text-gray-500 mt-0.5">{c.label}</div>
-                                                    <div className="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${(c.val / 5) * 100}%` }} />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )
-                                })()}
-
-                                {reviewsLoading && (
-                                    <div className="py-6 text-center text-gray-500 text-sm">{tr('Đang tải đánh giá...', 'Loading reviews...')}</div>
-                                )}
-
-                                {!reviewsLoading && reviews.length === 0 && (
-                                    <div className="py-6 text-center text-gray-400 text-sm">{tr('Chưa có đánh giá nào cho homestay này.', 'No reviews for this homestay yet.')}</div>
-                                )}
-
-                                {!reviewsLoading && reviews.length > 0 && (
-                                    <div className="space-y-5">
-                                        {reviews.map(r => (
-                                            <div key={r.id} className="border-b border-gray-100 pb-5 last:border-0 last:pb-0">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                                                        {getInitials(r.customerName)}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between gap-2">
-                                                            <span className="font-medium text-sm">{r.customerName}</span>
-                                                            <span className="text-xs text-gray-400 flex-shrink-0">
-                                                                {r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-0.5 mt-0.5">
-                                                            {Array.from({ length: 5 }).map((_, i) => (
-                                                                <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} />
-                                                            ))}
-                                                        </div>
-                                                        <p className="mt-2 text-sm text-gray-700 leading-relaxed">{r.comment}</p>
-                                                        {r.replyFromOwner && (
-                                                            <div className="mt-3 bg-gray-50 border-l-4 border-cyan-400 rounded-r-lg p-3">
-                                                                <div className="text-xs font-semibold text-cyan-700 mb-1">{tr('Phản hồi từ chủ nhà', 'Host reply')}</div>
-                                                                <p className="text-sm text-gray-600">{r.replyFromOwner}</p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Right: booking card */}
-                        <div className="lg:col-span-1">
-                            <div className="sticky top-24 bg-white rounded-2xl p-5 shadow border border-gray-100">
-                                <div className="flex items-baseline justify-between">
-                                    <div>
-                                        <div className="text-2xl font-bold">
-                                            {hasSeasonalPricing && seasonalDisplayPrice !== undefined
-                                                ? `${seasonalDisplayPrice.toLocaleString('vi-VN')}đ`
-                                                : `${homestay.pricePerNight?.toLocaleString('vi-VN')}đ`}
-                                            <span className="text-sm font-medium text-gray-600"> {t('common.pricePerNight')}</span>
-                                        </div>
-                                        {hasSeasonalPricing ? (
-                                            <div className="mt-1 space-y-1">
-                                                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1 inline-block">
-                                                    {t('common.seasonalPriceNote')}{seasonalPricingToShow?.name ? ` · ${seasonalPricingToShow.name}` : ''}
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {t('homestay.basePrice')}: <span className="line-through">{homestay.pricePerNight?.toLocaleString('vi-VN')}đ</span>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 inline-block">
-                                                {t('homestay.priceCanChange')}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="text-right text-sm text-gray-600">
-                                        {avgRating !== null ? `${avgRating} ★` : ''}
-                                    </div>
-                                </div>
-
-                                {/* Step 1: Chọn ngày */}
-                                <div className={`mt-5 grid grid-cols-2 gap-3 ${hasDateBlocked ? 'opacity-70' : ''}`}>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                            <CalendarDays className="w-4 h-4 text-gray-500" />
-                                            {tr('Ngày nhận', 'Check-in')}
-                                        </label>
-                                        <input value={checkIn} onChange={(e) => setCheckIn(e.target.value)} type="date" min={new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                            <CalendarDays className="w-4 h-4 text-gray-500" />
-                                            {tr('Ngày trả', 'Check-out')}
-                                        </label>
-                                        <input value={checkOut} onChange={(e) => setCheckOut(e.target.value)} type="date" min={checkIn || new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
-                                    </div>
-                                </div>
-                                {occupiedDatesLoading && (
-                                    <div className="mt-2 text-xs text-gray-500">{tr('Đang tải lịch phòng đã đặt...', 'Loading booked dates...')}</div>
-                                )}
-                                {hasDateBlocked && (
-                                    <div className="mt-2 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded-lg px-3 py-2">
-                                        {isCheckInOccupied && !checkOut
-                                            ? tr('Ngày nhận đã có khách đặt. Vui lòng chọn ngày nhận khác.', 'The check-in date is already booked. Please choose another date.')
-                                            : tr('Khoảng ngày đã chọn trùng với lịch đã đặt của homestay. Vui lòng chọn khoảng khác.', 'The selected date range overlaps with existing bookings. Please choose another range.')}
-                                    </div>
-                                )}
-
-                                {/* Tóm tắt số đêm */}
-                                {nights > 0 && (
-                                    <div className="mt-2 flex items-center gap-2 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2">
-                                        <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
-                                        <span>
-                                            {nights} {t('homestay.nights')} · {(selectedSeasonalPricing?.price ?? effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × {nights} = <span className="font-semibold">{formatMoney(computedTotal ?? (homestay.pricePerNight * nights))}</span>
-                                        </span>
-                                    </div>
-                                )}
-                                {seasonalPricingToShow && hasSeasonalPricing && (
-                                    <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-                                        {seasonalPricingToShow.name ? `${seasonalPricingToShow.name}: ` : `${t('common.seasonalPrice')}: `}
-                                        {seasonalPricingToShow.price.toLocaleString('vi-VN')}đ/{tr('đêm', 'night')} {tr('được áp dụng cho khoảng ngày đã chọn.', 'is applied for the selected dates.')}
-                                    </div>
-                                )}
-                                {nights > 0 && isSeasonalPriceApplied && !hasSeasonalPricing && (
-                                    <div className={`mt-2 text-xs rounded-lg px-3 py-2 border ${seasonalDelta > 0 ? 'text-red-700 bg-red-50 border-red-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'}`}>
-                                        {seasonalDelta > 0
-                                            ? tr(`Giá theo mùa đang cao hơn giá niêm yết ${formatMoney(seasonalDelta)} cho ${nights} đêm đã chọn.`, `Seasonal price is higher than listed price by ${formatMoney(seasonalDelta)} for ${nights} selected nights.`)
-                                            : tr(`Giá theo mùa đang thấp hơn giá niêm yết ${formatMoney(Math.abs(seasonalDelta))} cho ${nights} đêm đã chọn.`, `Seasonal price is lower than listed price by ${formatMoney(Math.abs(seasonalDelta))} for ${nights} selected nights.`)}
-                                    </div>
-                                )}
-
-                                {/* Step 2: Số khách */}
-                                <div className="mt-4">
-                                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                        <Users className="w-4 h-4 text-gray-500" />
-                                        {tr('Số khách', 'Guests')}
-                                    </label>
-                                    <select value={guests} onChange={(e) => setGuests(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
-                                        {Array.from({ length: Math.max(1, Math.min(20, homestay.maxGuests || 6)) }).map((_, idx) => {
-                                            const n = idx + 1
-                                            return <option key={n} value={n}>{n} {tr('khách', 'guests')}</option>
-                                        })}
-                                    </select>
-                                </div>
-
-                                {/* Step 3: Promotion */}
-                                <div className="mt-4">
-                                    <PromotionPicker
-                                        promotions={availablePromotions}
-                                        loading={promotionsLoading}
-                                        selectedPromotionId={selectedPromotionId}
-                                        bookingTotal={baseBookingTotal}
-                                        onSelectPromotion={setSelectedPromotionId}
-                                    />
-                                </div>
-
-                                {/* Step 4: Dịch vụ địa phương */}
-                                <div className="mt-4">
-                                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h4 className="text-sm font-semibold text-gray-900">{tr('Dịch vụ địa phương', 'Local services')}</h4>
-                                            <span className="text-xs text-cyan-700 font-medium">{tr('Có thể chọn ngay khi đặt phòng', 'Can be selected when booking')}</span>
-                                        </div>
-                                        {experiencesLoading ? (
-                                            <div className="text-sm text-gray-500">{tr('Đang tải danh sách dịch vụ...', 'Loading services...')}</div>
-                                        ) : availableExperiences.length === 0 ? (
-                                            <div className="text-sm text-gray-500">{tr('Chưa có dịch vụ địa phương khả dụng.', 'No local services available yet.')}</div>
-                                        ) : (
-                                            <div className="space-y-2 max-h-52 overflow-auto pr-1">
-                                                {availableExperiences.map((item) => {
-                                                    const qty = selectedExperienceQty[item.id] ?? 0
-                                                    const checked = qty > 0
-                                                    return (
-                                                        <div key={item.id} className="bg-white rounded-lg border border-gray-200 px-3 py-2">
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <label className="flex items-start gap-2 flex-1 cursor-pointer">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={checked}
-                                                                        onChange={(e) => {
-                                                                            setSelectedExperienceQty((prev) => ({
-                                                                                ...prev,
-                                                                                [item.id]: e.target.checked ? Math.max(1, prev[item.id] ?? 1) : 0,
-                                                                            }))
-                                                                        }}
-                                                                        className="mt-1"
-                                                                    />
-                                                                    <div className="min-w-0">
-                                                                        <div className="text-sm font-medium text-gray-900 truncate">{item.name}</div>
-                                                                        <div className="text-xs text-gray-500">
-                                                                            {item.categoryName ? `${item.categoryName} • ` : item.categoryId ? `${item.categoryId} • ` : ''}
-                                                                            {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : tr('Liên hệ', 'Contact')}
+                                            {experiencesLoading ? (
+                                                <div className="text-sm text-gray-500">{tr('Đang tải danh sách dịch vụ...', 'Loading services...')}</div>
+                                            ) : availableExperiences.length === 0 ? (
+                                                <div className="text-sm text-gray-500">{tr('Chưa có dịch vụ địa phương khả dụng.', 'No local services available yet.')}</div>
+                                            ) : (
+                                                <div className="space-y-2 max-h-52 overflow-auto pr-1">
+                                                    {availableExperiences.map((item) => {
+                                                        const qty = selectedExperienceQty[item.id] ?? 0
+                                                        const checked = qty > 0
+                                                        return (
+                                                            <div key={item.id} className="bg-white rounded-lg border border-gray-200 px-3 py-2">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <label className="flex items-start gap-2 flex-1 cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={checked}
+                                                                            onChange={(e) => {
+                                                                                setSelectedExperienceQty((prev) => ({
+                                                                                    ...prev,
+                                                                                    [item.id]: e.target.checked ? Math.max(1, prev[item.id] ?? 1) : 0,
+                                                                                }))
+                                                                            }}
+                                                                            className="mt-1"
+                                                                        />
+                                                                        <div className="min-w-0">
+                                                                            <div className="text-sm font-medium text-gray-900 truncate">{item.name}</div>
+                                                                            <div className="text-xs text-gray-500">
+                                                                                {item.categoryName ? `${item.categoryName} • ` : item.categoryId ? `${item.categoryId} • ` : ''}
+                                                                                {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : tr('Liên hệ', 'Contact')}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                </label>
+                                                                    </label>
 
-                                                                <div className="flex items-center gap-2">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setSelectedExperienceQty((prev) => ({
-                                                                                ...prev,
-                                                                                [item.id]: Math.max(0, (prev[item.id] ?? 0) - 1),
-                                                                            }))
-                                                                        }}
-                                                                        className="w-7 h-7 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
-                                                                    >
-                                                                        -
-                                                                    </button>
-                                                                    <span className="w-5 text-center text-sm font-medium">{qty}</span>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setSelectedExperienceQty((prev) => ({
-                                                                                ...prev,
-                                                                                [item.id]: Math.min(9, (prev[item.id] ?? 0) + 1),
-                                                                            }))
-                                                                        }}
-                                                                        className="w-7 h-7 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
-                                                                    >
-                                                                        +
-                                                                    </button>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setSelectedExperienceQty((prev) => ({
+                                                                                    ...prev,
+                                                                                    [item.id]: Math.max(0, (prev[item.id] ?? 0) - 1),
+                                                                                }))
+                                                                            }}
+                                                                            className="w-7 h-7 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                                        >
+                                                                            -
+                                                                        </button>
+                                                                        <span className="w-5 text-center text-sm font-medium">{qty}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setSelectedExperienceQty((prev) => ({
+                                                                                    ...prev,
+                                                                                    [item.id]: Math.min(9, (prev[item.id] ?? 0) + 1),
+                                                                                }))
+                                                                            }}
+                                                                            className="w-7 h-7 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                                        >
+                                                                            +
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    )
-                                                })}
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                            {selectedExperiencesEstimate > 0 && (
+                                                <div className="mt-3 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-2 py-1.5">
+                                                    {tr('Ước tính dịch vụ thêm', 'Estimated extra services')}: {selectedExperiencesEstimate.toLocaleString('vi-VN')}đ ({tr('tham khảo', 'estimated')})
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className={`mt-5 rounded-xl border p-4 ${hasDateBlocked ? 'border-gray-300 bg-gray-100 opacity-80' : 'border-gray-100 bg-gray-50'}`}>
+                                        <div className="flex items-center justify-between text-sm text-gray-700">
+                                            <span>{nights > 0 ? `${(selectedSeasonalPricing?.price ?? effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × ${nights} ${t('homestay.nights')}` : t('common.selectDateForPrice')}</span>
+                                            <span className="font-medium">
+                                                {nights > 0 ? formatMoney(computedTotal ?? (homestay.pricePerNight * nights)) : '—'}
+                                            </span>
+                                        </div>
+                                        {seasonalPricingToShow && hasSeasonalPricing && (
+                                            <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                                                <span>{t('common.seasonalPrice')}</span>
+                                                <span>{formatMoney(seasonalPricingToShow.price)}</span>
                                             </div>
                                         )}
-                                        {selectedExperiencesEstimate > 0 && (
-                                            <div className="mt-3 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-2 py-1.5">
-                                                {tr('Ước tính dịch vụ thêm', 'Estimated extra services')}: {selectedExperiencesEstimate.toLocaleString('vi-VN')}đ ({tr('tham khảo', 'estimated')})
+                                        {nights > 0 && isSeasonalPriceApplied && baseBookingTotal !== undefined && !hasSeasonalPricing && (
+                                            <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                                                <span>{tr('Giá niêm yết ban đầu', 'Original listed price')}</span>
+                                                <span className="line-through">{formatMoney(baseBookingTotal)}</span>
+                                            </div>
+                                        )}
+                                        <div className="mt-2 flex items-center justify-between text-sm text-gray-700">
+                                            <span>{tr('Khách', 'Guests')}</span>
+                                            <span className="font-medium">{guests}</span>
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+                                            <span className="text-sm font-semibold text-gray-900">{tr('Tổng (ước tính)', 'Estimated total')}</span>
+                                            <span className="text-lg font-bold text-gray-900">
+                                                {computedTotal !== undefined ? formatMoney(computedTotal) : (isCalculating ? tr('Đang tính...', 'Calculating...') : '—')}
+                                            </span>
+                                        </div>
+                                        {selectedPromotion && (
+                                            <div className="mt-3 rounded-lg bg-cyan-50 border border-cyan-100 px-3 py-2 text-sm text-cyan-900">
+                                                {tr('Đang áp dụng mã', 'Applying code')} <span className="font-semibold">{selectedPromotion.code}</span>
+                                            </div>
+                                        )}
+                                        {selectedExperienceItems.length > 0 && (
+                                            <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-900">
+                                                {tr('Bạn đã chọn', 'You selected')} {selectedExperienceItems.length} {tr('dịch vụ thêm cho booking này.', 'extra services for this booking.')}
+                                            </div>
+                                        )}
+                                        {computedTotal !== undefined && (
+                                            <div className="mt-3 pt-3 border-t border-dashed border-orange-200 space-y-1.5">
+                                                {(() => {
+                                                    const rate = (homestay.depositPercentage ?? 20) / 100;
+                                                    const deposit = computedTotal * rate;
+                                                    const remaining = computedTotal - deposit;
+                                                    const pct = homestay.depositPercentage ?? 20;
+                                                    return (
+                                                        <>
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span className="text-orange-700 font-medium">{tr('Cọc ngay', 'Deposit now')} ({pct}%)</span>
+                                                                <span className="font-bold text-orange-600">{formatMoney(deposit)}</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between text-sm text-gray-500">
+                                                                <span>{tr('Còn lại khi nhận phòng', 'Remaining at check-in')}</span>
+                                                                <span className="font-medium">{formatMoney(remaining)}</span>
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+                                        {calcResult !== null && (
+                                            <div className="mt-2 text-xs text-green-600">
+                                                ✓ {tr('Giá đã được tính chính xác từ hệ thống', 'Price has been calculated accurately by the system')}
                                             </div>
                                         )}
                                     </div>
-                                </div>
 
-                                <div className={`mt-5 rounded-xl border p-4 ${hasDateBlocked ? 'border-gray-300 bg-gray-100 opacity-80' : 'border-gray-100 bg-gray-50'}`}>
-                                    <div className="flex items-center justify-between text-sm text-gray-700">
-                                        <span>{nights > 0 ? `${(selectedSeasonalPricing?.price ?? effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × ${nights} ${t('homestay.nights')}` : t('common.selectDateForPrice')}</span>
-                                        <span className="font-medium">
-                                            {nights > 0 ? formatMoney(computedTotal ?? (homestay.pricePerNight * nights)) : '—'}
-                                        </span>
+                                    {/* Step 5: Thông tin liên hệ */}
+                                    <div className="mt-4 grid grid-cols-1 gap-3">
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                                <Phone className="w-4 h-4 text-gray-500" />
+                                                {tr('Số điện thoại liên hệ', 'Contact phone')} <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                value={contactPhone}
+                                                onChange={(e) => setContactPhone(e.target.value)}
+                                                placeholder={tr('VD: 0901234567', 'E.g.: 0901234567')}
+                                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                                <MessageSquareText className="w-4 h-4 text-gray-500" />
+                                                {tr('Yêu cầu đặc biệt (tuỳ chọn)', 'Special requests (optional)')}
+                                            </label>
+                                            <textarea
+                                                value={specialRequests}
+                                                onChange={(e) => setSpecialRequests(e.target.value)}
+                                                rows={2}
+                                                placeholder={tr('Ví dụ: nhận phòng sớm, thêm gối, ...', 'Example: early check-in, extra pillows, ...')}
+                                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+                                            />
+                                        </div>
                                     </div>
-                                    {seasonalPricingToShow && hasSeasonalPricing && (
-                                        <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                                            <span>{t('common.seasonalPrice')}</span>
-                                            <span>{formatMoney(seasonalPricingToShow.price)}</span>
-                                        </div>
-                                    )}
-                                    {nights > 0 && isSeasonalPriceApplied && baseBookingTotal !== undefined && !hasSeasonalPricing && (
-                                        <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                                            <span>{tr('Giá niêm yết ban đầu', 'Original listed price')}</span>
-                                            <span className="line-through">{formatMoney(baseBookingTotal)}</span>
-                                        </div>
-                                    )}
-                                    <div className="mt-2 flex items-center justify-between text-sm text-gray-700">
-                                        <span>{tr('Khách', 'Guests')}</span>
-                                        <span className="font-medium">{guests}</span>
-                                    </div>
-                                    <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-                                        <span className="text-sm font-semibold text-gray-900">{tr('Tổng (ước tính)', 'Estimated total')}</span>
-                                        <span className="text-lg font-bold text-gray-900">
-                                            {computedTotal !== undefined ? formatMoney(computedTotal) : (isCalculating ? tr('Đang tính...', 'Calculating...') : '—')}
-                                        </span>
-                                    </div>
-                                    {selectedPromotion && (
-                                        <div className="mt-3 rounded-lg bg-cyan-50 border border-cyan-100 px-3 py-2 text-sm text-cyan-900">
-                                            {tr('Đang áp dụng mã', 'Applying code')} <span className="font-semibold">{selectedPromotion.code}</span>
-                                        </div>
-                                    )}
-                                    {selectedExperienceItems.length > 0 && (
-                                        <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-900">
-                                            {tr('Bạn đã chọn', 'You selected')} {selectedExperienceItems.length} {tr('dịch vụ thêm cho booking này.', 'extra services for this booking.')}
-                                        </div>
-                                    )}
-                                    {computedTotal !== undefined && (
-                                        <div className="mt-3 pt-3 border-t border-dashed border-orange-200 space-y-1.5">
-                                            {(() => {
-                                                const rate = (homestay.depositPercentage ?? 20) / 100;
-                                                const deposit = computedTotal * rate;
-                                                const remaining = computedTotal - deposit;
-                                                const pct = homestay.depositPercentage ?? 20;
-                                                return (
-                                                    <>
-                                                        <div className="flex items-center justify-between text-sm">
-                                                            <span className="text-orange-700 font-medium">{tr('Cọc ngay', 'Deposit now')} ({pct}%)</span>
-                                                            <span className="font-bold text-orange-600">{formatMoney(deposit)}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between text-sm text-gray-500">
-                                                            <span>{tr('Còn lại khi nhận phòng', 'Remaining at check-in')}</span>
-                                                            <span className="font-medium">{formatMoney(remaining)}</span>
-                                                        </div>
-                                                    </>
-                                                );
-                                            })()}
-                                        </div>
-                                    )}
-                                    {calcResult !== null && (
-                                        <div className="mt-2 text-xs text-green-600">
-                                            ✓ {tr('Giá đã được tính chính xác từ hệ thống', 'Price has been calculated accurately by the system')}
-                                        </div>
-                                    )}
-                                </div>
 
-                                {/* Step 5: Thông tin liên hệ */}
-                                <div className="mt-4 grid grid-cols-1 gap-3">
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                            <Phone className="w-4 h-4 text-gray-500" />
-                                            {tr('Số điện thoại liên hệ', 'Contact phone')} <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            value={contactPhone}
-                                            onChange={(e) => setContactPhone(e.target.value)}
-                                            placeholder={tr('VD: 0901234567', 'E.g.: 0901234567')}
-                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                            <MessageSquareText className="w-4 h-4 text-gray-500" />
-                                            {tr('Yêu cầu đặc biệt (tuỳ chọn)', 'Special requests (optional)')}
-                                        </label>
-                                        <textarea
-                                            value={specialRequests}
-                                            onChange={(e) => setSpecialRequests(e.target.value)}
-                                            rows={2}
-                                            placeholder={tr('Ví dụ: nhận phòng sớm, thêm gối, ...', 'Example: early check-in, extra pillows, ...')}
-                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <button onClick={async () => {
-                                    if (!authService.isAuthenticated() || !authService.isTokenValid()) {
-                                        if (authService.isAuthenticated() && !authService.isTokenValid()) {
-                                            toast.error(tr('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', 'Your session has expired, please log in again.'));
-                                        }
-                                        navigate('/auth/login')
-                                        return
-                                    }
-
-                                    if (!checkIn || !checkOut) {
-                                        toast.error(tr('Vui lòng chọn ngày nhận và trả phòng', 'Please select check-in and check-out dates'));
-                                        return
-                                    }
-                                    if (isPastDate(checkIn) || isPastDate(checkOut)) {
-                                        toast.error(tr('Không được chọn ngày trong quá khứ', 'Past dates are not allowed'));
-                                        return
-                                    }
-                                    if (nights <= 0) {
-                                        toast.error(tr('Ngày trả phải sau ngày nhận', 'Check-out must be after check-in'));
-                                        return
-                                    }
-                                    if (hasDateBlocked) {
-                                        toast.error(tr('Khoảng ngày đã chọn trùng với lịch đã đặt, vui lòng chọn ngày khác', 'Selected dates overlap with existing bookings, please choose different dates'))
-                                        return
-                                    }
-                                    if (!contactPhone.trim()) {
-                                        toast.error(tr('Vui lòng nhập số điện thoại liên hệ', 'Please enter a contact phone number'));
-                                        return
-                                    }
-                                    if (!/^0\d{9}$/.test(contactPhone.trim())) {
-                                        toast.error(tr('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)', 'Invalid phone number (10 digits, starting with 0)'));
-                                        return
-                                    }
-                                    if (selectedPromotion && baseBookingTotal !== undefined) {
-                                        const minBookingAmount = selectedPromotion.minBookingAmount ?? selectedPromotion.minBookingValue ?? 0
-                                        if (minBookingAmount > 0 && baseBookingTotal < minBookingAmount) {
-                                            toast.error(tr('Mã giảm giá chưa đạt điều kiện tối thiểu cho booking này', 'Promotion minimum booking amount is not met'))
+                                    <button onClick={async () => {
+                                        if (!authService.isAuthenticated() || !authService.isTokenValid()) {
+                                            if (authService.isAuthenticated() && !authService.isTokenValid()) {
+                                                toast.error(tr('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', 'Your session has expired, please log in again.'));
+                                            }
+                                            navigate('/auth/login')
                                             return
                                         }
-                                    }
 
-                                    setIsBooking(true)
-                                    try {
-                                        const selectedExperiencePayload = selectedExperienceItems.map((entry) => ({
-                                            id: entry.item.id,
-                                            name: entry.item.name,
-                                            qty: entry.qty,
-                                            price: entry.item.price,
-                                        }))
-                                        const mergedSpecialRequests = buildSpecialRequestsWithExperiences(
-                                            specialRequests || '',
-                                            selectedExperiencePayload,
-                                        )
-
-                                        const payload = {
-                                            homestayId: homestay?.id,
-                                            checkIn: checkIn,
-                                            checkOut: checkOut,
-                                            guestsCount: guests,
-                                            contactPhone: contactPhone.trim(),
-                                            ...(selectedPromotionId ? { promotionId: selectedPromotionId } : {}),
-                                            ...(mergedSpecialRequests ? { specialRequests: mergedSpecialRequests } : {}),
-                                            ...(selectedExperiencePayload.length > 0 ? { selectedExperiences: selectedExperiencePayload } : {}),
-                                        } as any
-
-                                        const res = await bookingService.createBooking(payload)
-                                        if (res && res.success && res.data?.id) {
-                                            const bookingData = res.data
-                                            const bookingTotal = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
-                                            // depositAmount và remainingAmount từ BE — không tính lại FE
-                                            const depositRate = (homestay!.depositPercentage ?? 20) / 100
-                                            const depositAmount = bookingData.depositAmount ?? bookingTotal * depositRate
-                                            const remainingAmount = bookingData.remainingAmount ?? bookingTotal - depositAmount
-                                            setPendingBooking({
-                                                id: bookingData.id,
-                                                homestayName: homestay!.name,
-                                                checkIn,
-                                                checkOut,
-                                                totalNights: nights,
-                                                guestsCount: guests,
-                                                pricePerNight: effectivePricePerNight ?? homestay!.pricePerNight,
-                                                bookingTotal,
-                                                amountDue: depositAmount,  // lần đầu luôn là cọc
-                                                depositAmount,
-                                                remainingAmount,
-                                                paymentLabel: tr('Đặt cọc', 'Deposit'),
-                                            })
-                                        } else if (res && !res.success) {
-                                            toast.error(res.message || tr('Đặt phòng thất bại', 'Booking failed'))
-                                        } else {
-                                            toast.error(tr('Không lấy được thông tin booking, vui lòng thử lại', 'Could not retrieve booking information, please try again'))
+                                        if (!checkIn || !checkOut) {
+                                            toast.error(tr('Vui lòng chọn ngày nhận và trả phòng', 'Please select check-in and check-out dates'));
+                                            return
                                         }
-                                    } catch (err: any) {
-                                        console.error(err)
-                                        toast.error(err?.message || tr('Đã xảy ra lỗi khi đặt phòng', 'An error occurred while booking'))
-                                    } finally {
-                                        setIsBooking(false)
-                                    }
-                                }} disabled={isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
-                                    {isBooking ? (
-                                        <>
-                                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                                            </svg>
-                                            {tr('Đang xử lý...', 'Processing...')}
-                                        </>
-                                    ) : isCalculating ? tr('Đang tính giá...', 'Calculating price...') : tr('Xác nhận đặt phòng', 'Confirm booking')}
-                                </button>
+                                        if (isPastDate(checkIn) || isPastDate(checkOut)) {
+                                            toast.error(tr('Không được chọn ngày trong quá khứ', 'Past dates are not allowed'));
+                                            return
+                                        }
+                                        if (nights <= 0) {
+                                            toast.error(tr('Ngày trả phải sau ngày nhận', 'Check-out must be after check-in'));
+                                            return
+                                        }
+                                        if (hasDateBlocked) {
+                                            toast.error(tr('Khoảng ngày đã chọn trùng với lịch đã đặt, vui lòng chọn ngày khác', 'Selected dates overlap with existing bookings, please choose different dates'))
+                                            return
+                                        }
+                                        if (!contactPhone.trim()) {
+                                            toast.error(tr('Vui lòng nhập số điện thoại liên hệ', 'Please enter a contact phone number'));
+                                            return
+                                        }
+                                        if (!/^0\d{9}$/.test(contactPhone.trim())) {
+                                            toast.error(tr('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)', 'Invalid phone number (10 digits, starting with 0)'));
+                                            return
+                                        }
+                                        if (selectedPromotion && baseBookingTotal !== undefined) {
+                                            const minBookingAmount = selectedPromotion.minBookingAmount ?? selectedPromotion.minBookingValue ?? 0
+                                            if (minBookingAmount > 0 && baseBookingTotal < minBookingAmount) {
+                                                toast.error(tr('Mã giảm giá chưa đạt điều kiện tối thiểu cho booking này', 'Promotion minimum booking amount is not met'))
+                                                return
+                                            }
+                                        }
 
-                                <div className="mt-4 text-xs text-gray-500">{tr('Phí dịch vụ và thuế sẽ được tính khi thanh toán.', 'Service fees and taxes will be calculated at payment.')}</div>
+                                        setIsBooking(true)
+                                        try {
+                                            const selectedExperiencePayload = selectedExperienceItems.map((entry) => ({
+                                                id: entry.item.id,
+                                                name: entry.item.name,
+                                                qty: entry.qty,
+                                                price: entry.item.price,
+                                            }))
+                                            const mergedSpecialRequests = buildSpecialRequestsWithExperiences(
+                                                specialRequests || '',
+                                                selectedExperiencePayload,
+                                            )
+
+                                            const payload = {
+                                                homestayId: homestay?.id,
+                                                checkIn: checkIn,
+                                                checkOut: checkOut,
+                                                guestsCount: guests,
+                                                contactPhone: contactPhone.trim(),
+                                                ...(selectedPromotionId ? { promotionId: selectedPromotionId } : {}),
+                                                ...(mergedSpecialRequests ? { specialRequests: mergedSpecialRequests } : {}),
+                                                ...(selectedExperiencePayload.length > 0 ? { selectedExperiences: selectedExperiencePayload } : {}),
+                                            } as any
+
+                                            const res = await bookingService.createBooking(payload)
+                                            if (res && res.success && res.data?.id) {
+                                                const bookingData = res.data
+                                                const bookingTotal = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
+                                                // depositAmount và remainingAmount từ BE — không tính lại FE
+                                                const depositRate = (homestay!.depositPercentage ?? 20) / 100
+                                                const depositAmount = bookingData.depositAmount ?? bookingTotal * depositRate
+                                                const remainingAmount = bookingData.remainingAmount ?? bookingTotal - depositAmount
+                                                setPendingBooking({
+                                                    id: bookingData.id,
+                                                    homestayName: homestay!.name,
+                                                    checkIn,
+                                                    checkOut,
+                                                    totalNights: nights,
+                                                    guestsCount: guests,
+                                                    pricePerNight: effectivePricePerNight ?? homestay!.pricePerNight,
+                                                    bookingTotal,
+                                                    amountDue: depositAmount,  // lần đầu luôn là cọc
+                                                    depositAmount,
+                                                    remainingAmount,
+                                                    paymentLabel: tr('Đặt cọc', 'Deposit'),
+                                                })
+                                            } else if (res && !res.success) {
+                                                toast.error(res.message || tr('Đặt phòng thất bại', 'Booking failed'))
+                                            } else {
+                                                toast.error(tr('Không lấy được thông tin booking, vui lòng thử lại', 'Could not retrieve booking information, please try again'))
+                                            }
+                                        } catch (err: any) {
+                                            console.error(err)
+                                            toast.error(err?.message || tr('Đã xảy ra lỗi khi đặt phòng', 'An error occurred while booking'))
+                                        } finally {
+                                            setIsBooking(false)
+                                        }
+                                    }} disabled={isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
+                                        {isBooking ? (
+                                            <>
+                                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                                </svg>
+                                                {tr('Đang xử lý...', 'Processing...')}
+                                            </>
+                                        ) : isCalculating ? tr('Đang tính giá...', 'Calculating price...') : tr('Xác nhận đặt phòng', 'Confirm booking')}
+                                    </button>
+
+                                    <div className="mt-4 text-xs text-gray-500">{tr('Phí dịch vụ và thuế sẽ được tính khi thanh toán.', 'Service fees and taxes will be calculated at payment.')}</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-                {lightboxSrc && (
-                    <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxSrc(null)}>
-                        <img src={lightboxSrc} alt="Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
-                        <button className="absolute top-6 right-6 text-white text-2xl" onClick={() => setLightboxSrc(null)}>×</button>
-                    </div>
-                )}
-            </div>
-        </MainLayout>
-        {pendingBooking && (
-            <PaymentModal
-                booking={pendingBooking}
-                onClose={() => { setPendingBooking(null); navigate('/customer/bookings'); }}
-                onBack={() => setPendingBooking(null)}
-            />
-        )}
+                    )}
+                    {lightboxSrc && (
+                        <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxSrc(null)}>
+                            <img src={lightboxSrc} alt="Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
+                            <button className="absolute top-6 right-6 text-white text-2xl" onClick={() => setLightboxSrc(null)}>×</button>
+                        </div>
+                    )}
+                </div>
+            </MainLayout>
+            {pendingBooking && (
+                <PaymentModal
+                    booking={pendingBooking}
+                    onClose={() => { setPendingBooking(null); navigate('/customer/bookings'); }}
+                    onBack={() => setPendingBooking(null)}
+                />
+            )}
         </>
     )
 }
