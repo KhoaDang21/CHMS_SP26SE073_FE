@@ -5,6 +5,8 @@ import { useWishlist } from '../../contexts/WishlistContext';
 import { authService } from '../../services/authService';
 import toast from 'react-hot-toast';
 import type { Homestay } from '../../types/homestay.types';
+import { getActiveSeasonalPricing } from '../../utils/homestaySeasonalPricing';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   homestay: Homestay;
@@ -17,6 +19,10 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
   const { favorites, loading: favLoading, toggle } = useWishlist();
   const isLoggedIn = authService.isAuthenticated();
   const isFavorite = favLoading ? false : favorites.has(homestay.id);
+  const { t } = useTranslation();
+  const activeSeasonalPricing = getActiveSeasonalPricing(homestay.seasonalPricings);
+  const displayPrice = activeSeasonalPricing?.price ?? homestay.pricePerNight;
+  const showSeasonalPrice = Boolean(activeSeasonalPricing && activeSeasonalPricing.price !== homestay.pricePerNight);
 
   const locationText = homestay.address
     ? `${homestay.address}${homestay.districtName ? `, ${homestay.districtName}` : ''}${homestay.provinceName ? `, ${homestay.provinceName}` : ''}`
@@ -75,7 +81,7 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
           )}
         </div>
 
-        <div className="p-4 flex flex-col gap-2 h-[180px]">
+        <div className="p-4 flex flex-col gap-3 h-auto">
           {/* Name + rating */}
           <div className="flex items-center justify-between gap-2">
             <h4 className="font-semibold text-gray-900 line-clamp-1 flex-1">{homestay.name}</h4>
@@ -85,40 +91,62 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
                 <span className="text-sm font-medium text-gray-800">{avgDisplay}</span>
               </div>
             ) : (
-              <span className="text-xs text-gray-400 flex-shrink-0">Chưa có đánh giá</span>
+              <span className="text-xs text-gray-400 flex-shrink-0">{t('common.noReviews')}</span>
             )}
           </div>
 
           {/* Location — tối đa 2 dòng */}
-          <p className="text-sm text-gray-500 flex items-start gap-1 line-clamp-2 min-h-[2.5rem]">
+          <p className="text-sm text-gray-500 flex items-start gap-1 line-clamp-2 min-h-[2.5rem] mt-1">
             <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             <span>{locationText || 'Đang cập nhật'}</span>
           </p>
 
           {/* Guests + bedrooms */}
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
-              {homestay.maxGuests ?? '-'} khách
+              {homestay.maxGuests ?? '-'} {t('common.guests')}
             </span>
-            <span>{homestay.bedrooms ?? '-'} phòng ngủ</span>
+            <span>{homestay.bedrooms ?? '-'} {t('common.bedrooms')}</span>
           </div>
 
           {/* Price */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-3">
             <div>
-              <span className="font-bold text-gray-900">
-                {homestay.pricePerNight
-                  ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ'
-                  : '-'}
-              </span>
-              <span className="text-sm text-gray-500">/đêm</span>
-              <div className="mt-1 text-[11px] text-amber-700">
-                Giá có thể tăng vào cuối tuần/lễ theo mùa.
-              </div>
+              {showSeasonalPrice ? (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-emerald-700">
+                      {displayPrice ? displayPrice.toLocaleString('vi-VN') + 'đ' : '-'}
+                    </span>
+                    <span className="text-sm text-gray-500">{t('common.pricePerNight')}</span>
+                  </div>
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full w-fit">
+                    {t('common.seasonalPrice')}
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  <span className="font-bold text-gray-900">
+                    {homestay.pricePerNight
+                      ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ'
+                      : '-'}
+                  </span>
+                  <span className="text-sm text-gray-500">{t('common.pricePerNight')}</span>
+                </div>
+              )}
+              {showSeasonalPrice ? (
+                <div className="mt-1 text-[11px] text-emerald-700">
+                  {t('common.seasonalPriceNote')}{activeSeasonalPricing?.name ? ` · ${activeSeasonalPricing.name}` : ''}.
+                </div>
+              ) : (
+                <div className="mt-1 text-[11px] text-amber-700">
+                  {t('common.seasonalPriceCanChange')}
+                </div>
+              )}
             </div>
             {reviewCount > 0 && (
-              <span className="text-xs text-gray-400">{reviewCount} đánh giá</span>
+              <span className="text-xs text-gray-400">{reviewCount} {t('common.reviews')}</span>
             )}
           </div>
         </div>
@@ -134,7 +162,7 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
               : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
             }`}
         >
-          {isBooked ? 'Đã đặt trong khoảng này' : 'Đặt Ngay'}
+          {isBooked ? t('common.booked') : t('common.bookNow')}
         </button>
       </div>
     </div>

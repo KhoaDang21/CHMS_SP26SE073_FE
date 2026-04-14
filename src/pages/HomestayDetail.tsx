@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText, MapPin, ExternalLink } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import MainLayout from '../layouts/MainLayout'
 import { publicHomestayService } from '../services/publicHomestayService'
 import { ImageWithFallback } from '../components/figma/ImageWithFallback'
@@ -20,10 +21,14 @@ import { experienceService } from '../services/experienceService'
 import type { LocalExperience } from '../types/experience.types'
 import { buildSpecialRequestsWithExperiences } from '../utils/bookingExperience'
 import type { OccupiedDateRange } from '../services/publicHomestayService'
+import { getActiveSeasonalPricing, getSeasonalPricingForStay } from '../utils/homestaySeasonalPricing'
 
 export default function HomestayDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { t, i18n } = useTranslation()
+    const isEn = i18n.language.startsWith('en')
+    const tr = (vi: string, en: string) => (isEn ? en : vi)
     const { favorites, toggle } = useWishlist()
     const [homestay, setHomestay] = useState<Homestay | null>(null)
     const [loading, setLoading] = useState(false)
@@ -76,7 +81,7 @@ export default function HomestayDetail() {
             } catch (err) {
                 console.error(err)
                 if (!mounted) return
-                setError('Không thể tải thông tin homestay')
+                setError(tr('Không thể tải thông tin homestay', 'Cannot load homestay details'))
             } finally {
                 if (mounted) setLoading(false)
             }
@@ -185,7 +190,7 @@ export default function HomestayDetail() {
                     bookingId: r.bookingId ?? '',
                     homestayId: r.homestayId ?? id,
                     homestayName: r.homestayName ?? '',
-                    customerName: r.customerName ?? 'Khách',
+                    customerName: r.customerName ?? tr('Khách', 'Guest'),
                     rating: r.rating ?? 0,
                     cleanlinessRating: r.cleanlinessRating ?? 0,
                     locationRating: r.locationRating ?? 0,
@@ -382,6 +387,20 @@ export default function HomestayDetail() {
         [selectedExperienceItems],
     )
 
+    const activeSeasonalPricing = useMemo(
+        () => getActiveSeasonalPricing(homestay?.seasonalPricings, checkIn || undefined),
+        [checkIn, homestay?.seasonalPricings],
+    )
+
+    const selectedSeasonalPricing = useMemo(
+        () => getSeasonalPricingForStay(homestay?.seasonalPricings, checkIn, checkOut),
+        [checkIn, checkOut, homestay?.seasonalPricings],
+    )
+
+    const seasonalPricingToShow = selectedSeasonalPricing ?? activeSeasonalPricing
+    const seasonalDisplayPrice = seasonalPricingToShow?.price ?? homestay?.pricePerNight
+    const hasSeasonalPricing = Boolean(seasonalPricingToShow && seasonalPricingToShow.price !== homestay?.pricePerNight)
+
     return (
         <>
         <MainLayout>
@@ -392,11 +411,11 @@ export default function HomestayDetail() {
                     className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm mb-6"
                 >
                     <ArrowLeft className="w-5 h-5" />
-                    <span className="font-medium">Quay về</span>
+                    <span className="font-medium">{t('common.backButton')}</span>
                 </button>
 
-                {loading && <div className="py-8 text-center">Đang tải...</div>}
-                {error && <div className="py-8 text-center text-red-600">{error}</div>}
+                {loading && <div className="py-8 text-center">{tr('Đang tải...', 'Loading...')}</div>}
+                {error && <div className="py-8 text-center text-red-600">{t('homestay.loadingSchedule')}</div>}
 
                 {homestay && (
                     <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -453,13 +472,13 @@ export default function HomestayDetail() {
                                                 const isFav = favorites.has(homestay.id);
                                                 try {
                                                     await toggle(homestay.id);
-                                                    toast.success(isFav ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
+                                                    toast.success(isFav ? tr('Đã bỏ thích', 'Removed from wishlist') : tr('Đã lưu yêu thích', 'Saved to wishlist'));
                                                 } catch {
-                                                    toast.error('Không thể thay đổi trạng thái yêu thích');
+                                                    toast.error(tr('Không thể thay đổi trạng thái yêu thích', 'Cannot update wishlist status'));
                                                 }
                                             }}
                                             className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
-                                            title={homestay && favorites.has(homestay.id) ? 'Bỏ thích' : 'Lưu yêu thích'}
+                                            title={homestay && favorites.has(homestay.id) ? tr('Bỏ thích', 'Remove from wishlist') : tr('Lưu yêu thích', 'Save to wishlist')}
                                         >
                                             <Heart className={`w-5 h-5 transition-colors ${homestay && favorites.has(homestay.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
                                         </button>
@@ -467,17 +486,17 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
-                                {homestay.ownerName && (
-                                    <div className="mt-4 flex items-center gap-4 border-t pt-4">
-                                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-lg font-medium text-gray-700">
-                                            {getInitials(homestay.ownerName)}
-                                        </div>
-                                        <div>
-                                            <div className="text-sm font-medium">Owner: {homestay.ownerName}</div>
-                                            {/* If backend provides more host info, render here (e.g., host.title, years) */}
-                                        </div>
-                                    </div>
-                                )}
+                                        {homestay.ownerName && (
+                                            <div className="mt-4 flex items-center gap-4 border-t pt-4">
+                                                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-lg font-medium text-gray-700">
+                                                    {getInitials(homestay.ownerName)}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium">{tr('Chủ nhà', 'Host')}: {homestay.ownerName}</div>
+                                                    {/* If backend provides more host info, render here (e.g., host.title, years) */}
+                                                </div>
+                                            </div>
+                                        )}
 
                                 <div className="mt-6">
                                     <p className="text-gray-700">{homestay.description}</p>
@@ -486,7 +505,7 @@ export default function HomestayDetail() {
                                 <div className="mt-6">
                                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                                         <MapPin className="w-4 h-4 text-cyan-600" />
-                                        Vị trí trên bản đồ
+                                        {tr('Vị trí trên bản đồ', 'Location on map')}
                                     </h4>
 
                                     {locationCoords ? (
@@ -502,7 +521,7 @@ export default function HomestayDetail() {
                                             </div>
                                             <div className="mt-2 flex items-center justify-between gap-3">
                                                 <p className="text-xs text-gray-500">
-                                                    Tọa độ: {locationCoords.lat.toFixed(6)}, {locationCoords.lng.toFixed(6)}
+                                                    {tr('Tọa độ', 'Coordinates')}: {locationCoords.lat.toFixed(6)}, {locationCoords.lng.toFixed(6)}
                                                 </p>
                                                 <a
                                                     href={googleMapOpenUrl}
@@ -510,31 +529,31 @@ export default function HomestayDetail() {
                                                     rel="noreferrer"
                                                     className="inline-flex items-center gap-1 text-sm text-cyan-700 hover:text-cyan-800 font-medium"
                                                 >
-                                                    Mở trên Google Maps
+                                                    {tr('Mở trên Google Maps', 'Open in Google Maps')}
                                                     <ExternalLink className="w-4 h-4" />
                                                 </a>
                                             </div>
                                         </>
                                     ) : (
                                         <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-                                            Homestay này chưa có thông tin kinh độ/vĩ độ để hiển thị bản đồ.
+                                            {tr('Homestay này chưa có thông tin kinh độ/vĩ độ để hiển thị bản đồ.', 'This homestay does not have latitude/longitude data to display the map yet.')}
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="mt-6 grid grid-cols-2 gap-4">
                                     <div>
-                                        <h4 className="font-semibold">Số khách</h4>
-                                        <p className="text-sm text-gray-600">{homestay.maxGuests} khách</p>
+                                        <h4 className="font-semibold">{tr('Số khách', 'Guests')}</h4>
+                                        <p className="text-sm text-gray-600">{homestay.maxGuests} {tr('khách', 'guests')}</p>
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold">Phòng ngủ</h4>
-                                        <p className="text-sm text-gray-600">{homestay.bedrooms ?? 0} phòng</p>
+                                        <h4 className="font-semibold">{tr('Phòng ngủ', 'Bedrooms')}</h4>
+                                        <p className="text-sm text-gray-600">{homestay.bedrooms ?? 0} {tr('phòng', 'rooms')}</p>
                                     </div>
                                 </div>
 
                                 <div className="mt-6">
-                                    <h4 className="font-semibold mb-2">Tiện nghi</h4>
+                                    <h4 className="font-semibold mb-2">{tr('Tiện nghi', 'Amenities')}</h4>
                                     {homestay.amenities && homestay.amenities.length > 0 ? (
                                         <div className="flex flex-wrap gap-2">
                                             {homestay.amenities.map((a, i) => (
@@ -542,7 +561,7 @@ export default function HomestayDetail() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-sm text-gray-500">Không có thông tin tiện nghi</div>
+                                        <div className="text-sm text-gray-500">{tr('Không có thông tin tiện nghi', 'No amenity information')}</div>
                                     )}
                                 </div>
                             </div>
@@ -550,12 +569,12 @@ export default function HomestayDetail() {
                             {/* Reviews Section */}
                             <div className="mt-6 bg-white rounded-xl p-6 shadow">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold">Đánh giá</h3>
+                                    <h3 className="text-lg font-bold">{tr('Đánh giá', 'Reviews')}</h3>
                                     {avgRating !== null && (
                                         <div className="flex items-center gap-2">
                                             <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                                             <span className="text-xl font-bold">{avgRating}</span>
-                                            <span className="text-sm text-gray-500">({reviews.length} đánh giá)</span>
+                                            <span className="text-sm text-gray-500">({reviews.length} {tr('đánh giá', 'reviews')})</span>
                                         </div>
                                     )}
                                 </div>
@@ -570,10 +589,10 @@ export default function HomestayDetail() {
                                     const avg = (key: keyof typeof reviews[0]) =>
                                         Math.round(reviews.reduce((s, r) => s + (r[key] as number), 0) / reviews.length * 10) / 10
                                     const cats = [
-                                        { label: 'Vệ sinh', val: avg('cleanlinessRating') },
-                                        { label: 'Vị trí', val: avg('locationRating') },
-                                        { label: 'Giá trị', val: avg('valueRating') },
-                                        { label: 'Giao tiếp', val: avg('communicationRating') },
+                                        { label: tr('Vệ sinh', 'Cleanliness'), val: avg('cleanlinessRating') },
+                                        { label: tr('Vị trí', 'Location'), val: avg('locationRating') },
+                                        { label: tr('Giá trị', 'Value'), val: avg('valueRating') },
+                                        { label: tr('Giao tiếp', 'Communication'), val: avg('communicationRating') },
                                     ]
                                     return (
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-4 bg-gray-50 rounded-xl">
@@ -591,11 +610,11 @@ export default function HomestayDetail() {
                                 })()}
 
                                 {reviewsLoading && (
-                                    <div className="py-6 text-center text-gray-500 text-sm">Đang tải đánh giá...</div>
+                                    <div className="py-6 text-center text-gray-500 text-sm">{tr('Đang tải đánh giá...', 'Loading reviews...')}</div>
                                 )}
 
                                 {!reviewsLoading && reviews.length === 0 && (
-                                    <div className="py-6 text-center text-gray-400 text-sm">Chưa có đánh giá nào cho homestay này.</div>
+                                    <div className="py-6 text-center text-gray-400 text-sm">{tr('Chưa có đánh giá nào cho homestay này.', 'No reviews for this homestay yet.')}</div>
                                 )}
 
                                 {!reviewsLoading && reviews.length > 0 && (
@@ -621,7 +640,7 @@ export default function HomestayDetail() {
                                                         <p className="mt-2 text-sm text-gray-700 leading-relaxed">{r.comment}</p>
                                                         {r.replyFromOwner && (
                                                             <div className="mt-3 bg-gray-50 border-l-4 border-cyan-400 rounded-r-lg p-3">
-                                                                <div className="text-xs font-semibold text-cyan-700 mb-1">Phản hồi từ chủ nhà</div>
+                                                                <div className="text-xs font-semibold text-cyan-700 mb-1">{tr('Phản hồi từ chủ nhà', 'Host reply')}</div>
                                                                 <p className="text-sm text-gray-600">{r.replyFromOwner}</p>
                                                             </div>
                                                         )}
@@ -639,10 +658,26 @@ export default function HomestayDetail() {
                             <div className="sticky top-24 bg-white rounded-2xl p-5 shadow border border-gray-100">
                                 <div className="flex items-baseline justify-between">
                                     <div>
-                                        <div className="text-2xl font-bold">{homestay.pricePerNight?.toLocaleString('vi-VN')}đ <span className="text-sm font-medium text-gray-600">/ đêm</span></div>
-                                        <div className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 inline-block">
-                                            Giá thực tế có thể thay đổi theo mùa/lễ. Chọn ngày để xem đơn giá áp dụng.
+                                        <div className="text-2xl font-bold">
+                                            {hasSeasonalPricing && seasonalDisplayPrice !== undefined
+                                                ? `${seasonalDisplayPrice.toLocaleString('vi-VN')}đ`
+                                                : `${homestay.pricePerNight?.toLocaleString('vi-VN')}đ`}
+                                            <span className="text-sm font-medium text-gray-600"> {t('common.pricePerNight')}</span>
                                         </div>
+                                        {hasSeasonalPricing ? (
+                                            <div className="mt-1 space-y-1">
+                                                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1 inline-block">
+                                                    {t('common.seasonalPriceNote')}{seasonalPricingToShow?.name ? ` · ${seasonalPricingToShow.name}` : ''}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {t('homestay.basePrice')}: <span className="line-through">{homestay.pricePerNight?.toLocaleString('vi-VN')}đ</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 inline-block">
+                                                {t('homestay.priceCanChange')}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="text-right text-sm text-gray-600">
                                         {avgRating !== null ? `${avgRating} ★` : ''}
@@ -654,26 +689,26 @@ export default function HomestayDetail() {
                                     <div>
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4 text-gray-500" />
-                                            Ngày nhận
+                                            {tr('Ngày nhận', 'Check-in')}
                                         </label>
                                         <input value={checkIn} onChange={(e) => setCheckIn(e.target.value)} type="date" min={new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
                                     </div>
                                     <div>
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4 text-gray-500" />
-                                            Ngày trả
+                                            {tr('Ngày trả', 'Check-out')}
                                         </label>
                                         <input value={checkOut} onChange={(e) => setCheckOut(e.target.value)} type="date" min={checkIn || new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
                                     </div>
                                 </div>
                                 {occupiedDatesLoading && (
-                                    <div className="mt-2 text-xs text-gray-500">Đang tải lịch phòng đã đặt...</div>
+                                    <div className="mt-2 text-xs text-gray-500">{tr('Đang tải lịch phòng đã đặt...', 'Loading booked dates...')}</div>
                                 )}
                                 {hasDateBlocked && (
                                     <div className="mt-2 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded-lg px-3 py-2">
                                         {isCheckInOccupied && !checkOut
-                                            ? 'Ngày nhận đã có khách đặt. Vui lòng chọn ngày nhận khác.'
-                                            : 'Khoảng ngày đã chọn trùng với lịch đã đặt của homestay. Vui lòng chọn khoảng khác.'}
+                                            ? tr('Ngày nhận đã có khách đặt. Vui lòng chọn ngày nhận khác.', 'The check-in date is already booked. Please choose another date.')
+                                            : tr('Khoảng ngày đã chọn trùng với lịch đã đặt của homestay. Vui lòng chọn khoảng khác.', 'The selected date range overlaps with existing bookings. Please choose another range.')}
                                     </div>
                                 )}
 
@@ -682,15 +717,21 @@ export default function HomestayDetail() {
                                     <div className="mt-2 flex items-center gap-2 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2">
                                         <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
                                         <span>
-                                            {nights} đêm · {(effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × {nights} = <span className="font-semibold">{formatMoney(computedTotal ?? (homestay.pricePerNight * nights))}</span>
+                                            {nights} {t('homestay.nights')} · {(selectedSeasonalPricing?.price ?? effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × {nights} = <span className="font-semibold">{formatMoney(computedTotal ?? (homestay.pricePerNight * nights))}</span>
                                         </span>
                                     </div>
                                 )}
-                                {nights > 0 && isSeasonalPriceApplied && (
+                                {seasonalPricingToShow && hasSeasonalPricing && (
+                                    <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                                        {seasonalPricingToShow.name ? `${seasonalPricingToShow.name}: ` : `${t('common.seasonalPrice')}: `}
+                                        {seasonalPricingToShow.price.toLocaleString('vi-VN')}đ/{tr('đêm', 'night')} {tr('được áp dụng cho khoảng ngày đã chọn.', 'is applied for the selected dates.')}
+                                    </div>
+                                )}
+                                {nights > 0 && isSeasonalPriceApplied && !hasSeasonalPricing && (
                                     <div className={`mt-2 text-xs rounded-lg px-3 py-2 border ${seasonalDelta > 0 ? 'text-red-700 bg-red-50 border-red-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'}`}>
                                         {seasonalDelta > 0
-                                            ? `Giá theo mùa đang cao hơn giá niêm yết ${formatMoney(seasonalDelta)} cho ${nights} đêm đã chọn.`
-                                            : `Giá theo mùa đang thấp hơn giá niêm yết ${formatMoney(Math.abs(seasonalDelta))} cho ${nights} đêm đã chọn.`}
+                                            ? tr(`Giá theo mùa đang cao hơn giá niêm yết ${formatMoney(seasonalDelta)} cho ${nights} đêm đã chọn.`, `Seasonal price is higher than listed price by ${formatMoney(seasonalDelta)} for ${nights} selected nights.`)
+                                            : tr(`Giá theo mùa đang thấp hơn giá niêm yết ${formatMoney(Math.abs(seasonalDelta))} cho ${nights} đêm đã chọn.`, `Seasonal price is lower than listed price by ${formatMoney(Math.abs(seasonalDelta))} for ${nights} selected nights.`)}
                                     </div>
                                 )}
 
@@ -698,12 +739,12 @@ export default function HomestayDetail() {
                                 <div className="mt-4">
                                     <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                         <Users className="w-4 h-4 text-gray-500" />
-                                        Số khách
+                                        {tr('Số khách', 'Guests')}
                                     </label>
                                     <select value={guests} onChange={(e) => setGuests(Number(e.target.value))} className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
                                         {Array.from({ length: Math.max(1, Math.min(20, homestay.maxGuests || 6)) }).map((_, idx) => {
                                             const n = idx + 1
-                                            return <option key={n} value={n}>{n} khách</option>
+                                            return <option key={n} value={n}>{n} {tr('khách', 'guests')}</option>
                                         })}
                                     </select>
                                 </div>
@@ -723,13 +764,13 @@ export default function HomestayDetail() {
                                 <div className="mt-4">
                                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                                         <div className="flex items-center justify-between mb-2">
-                                            <h4 className="text-sm font-semibold text-gray-900">Dịch vụ địa phương</h4>
-                                            <span className="text-xs text-cyan-700 font-medium">Có thể chọn ngay khi đặt phòng</span>
+                                            <h4 className="text-sm font-semibold text-gray-900">{tr('Dịch vụ địa phương', 'Local services')}</h4>
+                                            <span className="text-xs text-cyan-700 font-medium">{tr('Có thể chọn ngay khi đặt phòng', 'Can be selected when booking')}</span>
                                         </div>
                                         {experiencesLoading ? (
-                                            <div className="text-sm text-gray-500">Đang tải danh sách dịch vụ...</div>
+                                            <div className="text-sm text-gray-500">{tr('Đang tải danh sách dịch vụ...', 'Loading services...')}</div>
                                         ) : availableExperiences.length === 0 ? (
-                                            <div className="text-sm text-gray-500">Chưa có dịch vụ địa phương khả dụng.</div>
+                                            <div className="text-sm text-gray-500">{tr('Chưa có dịch vụ địa phương khả dụng.', 'No local services available yet.')}</div>
                                         ) : (
                                             <div className="space-y-2 max-h-52 overflow-auto pr-1">
                                                 {availableExperiences.map((item) => {
@@ -754,7 +795,7 @@ export default function HomestayDetail() {
                                                                         <div className="text-sm font-medium text-gray-900 truncate">{item.name}</div>
                                                                         <div className="text-xs text-gray-500">
                                                                             {item.categoryName ? `${item.categoryName} • ` : item.categoryId ? `${item.categoryId} • ` : ''}
-                                                                            {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : 'Liên hệ'}
+                                                                            {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : tr('Liên hệ', 'Contact')}
                                                                         </div>
                                                                     </div>
                                                                 </label>
@@ -794,7 +835,7 @@ export default function HomestayDetail() {
                                         )}
                                         {selectedExperiencesEstimate > 0 && (
                                             <div className="mt-3 text-xs text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-lg px-2 py-1.5">
-                                                Ước tính dịch vụ thêm: {selectedExperiencesEstimate.toLocaleString('vi-VN')}đ (tham khảo)
+                                                {tr('Ước tính dịch vụ thêm', 'Estimated extra services')}: {selectedExperiencesEstimate.toLocaleString('vi-VN')}đ ({tr('tham khảo', 'estimated')})
                                             </div>
                                         )}
                                     </div>
@@ -802,35 +843,41 @@ export default function HomestayDetail() {
 
                                 <div className={`mt-5 rounded-xl border p-4 ${hasDateBlocked ? 'border-gray-300 bg-gray-100 opacity-80' : 'border-gray-100 bg-gray-50'}`}>
                                     <div className="flex items-center justify-between text-sm text-gray-700">
-                                        <span>{nights > 0 ? `${(effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × ${nights} đêm` : 'Chọn ngày để tính giá'}</span>
+                                        <span>{nights > 0 ? `${(selectedSeasonalPricing?.price ?? effectivePricePerNight ?? homestay.pricePerNight)?.toLocaleString('vi-VN')}đ × ${nights} ${t('homestay.nights')}` : t('common.selectDateForPrice')}</span>
                                         <span className="font-medium">
                                             {nights > 0 ? formatMoney(computedTotal ?? (homestay.pricePerNight * nights)) : '—'}
                                         </span>
                                     </div>
-                                    {nights > 0 && isSeasonalPriceApplied && baseBookingTotal !== undefined && (
+                                    {seasonalPricingToShow && hasSeasonalPricing && (
                                         <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                                            <span>Giá niêm yết ban đầu</span>
+                                            <span>{t('common.seasonalPrice')}</span>
+                                            <span>{formatMoney(seasonalPricingToShow.price)}</span>
+                                        </div>
+                                    )}
+                                    {nights > 0 && isSeasonalPriceApplied && baseBookingTotal !== undefined && !hasSeasonalPricing && (
+                                        <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                                            <span>{tr('Giá niêm yết ban đầu', 'Original listed price')}</span>
                                             <span className="line-through">{formatMoney(baseBookingTotal)}</span>
                                         </div>
                                     )}
                                     <div className="mt-2 flex items-center justify-between text-sm text-gray-700">
-                                        <span>Khách</span>
+                                        <span>{tr('Khách', 'Guests')}</span>
                                         <span className="font-medium">{guests}</span>
                                     </div>
                                     <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-                                        <span className="text-sm font-semibold text-gray-900">Tổng (ước tính)</span>
+                                        <span className="text-sm font-semibold text-gray-900">{tr('Tổng (ước tính)', 'Estimated total')}</span>
                                         <span className="text-lg font-bold text-gray-900">
-                                            {computedTotal !== undefined ? formatMoney(computedTotal) : (isCalculating ? 'Đang tính...' : '—')}
+                                            {computedTotal !== undefined ? formatMoney(computedTotal) : (isCalculating ? tr('Đang tính...', 'Calculating...') : '—')}
                                         </span>
                                     </div>
                                     {selectedPromotion && (
                                         <div className="mt-3 rounded-lg bg-cyan-50 border border-cyan-100 px-3 py-2 text-sm text-cyan-900">
-                                            Đang áp dụng mã <span className="font-semibold">{selectedPromotion.code}</span>
+                                            {tr('Đang áp dụng mã', 'Applying code')} <span className="font-semibold">{selectedPromotion.code}</span>
                                         </div>
                                     )}
                                     {selectedExperienceItems.length > 0 && (
                                         <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-900">
-                                            Bạn đã chọn {selectedExperienceItems.length} dịch vụ thêm cho booking này.
+                                            {tr('Bạn đã chọn', 'You selected')} {selectedExperienceItems.length} {tr('dịch vụ thêm cho booking này.', 'extra services for this booking.')}
                                         </div>
                                     )}
                                     {computedTotal !== undefined && (
@@ -843,11 +890,11 @@ export default function HomestayDetail() {
                                                 return (
                                                     <>
                                                         <div className="flex items-center justify-between text-sm">
-                                                            <span className="text-orange-700 font-medium">Cọc ngay ({pct}%)</span>
+                                                            <span className="text-orange-700 font-medium">{tr('Cọc ngay', 'Deposit now')} ({pct}%)</span>
                                                             <span className="font-bold text-orange-600">{formatMoney(deposit)}</span>
                                                         </div>
                                                         <div className="flex items-center justify-between text-sm text-gray-500">
-                                                            <span>Còn lại khi nhận phòng</span>
+                                                            <span>{tr('Còn lại khi nhận phòng', 'Remaining at check-in')}</span>
                                                             <span className="font-medium">{formatMoney(remaining)}</span>
                                                         </div>
                                                     </>
@@ -857,7 +904,7 @@ export default function HomestayDetail() {
                                     )}
                                     {calcResult !== null && (
                                         <div className="mt-2 text-xs text-green-600">
-                                            ✓ Giá đã được tính chính xác từ hệ thống
+                                            ✓ {tr('Giá đã được tính chính xác từ hệ thống', 'Price has been calculated accurately by the system')}
                                         </div>
                                     )}
                                 </div>
@@ -867,25 +914,25 @@ export default function HomestayDetail() {
                                     <div>
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <Phone className="w-4 h-4 text-gray-500" />
-                                            Số điện thoại liên hệ <span className="text-red-500">*</span>
+                                            {tr('Số điện thoại liên hệ', 'Contact phone')} <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             value={contactPhone}
                                             onChange={(e) => setContactPhone(e.target.value)}
-                                            placeholder="VD: 0901234567"
+                                            placeholder={tr('VD: 0901234567', 'E.g.: 0901234567')}
                                             className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                                         />
                                     </div>
                                     <div>
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <MessageSquareText className="w-4 h-4 text-gray-500" />
-                                            Yêu cầu đặc biệt (tuỳ chọn)
+                                            {tr('Yêu cầu đặc biệt (tuỳ chọn)', 'Special requests (optional)')}
                                         </label>
                                         <textarea
                                             value={specialRequests}
                                             onChange={(e) => setSpecialRequests(e.target.value)}
                                             rows={2}
-                                            placeholder="Ví dụ: nhận phòng sớm, thêm gối, ..."
+                                            placeholder={tr('Ví dụ: nhận phòng sớm, thêm gối, ...', 'Example: early check-in, extra pillows, ...')}
                                             className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
                                         />
                                     </div>
@@ -894,40 +941,40 @@ export default function HomestayDetail() {
                                 <button onClick={async () => {
                                     if (!authService.isAuthenticated() || !authService.isTokenValid()) {
                                         if (authService.isAuthenticated() && !authService.isTokenValid()) {
-                                            toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
+                                            toast.error(tr('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', 'Your session has expired, please log in again.'));
                                         }
                                         navigate('/auth/login')
                                         return
                                     }
 
                                     if (!checkIn || !checkOut) {
-                                        toast.error('Vui lòng chọn ngày nhận và trả phòng');
+                                        toast.error(tr('Vui lòng chọn ngày nhận và trả phòng', 'Please select check-in and check-out dates'));
                                         return
                                     }
                                     if (isPastDate(checkIn) || isPastDate(checkOut)) {
-                                        toast.error('Không được chọn ngày trong quá khứ');
+                                        toast.error(tr('Không được chọn ngày trong quá khứ', 'Past dates are not allowed'));
                                         return
                                     }
                                     if (nights <= 0) {
-                                        toast.error('Ngày trả phải sau ngày nhận');
+                                        toast.error(tr('Ngày trả phải sau ngày nhận', 'Check-out must be after check-in'));
                                         return
                                     }
                                     if (hasDateBlocked) {
-                                        toast.error('Khoảng ngày đã chọn trùng với lịch đã đặt, vui lòng chọn ngày khác')
+                                        toast.error(tr('Khoảng ngày đã chọn trùng với lịch đã đặt, vui lòng chọn ngày khác', 'Selected dates overlap with existing bookings, please choose different dates'))
                                         return
                                     }
                                     if (!contactPhone.trim()) {
-                                        toast.error('Vui lòng nhập số điện thoại liên hệ');
+                                        toast.error(tr('Vui lòng nhập số điện thoại liên hệ', 'Please enter a contact phone number'));
                                         return
                                     }
                                     if (!/^0\d{9}$/.test(contactPhone.trim())) {
-                                        toast.error('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)');
+                                        toast.error(tr('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)', 'Invalid phone number (10 digits, starting with 0)'));
                                         return
                                     }
                                     if (selectedPromotion && baseBookingTotal !== undefined) {
                                         const minBookingAmount = selectedPromotion.minBookingAmount ?? selectedPromotion.minBookingValue ?? 0
                                         if (minBookingAmount > 0 && baseBookingTotal < minBookingAmount) {
-                                            toast.error('Mã giảm giá chưa đạt điều kiện tối thiểu cho booking này')
+                                            toast.error(tr('Mã giảm giá chưa đạt điều kiện tối thiểu cho booking này', 'Promotion minimum booking amount is not met'))
                                             return
                                         }
                                     }
@@ -976,16 +1023,16 @@ export default function HomestayDetail() {
                                                 amountDue: depositAmount,  // lần đầu luôn là cọc
                                                 depositAmount,
                                                 remainingAmount,
-                                                paymentLabel: 'Đặt cọc',
+                                                paymentLabel: tr('Đặt cọc', 'Deposit'),
                                             })
                                         } else if (res && !res.success) {
-                                            toast.error(res.message || 'Đặt phòng thất bại')
+                                            toast.error(res.message || tr('Đặt phòng thất bại', 'Booking failed'))
                                         } else {
-                                            toast.error('Không lấy được thông tin booking, vui lòng thử lại')
+                                            toast.error(tr('Không lấy được thông tin booking, vui lòng thử lại', 'Could not retrieve booking information, please try again'))
                                         }
                                     } catch (err: any) {
                                         console.error(err)
-                                        toast.error(err?.message || 'Đã xảy ra lỗi khi đặt phòng')
+                                        toast.error(err?.message || tr('Đã xảy ra lỗi khi đặt phòng', 'An error occurred while booking'))
                                     } finally {
                                         setIsBooking(false)
                                     }
@@ -996,12 +1043,12 @@ export default function HomestayDetail() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                                             </svg>
-                                            Đang xử lý...
+                                            {tr('Đang xử lý...', 'Processing...')}
                                         </>
-                                    ) : isCalculating ? 'Đang tính giá...' : 'Xác nhận đặt phòng'}
+                                    ) : isCalculating ? tr('Đang tính giá...', 'Calculating price...') : tr('Xác nhận đặt phòng', 'Confirm booking')}
                                 </button>
 
-                                <div className="mt-4 text-xs text-gray-500">Phí dịch vụ và thuế sẽ được tính khi thanh toán.</div>
+                                <div className="mt-4 text-xs text-gray-500">{tr('Phí dịch vụ và thuế sẽ được tính khi thanh toán.', 'Service fees and taxes will be calculated at payment.')}</div>
                             </div>
                         </div>
                     </div>

@@ -185,3 +185,13 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Keep Google Translate invisible in UI while using it as translation engine. */
+.goog-te-banner-frame.skiptranslate,
+iframe.goog-te-banner-frame {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
