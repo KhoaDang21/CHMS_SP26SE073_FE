@@ -75,51 +75,45 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
           )}
         </div>
 
-        <div className="p-4 flex flex-col gap-2 h-[180px]">
-          {/* Name + rating */}
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="font-semibold text-gray-900 line-clamp-1 flex-1">{homestay.name}</h4>
-            {avgDisplay ? (
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span className="text-sm font-medium text-gray-800">{avgDisplay}</span>
-              </div>
-            ) : (
-              <span className="text-xs text-gray-400 flex-shrink-0">Chưa có đánh giá</span>
-            )}
-          </div>
+        <div className="p-4 flex flex-col gap-2 flex-1">
+          {/* Name */}
+          <h4 className="font-semibold text-gray-900 line-clamp-1">{homestay.name}</h4>
 
-          {/* Location — tối đa 2 dòng */}
-          <p className="text-sm text-gray-500 flex items-start gap-1 line-clamp-2 min-h-[2.5rem]">
-            <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          {/* Location */}
+          <p className="text-xs text-gray-500 flex items-start gap-1 line-clamp-2">
+            <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
             <span>{locationText || 'Đang cập nhật'}</span>
           </p>
 
-          {/* Guests + bedrooms */}
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          {/* Guests + bedrooms + bathrooms */}
+          <div className="flex items-center gap-3 text-xs text-gray-500">
             <span className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
+              <Users className="w-3 h-3" />
               {homestay.maxGuests ?? '-'} khách
             </span>
-            <span>{homestay.bedrooms ?? '-'} phòng ngủ</span>
+            <span>🛏 {homestay.bedrooms ?? '-'} phòng ngủ</span>
+            {homestay.bathrooms ? <span>🚿 {homestay.bathrooms} WC</span> : null}
           </div>
 
           {/* Price */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
-            <div>
-              <span className="font-bold text-gray-900">
-                {homestay.pricePerNight
-                  ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ'
-                  : '-'}
-              </span>
-              <span className="text-sm text-gray-500">/đêm</span>
-              <div className="mt-1 text-[11px] text-amber-700">
-                Giá có thể tăng vào cuối tuần/lễ theo mùa.
+          <div className="pt-2 border-t border-gray-100 mt-auto">
+            <div className="flex items-end justify-between gap-2">
+              <div className="flex items-baseline gap-1">
+                <span className="text-lg font-bold text-gray-900">
+                  {homestay.pricePerNight
+                    ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ'
+                    : '-'}
+                </span>
+                <span className="text-xs text-gray-400">/đêm</span>
               </div>
+              {reviewCount > 0 && (
+                <span className="text-xs text-gray-400">{reviewCount} đánh giá</span>
+              )}
             </div>
-            {reviewCount > 0 && (
-              <span className="text-xs text-gray-400">{reviewCount} đánh giá</span>
-            )}
+            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-amber-600 bg-amber-50 rounded-md px-2 py-1">
+              <span>⚡</span>
+              <span>Giá có thể tăng vào cuối tuần/lễ theo mùa</span>
+            </div>
           </div>
         </div>
       </Link>

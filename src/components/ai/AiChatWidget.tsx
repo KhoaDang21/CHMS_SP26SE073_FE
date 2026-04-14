@@ -4,12 +4,32 @@ import { Bot, X, Send, Trash2, Waves, Loader2, MessageCircle } from 'lucide-reac
 import { aiService } from '../../services/aiService';
 import type { ChatMessage } from '../../services/aiService';
 import { authService } from '../../services/authService';
+import AiBubbleContent from './AiBubbleContent';
+
+interface RecommendedHomestay {
+  id?: string;
+  Id?: string;
+  name?: string;
+  Name?: string;
+  address?: string;
+  Address?: string;
+  price?: number;
+  Price?: number;
+  description?: string;
+  Description?: string;
+  amenities?: string;
+  Amenities?: string;
+  thumbnailUrl?: string;
+  ThumbnailUrl?: string;
+}
 
 interface Message {
   id: string;
   sender: 'User' | 'AI';
   message: string;
   timestamp: string;
+  recommendedHomestays?: RecommendedHomestay[];
+  isRecommendation?: boolean;
 }
 
 const QUICK_SUGGESTIONS = [
@@ -46,14 +66,29 @@ function Bubble({ msg }: { msg: Message }) {
           <Bot className="w-3.5 h-3.5 text-white" />
         </div>
       )}
-      <div className={`max-w-[76%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm
+      <div className={`max-w-[76%] rounded-2xl text-sm shadow-sm
         ${isUser
-          ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-br-sm'
-          : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'}`}>
-        <p className="whitespace-pre-wrap break-words">{msg.message}</p>
-        <p className={`text-[10px] mt-1 ${isUser ? 'text-blue-100 text-right' : 'text-gray-400'}`}>
-          {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-        </p>
+          ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-br-sm px-3.5 py-2.5'
+          : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm p-3'}`}>
+        {isUser ? (
+          <>
+            <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+            <p className="text-[10px] mt-1 text-blue-100 text-right">
+              {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </>
+        ) : (
+          <>
+            <AiBubbleContent
+              message={msg.message}
+              recommendedHomestays={msg.recommendedHomestays}
+              isRecommendation={msg.isRecommendation}
+            />
+            <p className="text-[10px] mt-3 text-gray-400">
+              {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -158,6 +193,8 @@ export default function AiChatWidget() {
         id: `ai-${Date.now()}`, sender: 'AI',
         message: response.replyMessage || 'Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này.',
         timestamp: new Date().toISOString(),
+        recommendedHomestays: response.recommendedHomestays,
+        isRecommendation: response.isRecommendation,
       }]);
     } catch (e: any) {
       // Hiển thị error message cho user

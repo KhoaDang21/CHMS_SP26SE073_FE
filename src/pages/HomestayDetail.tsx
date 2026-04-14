@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText, MapPin, ExternalLink } from 'lucide-react'
 import MainLayout from '../layouts/MainLayout'
@@ -20,6 +20,9 @@ import { experienceService } from '../services/experienceService'
 import type { LocalExperience } from '../types/experience.types'
 import { buildSpecialRequestsWithExperiences } from '../utils/bookingExperience'
 import type { OccupiedDateRange } from '../services/publicHomestayService'
+import { DayPicker } from 'react-day-picker'
+import { format, startOfDay, addDays } from 'date-fns'
+import 'react-day-picker/src/style.css'
 
 export default function HomestayDetail() {
     const { id } = useParams()
@@ -54,6 +57,8 @@ export default function HomestayDetail() {
     const [isBooking, setIsBooking] = useState(false)
     const [reviews, setReviews] = useState<Review[]>([])
     const [reviewsLoading, setReviewsLoading] = useState(false)
+    const [showCalendar, setShowCalendar] = useState<'checkIn' | 'checkOut' | null>(null)
+    const calendarRef = useRef<HTMLDivElement>(null)
 
     const getInitials = (name?: string) => {
         if (!name) return ''
@@ -235,6 +240,65 @@ export default function HomestayDetail() {
         })
     }
 
+    // Merge các occupied ranges liền kề/chồng nhau thành các block lớn hơn
+    // VD: [15-16] + [17-18] → [15-18] vì checkout của range trước = checkin của range sau (liền kề)
+    const mergedOccupiedRanges = useMemo(() => {
+        const parsed = occupiedDateRanges
+            .map((r) => ({ from: parseYmdToDate(r.checkIn), to: parseYmdToDate(r.checkOut) }))
+            .filter((r): r is { from: Date; to: Date } => r.from !== null && r.to !== null && r.to > r.from)
+            .sort((a, b) => a.from.getTime() - b.from.getTime())
+
+        const merged: { from: Date; to: Date }[] = []
+        for (const range of parsed) {
+            const last = merged[merged.length - 1]
+            // Merge nếu range mới bắt đầu <= ngày kết thúc của range trước (liền kề hoặc chồng)
+            if (last && range.from <= last.to) {
+                last.to = range.to > last.to ? range.to : last.to
+            } else {
+                merged.push({ from: new Date(range.from), to: new Date(range.to) })
+            }
+        }
+        return merged
+    }, [occupiedDateRanges])
+
+    // Tính danh sách ngày bị disable cho DayPicker
+    const disabledDays = useMemo(() => {
+        const today = startOfDay(new Date())
+        const rules: any[] = [{ before: today }]
+        mergedOccupiedRanges.forEach(({ from, to }) => {
+            // disable từ checkIn đến checkOut - 1 (ngày checkOut = ngày nhận được của booking tiếp theo)
+            rules.push({ from, to: addDays(to, -1) })
+        })
+        return rules
+    }, [mergedOccupiedRanges])
+
+    // Tính ngày checkout tối đa: ngày bắt đầu của occupied range đầu tiên SAU check-in
+    // Ví dụ: checkIn=14, có booking 16-18 → checkout chỉ được chọn tối đa ngày 16 (không qua được)
+    const checkOutDisabledDays = useMemo(() => {
+        const checkInDate = parseYmdToDate(checkIn)
+        const minCheckout = checkInDate ? addDays(checkInDate, 1) : startOfDay(new Date())
+        const rules: any[] = [{ before: minCheckout }]
+
+        if (!checkInDate) return rules
+
+        // Tìm merged block gần nhất có phần nào nằm SAU checkIn
+        let nearestBlock: Date | null = null
+        mergedOccupiedRanges.forEach(({ from, to }) => {
+            if (to <= checkInDate) return
+            const blockStart = from > checkInDate ? from : addDays(checkInDate, 1)
+            if (!nearestBlock || blockStart < nearestBlock) {
+                nearestBlock = blockStart
+            }
+        })
+
+        // Disable tất cả ngày từ nearestBlock trở đi (user không được checkout vượt qua occupied)
+        if (nearestBlock) {
+            rules.push({ after: nearestBlock as Date })
+        }
+
+        return rules
+    }, [checkIn, mergedOccupiedRanges])
+
     const isCheckInOccupied = useMemo(() => {
         const selectedStart = parseYmdToDate(checkIn)
         if (!selectedStart) return false
@@ -255,6 +319,17 @@ export default function HomestayDetail() {
     }, [checkIn, checkOut, occupiedDateRanges])
 
     const hasDateBlocked = isCheckInOccupied || hasOccupiedConflict
+
+    // Close calendar when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+                setShowCalendar(null)
+            }
+        }
+        if (showCalendar !== null) document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [showCalendar])
 
     useEffect(() => {
         let alive = true
@@ -650,25 +725,82 @@ export default function HomestayDetail() {
                                 </div>
 
                                 {/* Step 1: Chọn ngày */}
-                                <div className={`mt-5 grid grid-cols-2 gap-3 ${hasDateBlocked ? 'opacity-70' : ''}`}>
-                                    <div>
+                                <div className="mt-5 grid grid-cols-2 gap-3">
+                                    {/* Ngày nhận */}
+                                    <div className="relative">
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4 text-gray-500" />
                                             Ngày nhận
+                                            {occupiedDatesLoading && <span className="text-xs text-gray-400 font-normal">...</span>}
                                         </label>
-                                        <input value={checkIn} onChange={(e) => setCheckIn(e.target.value)} type="date" min={new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCalendar((v) => v === 'checkIn' ? null : 'checkIn')}
+                                            className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-cyan-500 ${checkIn ? 'text-gray-900 border-gray-300' : 'text-gray-400 border-gray-300'}`}
+                                        >
+                                            {checkIn ? format(new Date(checkIn), 'dd/MM/yyyy') : 'Chọn ngày'}
+                                        </button>
+                                        {showCalendar === 'checkIn' && (
+                                            <div ref={calendarRef} className="absolute z-50 mt-1 left-0 bg-white rounded-xl shadow-xl border border-gray-200 p-2 chms-calendar">
+                                                <DayPicker
+                                                    mode="single"
+                                                    selected={checkIn ? new Date(checkIn) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (!date) return
+                                                        const val = format(date, 'yyyy-MM-dd')
+                                                        setCheckIn(val)
+                                                        // reset checkout nếu checkout <= checkin mới
+                                                        if (checkOut && checkOut <= val) setCheckOut('')
+                                                        setShowCalendar(null)
+                                                    }}
+                                                    disabled={disabledDays}
+                                                    modifiersClassNames={{ today: 'rdp-today' }}
+                                                />
+                                                {occupiedDateRanges.length > 0 && (
+                                                    <div className="px-3 pb-2 text-xs text-gray-400 flex items-center gap-1.5">
+                                                        <span className="inline-block w-4 border-t border-gray-400" />
+                                                        Ngày đã có khách đặt
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div>
+
+                                    {/* Ngày trả */}
+                                    <div className="relative">
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4 text-gray-500" />
                                             Ngày trả
                                         </label>
-                                        <input value={checkOut} onChange={(e) => setCheckOut(e.target.value)} type="date" min={checkIn || new Date().toISOString().slice(0, 10)} className={`w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${hasDateBlocked ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300'}`} />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCalendar((v) => v === 'checkOut' ? null : 'checkOut')}
+                                            className={`w-full mt-1 px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-cyan-500 ${checkOut ? 'text-gray-900 border-gray-300' : 'text-gray-400 border-gray-300'}`}
+                                        >
+                                            {checkOut ? format(new Date(checkOut), 'dd/MM/yyyy') : 'Chọn ngày'}
+                                        </button>
+                                        {showCalendar === 'checkOut' && (
+                                            <div ref={calendarRef} className="absolute z-50 mt-1 right-0 bg-white rounded-xl shadow-xl border border-gray-200 p-2 chms-calendar">
+                                                <DayPicker
+                                                    mode="single"
+                                                    selected={checkOut ? new Date(checkOut) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (!date) return
+                                                        setCheckOut(format(date, 'yyyy-MM-dd'))
+                                                        setShowCalendar(null)
+                                                    }}
+                                                    disabled={checkOutDisabledDays}
+                                                    modifiersClassNames={{ today: 'rdp-today' }}
+                                                />
+                                                {occupiedDateRanges.length > 0 && (
+                                                    <div className="px-3 pb-2 text-xs text-gray-500">
+                                                        Ngày gạch = đã có khách đặt
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                {occupiedDatesLoading && (
-                                    <div className="mt-2 text-xs text-gray-500">Đang tải lịch phòng đã đặt...</div>
-                                )}
                                 {hasDateBlocked && (
                                     <div className="mt-2 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded-lg px-3 py-2">
                                         {isCheckInOccupied && !checkOut
@@ -676,6 +808,7 @@ export default function HomestayDetail() {
                                             : 'Khoảng ngày đã chọn trùng với lịch đã đặt của homestay. Vui lòng chọn khoảng khác.'}
                                     </div>
                                 )}
+
 
                                 {/* Tóm tắt số đêm */}
                                 {nights > 0 && (

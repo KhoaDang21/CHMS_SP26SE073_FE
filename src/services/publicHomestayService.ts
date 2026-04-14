@@ -59,10 +59,21 @@ export const publicHomestayService = {
         bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
         images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
         amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
-        averageRating: it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
-        totalReviews: it.totalReviews ?? it.TotalReviews ?? it.reviewCount ?? it.ReviewCount ?? 0,
+        averageRating:
+          it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
+        totalReviews:
+          it.totalReviews ??
+          it.TotalReviews ??
+          it.reviewCount ??
+          it.ReviewCount ??
+          0,
         rating: it.rating ?? it.Rating ?? null,
-        reviewCount: it.reviewCount ?? it.ReviewCount ?? it.totalReviews ?? it.TotalReviews ?? 0,
+        reviewCount:
+          it.reviewCount ??
+          it.ReviewCount ??
+          it.totalReviews ??
+          it.TotalReviews ??
+          0,
         ownerId: it.ownerId ?? it.OwnerId ?? "",
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
@@ -119,10 +130,21 @@ export const publicHomestayService = {
         bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
         images: it.images ?? it.ImageUrls ?? it.imageUrls ?? it.imageUrls ?? [],
         amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
-        averageRating: it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
-        totalReviews: it.totalReviews ?? it.TotalReviews ?? it.reviewCount ?? it.ReviewCount ?? 0,
+        averageRating:
+          it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
+        totalReviews:
+          it.totalReviews ??
+          it.TotalReviews ??
+          it.reviewCount ??
+          it.ReviewCount ??
+          0,
         rating: it.rating ?? it.Rating ?? null,
-        reviewCount: it.reviewCount ?? it.ReviewCount ?? it.totalReviews ?? it.TotalReviews ?? 0,
+        reviewCount:
+          it.reviewCount ??
+          it.ReviewCount ??
+          it.totalReviews ??
+          it.TotalReviews ??
+          0,
         ownerId: it.ownerId ?? it.OwnerId ?? "",
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
@@ -173,10 +195,21 @@ export const publicHomestayService = {
         bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
         images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
         amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
-        averageRating: it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
-        totalReviews: it.totalReviews ?? it.TotalReviews ?? it.reviewCount ?? it.ReviewCount ?? 0,
+        averageRating:
+          it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
+        totalReviews:
+          it.totalReviews ??
+          it.TotalReviews ??
+          it.reviewCount ??
+          it.ReviewCount ??
+          0,
         rating: it.rating ?? it.Rating ?? null,
-        reviewCount: it.reviewCount ?? it.ReviewCount ?? it.totalReviews ?? it.TotalReviews ?? 0,
+        reviewCount:
+          it.reviewCount ??
+          it.ReviewCount ??
+          it.totalReviews ??
+          it.TotalReviews ??
+          0,
         ownerId: it.ownerId ?? it.OwnerId ?? "",
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
@@ -216,12 +249,12 @@ export const publicHomestayService = {
 
       return rawList
         .map((item) => ({
-          checkIn: String(item?.checkIn ?? item?.CheckIn ?? '').slice(0, 10),
-          checkOut: String(item?.checkOut ?? item?.CheckOut ?? '').slice(0, 10),
+          checkIn: String(item?.checkIn ?? item?.CheckIn ?? "").slice(0, 10),
+          checkOut: String(item?.checkOut ?? item?.CheckOut ?? "").slice(0, 10),
         }))
         .filter((item) => item.checkIn && item.checkOut);
     } catch (error) {
-      console.error('Error fetching occupied dates:', error);
+      console.error("Error fetching occupied dates:", error);
       return [];
     }
   },
