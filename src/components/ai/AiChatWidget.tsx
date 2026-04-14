@@ -152,11 +152,11 @@ export default function AiChatWidget() {
     try {
       // Send to /api/ai/chat - backend handles ALL logic
       // (intent detection, FAQ routing, recommendations, etc.)
-      const aiResponse = await aiService.chat(msg);
+      const response = await aiService.chat(msg);
 
       setMessages(prev => [...prev, {
         id: `ai-${Date.now()}`, sender: 'AI',
-        message: aiResponse || 'Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này.',
+        message: response.replyMessage || 'Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này.',
         timestamp: new Date().toISOString(),
       }]);
     } catch (e: any) {
