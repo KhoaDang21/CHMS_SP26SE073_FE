@@ -11,12 +11,8 @@ import toast from 'react-hot-toast';
 import type { Homestay } from "../types/homestay.types";
 import type { Province, District } from "../types/homestay.types";
 import MainLayout from "../layouts/MainLayout";
-import { useTranslation } from 'react-i18next';
 
 export default function HomePage() {
-  const { i18n } = useTranslation();
-  const isEn = i18n.language.startsWith('en');
-  const tr = (vi: string, en: string) => (isEn ? en : vi);
   const navigate = useNavigate();
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -148,29 +144,27 @@ export default function HomePage() {
         {/* Hero Section */}
         <div className="text-center py-12">
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            {tr('Khám Phá Homestay', 'Discover Coastal Homestays')}
+            Khám Phá Homestay
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">
-              {tr('Ven Biển Tuyệt Đẹp', 'By The Beautiful Sea')}
+              Ven Biển Tuyệt Đẹp
             </span>
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            {tr(
-              'Tìm kiếm và đặt những homestay ven biển tuyệt vời nhất Việt Nam. Trải nghiệm kỳ nghỉ hoàn hảo với view biển tuyệt đẹp.',
-              'Search and book the best coastal homestays in Vietnam. Enjoy a perfect vacation with breathtaking sea views.'
-            )}
+            Tìm kiếm và đặt những homestay ven biển tuyệt vời nhất Việt Nam.
+            Trải nghiệm kỳ nghỉ hoàn hảo với view biển tuyệt đẹp.
           </p>
         </div>
 
         {/* Search Section */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">{tr('Tìm Kiếm Homestay', 'Search Homestays')}</h3>
+            <h3 className="text-xl font-semibold text-gray-900">Tìm Kiếm Homestay</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Tỉnh/Thành */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{tr('Tỉnh/Thành', 'Province/City')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 <select
@@ -178,7 +172,7 @@ export default function HomePage() {
                   onChange={(e) => setSelectedProvince(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white"
                 >
-                  <option value="">{tr('Tất cả tỉnh/thành', 'All provinces/cities')}</option>
+                  <option value="">Tất cả tỉnh/thành</option>
                   {provinces.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -188,7 +182,7 @@ export default function HomePage() {
 
             {/* Quận/Huyện */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{tr('Quận/Huyện', 'District')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quận/Huyện</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 <select
@@ -197,7 +191,7 @@ export default function HomePage() {
                   disabled={!selectedProvince}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
                 >
-                  <option value="">{tr('Tất cả quận/huyện', 'All districts')}</option>
+                  <option value="">Tất cả quận/huyện</option>
                   {filteredDistricts.map(d => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
@@ -207,7 +201,7 @@ export default function HomePage() {
 
             {/* Ngày Nhận Phòng */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{tr('Ngày Nhận Phòng', 'Check-in Date')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày Nhận Phòng</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -229,7 +223,7 @@ export default function HomePage() {
             {/* Ngày Trả Phòng */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {tr('Ngày Trả Phòng', 'Check-out Date')}
+                Ngày Trả Phòng
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -257,18 +251,18 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900">
               {(selectedProvince || selectedDistrict || (checkInDate && checkOutDate))
-                ? `${tr('Kết Quả Tìm Kiếm', 'Search Results')} (${homestays.length})`
-                : tr('Homestay Nổi Bật', 'Featured Homestays')}
+                ? `Kết Quả Tìm Kiếm (${homestays.length})`
+                : 'Homestay Nổi Bật'}
               {checkInDate && checkOutDate && (
                 <span className="ml-2 text-sm font-normal text-gray-500">
-                  · {new Date(checkInDate).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')} – {new Date(checkOutDate).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}
+                  · {new Date(checkInDate).toLocaleDateString('vi-VN')} – {new Date(checkOutDate).toLocaleDateString('vi-VN')}
                 </span>
               )}
             </h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {loading && (
-              <div className="col-span-full text-center py-8">{tr('Đang tải homestay...', 'Loading homestays...')}</div>
+              <div className="col-span-full text-center py-8">Đang tải homestay...</div>
             )}
 
             {error && (
@@ -276,7 +270,7 @@ export default function HomePage() {
             )}
 
             {!loading && !error && homestays.length === 0 && (
-              <div className="col-span-full text-center py-8">{tr('Không có homestay nào.', 'No homestays found.')}</div>
+              <div className="col-span-full text-center py-8">Không có homestay nào.</div>
             )}
 
             {!loading && homestays.map((homestay) => (
@@ -329,26 +323,23 @@ export default function HomePage() {
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
           <div className="relative z-10 max-w-3xl mx-auto text-center">
             <h3 className="text-3xl md:text-4xl font-bold mb-4">
-              {tr('🏖️ Trải Nghiệm Kỳ Nghỉ Tuyệt Vời', '🏖️ Enjoy A Wonderful Vacation')}
+              🏖️ Trải Nghiệm Kỳ Nghỉ Tuyệt Vời
             </h3>
             <p className="text-lg text-blue-50 mb-6">
-              {tr(
-                'Khám phá những homestay ven biển đẹp nhất Việt Nam. Đặt phòng dễ dàng, giá cả hợp lý, dịch vụ tận tâm.',
-                'Discover Vietnam\'s most beautiful coastal homestays. Easy booking, fair pricing, and dedicated service.'
-              )}
+              Khám phá những homestay ven biển đẹp nhất Việt Nam. Đặt phòng dễ dàng, giá cả hợp lý, dịch vụ tận tâm.
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm">
               <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>✓</span>
-                <span>{tr('Đặt phòng nhanh chóng', 'Quick booking')}</span>
+                <span>Đặt phòng nhanh chóng</span>
               </div>
               <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>✓</span>
-                <span>{tr('Giá tốt nhất', 'Best price')}</span>
+                <span>Giá tốt nhất</span>
               </div>
               <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>✓</span>
-                <span>{tr('Hỗ trợ 24/7', '24/7 support')}</span>
+                <span>Hỗ trợ 24/7</span>
               </div>
             </div>
           </div>

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Plus, Send, X, ChevronRight, Clock, CheckCircle2,
   AlertCircle, Loader2, MessageSquare, Tag, Inbox,
@@ -102,9 +101,6 @@ function StatusTimeline({ status }: { status: string }) {
 
 // ─── Create Ticket Modal ──────────────────────────────────────────────────────
 function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const { i18n } = useTranslation();
-  const isEn = i18n.language.startsWith('en');
-  const tr = (vi: string, en: string) => (isEn ? en : vi);
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<CreateTicketRequest>({ title: '', description: '', priority: 'NORMAL' });
   const [submitting, setSubmitting] = useState(false);
@@ -133,7 +129,7 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     const res = await supportTicketService.create(form);
     setSubmitting(false);
     if (res.success) {
-      toast.success(tr('Gửi khiếu nại thành công!', 'Ticket sent successfully!'));
+      toast.success('Gửi khiếu nại thành công!');
       onCreated();
     } else {
       toast.error(res.message);
@@ -151,8 +147,8 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
               <Headphones className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">{tr('Gửi khiếu nại', 'Submit a ticket')}</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{tr('Đội ngũ phản hồi trong vòng 24 giờ', 'Our team responds within 24 hours')}</p>
+              <h2 className="text-lg font-semibold text-gray-900">Gửi khiếu nại</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Đội ngũ phản hồi trong vòng 24 giờ</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -216,7 +212,7 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
-                          {b.homestayName ?? tr('Đặt phòng', 'Booking')}
+                          {b.homestayName ?? 'Đặt phòng'}
                         </p>
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <span className="text-sm text-gray-500">
@@ -578,9 +574,6 @@ function TicketDetailPanel({
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
-  const { i18n } = useTranslation();
-  const isEn = i18n.language.startsWith('en');
-  const tr = (vi: string, en: string) => (isEn ? en : vi);
   return (
     <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-8 py-16">
       <div className="relative">
@@ -592,9 +585,9 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
         </div>
       </div>
       <div className="space-y-1.5">
-        <h3 className="text-lg font-semibold text-gray-800">{tr('Chưa có khiếu nại nào', 'No tickets yet')}</h3>
+        <h3 className="text-lg font-semibold text-gray-800">Chưa có khiếu nại nào</h3>
         <p className="text-sm text-gray-500 max-w-xs leading-relaxed">
-          {tr('Sau khi hoàn thành lượt ở, bạn có thể gửi khiếu nại nếu gặp vấn đề. Đội ngũ sẽ phản hồi trong 24 giờ.', 'After your stay, you can submit a ticket if you face issues. Our team will respond within 24 hours.')}
+          Sau khi hoàn thành lượt ở, bạn có thể gửi khiếu nại nếu gặp vấn đề. Đội ngũ sẽ phản hồi trong 24 giờ.
         </p>
       </div>
       <div className="flex flex-col gap-2 w-full max-w-xs">
@@ -605,12 +598,12 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
             hover:opacity-90 transition-opacity shadow-md shadow-blue-200"
         >
           <Headphones className="w-4 h-4" />
-          {tr('Gửi khiếu nại', 'Submit a ticket')}
+          Gửi khiếu nại
         </button>
         <div className="flex items-center gap-3 text-xs text-gray-400 justify-center pt-1">
-          <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-400" /> {tr('Miễn phí', 'Free')}</span>
-          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-blue-400" /> {tr('Phản hồi nhanh', 'Fast response')}</span>
-          <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3 text-cyan-400" /> {tr('Hỗ trợ 24/7', '24/7 support')}</span>
+          <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-400" /> Miễn phí</span>
+          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-blue-400" /> Phản hồi nhanh</span>
+          <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3 text-cyan-400" /> Hỗ trợ 24/7</span>
         </div>
       </div>
     </div>
@@ -655,9 +648,6 @@ function StatsBar({ tickets, filterStatus, onFilter }: {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SupportPage() {
-  const { i18n } = useTranslation();
-  const isEn = i18n.language.startsWith('en');
-  const tr = (vi: string, en: string) => (isEn ? en : vi);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -705,9 +695,9 @@ export default function SupportPage() {
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-sm">
                 <Headphones className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">{tr('Hỗ Trợ', 'Support')}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Hỗ Trợ</h1>
             </div>
-            <p className="text-sm text-gray-500 ml-11">{tr('Quản lý các yêu cầu hỗ trợ của bạn', 'Manage your support requests')}</p>
+            <p className="text-sm text-gray-500 ml-11">Quản lý các yêu cầu hỗ trợ của bạn</p>
           </div>
           <button
             onClick={() => setShowCreate(true)}
@@ -715,7 +705,7 @@ export default function SupportPage() {
               text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-sm shadow-blue-200"
           >
             <Plus className="w-4 h-4" />
-            {tr('Gửi khiếu nại', 'Submit a ticket')}
+            Gửi khiếu nại
           </button>
         </div>
 
@@ -746,10 +736,10 @@ export default function SupportPage() {
                 ) : filtered.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6 py-12">
                     <Inbox className="w-10 h-10 text-gray-200" />
-                    <p className="text-sm text-gray-400">{tr('Không có yêu cầu nào trong mục này.', 'No requests in this section.')}</p>
+                    <p className="text-sm text-gray-400">Không có yêu cầu nào trong mục này.</p>
                     <button onClick={() => setFilterStatus('ALL')}
                       className="text-sm text-blue-500 hover:underline font-medium">
-                      {tr('Xem tất cả', 'View all')}
+                      Xem tất cả
                     </button>
                   </div>
                 ) : (
@@ -808,8 +798,8 @@ export default function SupportPage() {
                     <MessageSquare className="w-8 h-8 text-blue-300" />
                   </div>
                   <div>
-                    <p className="text-gray-600 font-medium">{tr('Chọn một yêu cầu để xem chi tiết', 'Select a request to view details')}</p>
-                    <p className="text-sm text-gray-400 mt-0.5">{tr('hoặc tạo yêu cầu hỗ trợ mới', 'or create a new support request')}</p>
+                    <p className="text-gray-600 font-medium">Chọn một yêu cầu để xem chi tiết</p>
+                    <p className="text-sm text-gray-400 mt-0.5">hoặc tạo yêu cầu hỗ trợ mới</p>
                   </div>
                   <button
                     onClick={() => setShowCreate(true)}
@@ -817,7 +807,7 @@ export default function SupportPage() {
                       text-sm font-medium hover:bg-blue-50 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                    {tr('Tạo yêu cầu mới', 'Create new request')}
+                    Tạo yêu cầu mới
                   </button>
                 </div>
               )}

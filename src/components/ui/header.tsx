@@ -5,13 +5,11 @@ import {
   BellRing, Waves, Menu, X, Trash2, CheckCheck, Star,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/authService';
 import { notificationService } from '../../services/notificationService';
 import type { Notification } from '../../services/notificationService';
 import { signalRService } from '../../services/signalRService';
 import { minDelay } from '../../utils/minDelay';
-import LanguageSwitcher from '../common/LanguageSwitcher';
 
 interface HeaderProps {
   showMenuButton?: boolean;
@@ -98,13 +96,8 @@ function getNotifRoute(notif: Notification): string {
 export default function Header({ showMenuButton = false, onMenuClick }: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { i18n } = useTranslation();
   const isAuthenticated = authService.isAuthenticated();
   const currentUser = authService.getUser();
-  const isEn = i18n.language.startsWith('en');
-  const tr = (vi: string, en: string) => (isEn ? en : vi);
-  const isCustomerRoute = location.pathname.startsWith('/customer');
-  const isCustomerUser = currentUser?.role === 'customer';
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -188,7 +181,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch {
-      toast.error(tr('Không thể đánh dấu đã đọc', 'Cannot mark as read'));
+      toast.error('Không thể đánh dấu đã đọc');
     }
   };
 
@@ -198,7 +191,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch {
-      toast.error(tr('Không thể đánh dấu tất cả đã đọc', 'Cannot mark all as read'));
+      toast.error('Không thể đánh dấu tất cả đã đọc');
     }
   };
 
@@ -210,7 +203,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
       setNotifications(prev => prev.filter(n => n.id !== id));
       if (deleted && !deleted.isRead) setUnreadCount(prev => Math.max(0, prev - 1));
     } catch {
-      toast.error(tr('Không thể xóa thông báo', 'Cannot delete notification'));
+      toast.error('Không thể xóa thông báo');
     }
   };
 
@@ -219,10 +212,10 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
     setIsUserMenuOpen(false);
     try {
       await minDelay(authService.logout());
-      toast.success(tr('Đăng xuất thành công!', 'Logged out successfully!'));
+      toast.success('Đăng xuất thành công!');
       navigate('/');
     } catch {
-      toast.error(tr('Đăng xuất thất bại, vui lòng thử lại.', 'Logout failed, please try again.'));
+      toast.error('Đăng xuất thất bại, vui lòng thử lại.');
     } finally {
       setIsLoggingOut(false);
     }
@@ -267,16 +260,13 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                   : 'text-gray-700 hover:bg-gray-100'
                   }`}
               >
-                {isEn ? item.name : item.nameVi}
+                {item.nameVi}
               </button>
             ))}
           </nav>
 
           {/* Right side */}
           <div className="flex items-center gap-4">
-            {/* Language Switcher */}
-            {(!isAuthenticated || isCustomerRoute || isCustomerUser) && <LanguageSwitcher />}
-
             {!showMenuButton && (
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -307,14 +297,14 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                     <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
                       {/* Header */}
                       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                        <span className="font-semibold text-gray-800">{tr('Thông báo', 'Notifications')}</span>
+                        <span className="font-semibold text-gray-800">Thông báo</span>
                         {unreadCount > 0 && (
                           <button
                             onClick={handleMarkAllAsRead}
                             className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
                           >
                             <CheckCheck className="w-3.5 h-3.5" />
-                            {tr('Đánh dấu tất cả đã đọc', 'Mark all as read')}
+                            Đánh dấu tất cả đã đọc
                           </button>
                         )}
                       </div>
@@ -331,7 +321,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                         ) : notifications.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-10 text-gray-400">
                             <Bell className="w-8 h-8 mb-2 opacity-40" />
-                            <p className="text-sm">{tr('Không có thông báo', 'No notifications')}</p>
+                            <p className="text-sm">Không có thông báo</p>
                           </div>
                         ) : (
                           notifications.slice(0, 5).map((notif) => (
@@ -383,7 +373,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                           onClick={() => { setIsNotifOpen(false); navigate('/customer/notifications'); }}
                           className="w-full py-2.5 text-sm text-center text-blue-500 hover:text-blue-700 hover:bg-gray-50 transition-colors font-medium"
                         >
-                          {tr('Xem tất cả thông báo', 'View all notifications')}
+                          Xem tất cả thông báo
                         </button>
                       </div>
                     </div>
@@ -411,21 +401,21 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
                         <User className="w-4 h-4" />
-                        {tr('Hồ Sơ', 'Profile')}
+                        Hồ Sơ
                       </button>
                       <button
                         onClick={() => { navigate('/customer/reviews'); setIsUserMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
                         <Star className="w-4 h-4" />
-                        {tr('Đánh Giá Của Tôi', 'My Reviews')}
+                        Đánh Giá Của Tôi
                       </button>
                       <button
                         onClick={() => { navigate('/customer/profile?tab=preferences'); setIsUserMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
                       >
                         <BellRing className="w-4 h-4" />
-                        {tr('Cài Đặt', 'Settings')}
+                        Cài Đặt
                       </button>
                       <hr className="my-2" />
                       <button
@@ -441,7 +431,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                         ) : (
                           <LogOut className="w-4 h-4" />
                         )}
-                        {isLoggingOut ? tr('Đang đăng xuất...', 'Logging out...') : tr('Đăng Xuất', 'Logout')}
+                        {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng Xuất'}
                       </button>
                     </div>
                   )}
@@ -453,13 +443,13 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                   onClick={() => navigate('/auth/login')}
                   className="px-4 py-2 text-gray-700 hover:bg-gray-100 font-medium transition-colors rounded-lg"
                 >
-                  {tr('Đăng Nhập', 'Login')}
+                  Đăng Nhập
                 </button>
                 <button
                   onClick={() => navigate('/auth/register')}
                   className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-400 hover:to-cyan-400 transition-all font-medium"
                 >
-                  {tr('Đăng Ký', 'Register')}
+                  Đăng Ký
                 </button>
               </div>
             )}
@@ -483,7 +473,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                       }`}
                   >
                     {Icon ? <Icon className="w-4 h-4 mr-2" /> : null}
-                    {isEn ? item.name : item.nameVi}
+                    {item.nameVi}
                   </button>
                 );
               })}
@@ -494,13 +484,13 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                     onClick={() => { navigate('/auth/login'); setIsMobileMenuOpen(false); }}
                     className="w-full px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors"
                   >
-                    {tr('Đăng Nhập', 'Login')}
+                    Đăng Nhập
                   </button>
                   <button
                     onClick={() => { navigate('/auth/register'); setIsMobileMenuOpen(false); }}
                     className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all font-medium"
                   >
-                    {tr('Đăng Ký', 'Register')}
+                    Đăng Ký
                   </button>
                 </div>
               )}
@@ -530,7 +520,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-            <p className="text-gray-700 font-medium">{tr('Đang đăng xuất...', 'Logging out...')}</p>
+            <p className="text-gray-700 font-medium">Đang đăng xuất...</p>
           </div>
         </div>
       )}

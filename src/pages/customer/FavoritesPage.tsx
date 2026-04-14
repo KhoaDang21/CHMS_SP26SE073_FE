@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import MainLayout from '../../layouts/MainLayout';
 import HomestayCard from '../../components/homestay/HomestayCard';
 import { wishlistService } from '../../services/wishlistService';
@@ -18,9 +17,6 @@ function sortByReview(list: Homestay[]): Homestay[] {
 }
 
 export default function FavoritesPage() {
-  const { i18n } = useTranslation();
-  const isEn = i18n.language.startsWith('en');
-  const tr = (vi: string, en: string) => (isEn ? en : vi);
   const [items, setItems] = useState<Homestay[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +28,7 @@ export default function FavoritesPage() {
         const sorted = sortByReview(list);
         if (mounted) setItems(sorted);
       } catch (e) {
-        toast.error(tr('Lấy danh sách yêu thích thất bại', 'Failed to load wishlist'));
+        toast.error('Lấy danh sách yêu thích thất bại');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -53,16 +49,16 @@ export default function FavoritesPage() {
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{tr('Homestay Yêu Thích', 'Favorite Homestays')}</h1>
-            <p className="text-gray-600">{tr('Danh sách homestay bạn đã lưu · sắp xếp theo đánh giá', 'Saved homestays · sorted by rating')}</p>
+            <h1 className="text-3xl font-bold text-gray-900">Homestay Yêu Thích</h1>
+            <p className="text-gray-600">Danh sách homestay bạn đã lưu · sắp xếp theo đánh giá</p>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-12">{tr('Đang tải...', 'Loading...')}</div>
+          <div className="text-center py-12">Đang tải...</div>
         ) : items.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">{tr('Bạn chưa có homestay yêu thích nào.', 'You do not have any favorite homestays yet.')}</p>
+            <p className="text-gray-500 text-lg">Bạn chưa có homestay yêu thích nào.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

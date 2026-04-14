@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, X, ChevronRight } from "lucide-react";
-import { useTranslation } from 'react-i18next';
 import { bookingService, type Booking } from "../../services/bookingService";
 import MainLayout from "../../layouts/MainLayout";
 import { publicHomestayService } from "../../services/publicHomestayService";
@@ -13,9 +12,6 @@ import type { Province, District } from "../../types/homestay.types";
 
 export default function CustomerDashboard() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isEn = i18n.language.startsWith('en');
-  const tr = (vi: string, en: string) => (isEn ? en : vi);
   const currentUser = authService.getUser();
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -174,9 +170,9 @@ export default function CustomerDashboard() {
         {/* Welcome Section */}
         <div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            {tr('Chào mừng trở lại', 'Welcome back')}, {currentUser?.name}! 👋
+            Chào mừng trở lại, {currentUser?.name}! 👋
           </h2>
-          <p className="text-gray-600">{tr('Tìm kiếm homestay ven biển hoàn hảo cho bạn', 'Find the perfect coastal homestay for you')}</p>
+          <p className="text-gray-600">Tìm kiếm homestay ven biển hoàn hảo cho bạn</p>
         </div>
 
 
@@ -184,13 +180,13 @@ export default function CustomerDashboard() {
         {/* Search Section */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">{tr('Tìm Kiếm Homestay', 'Search Homestays')}</h3>
+            <h3 className="text-xl font-semibold text-gray-900">Tìm Kiếm Homestay</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Tỉnh/Thành */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{tr('Tỉnh/Thành', 'Province/City')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 <select
@@ -198,7 +194,7 @@ export default function CustomerDashboard() {
                   onChange={(e) => setSelectedProvince(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white"
                 >
-                  <option value="">{tr('Tất cả tỉnh/thành', 'All provinces/cities')}</option>
+                  <option value="">Tất cả tỉnh/thành</option>
                   {provinces.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -208,7 +204,7 @@ export default function CustomerDashboard() {
 
             {/* Quận/Huyện */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{tr('Quận/Huyện', 'District')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quận/Huyện</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 <select
@@ -217,7 +213,7 @@ export default function CustomerDashboard() {
                   disabled={!selectedProvince}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
                 >
-                  <option value="">{tr('Tất cả quận/huyện', 'All districts')}</option>
+                  <option value="">Tất cả quận/huyện</option>
                   {filteredDistricts.map(d => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
@@ -228,7 +224,7 @@ export default function CustomerDashboard() {
             {/* Ngày Nhận Phòng */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {tr('Ngày Nhận Phòng', 'Check-in Date')}
+                Ngày Nhận Phòng
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -251,7 +247,7 @@ export default function CustomerDashboard() {
             {/* Ngày Trả Phòng */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {tr('Ngày Trả Phòng', 'Check-out Date')}
+                Ngày Trả Phòng
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -278,23 +274,23 @@ export default function CustomerDashboard() {
         {isLoadingBookings ? (
           <div className="text-center py-8">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <p className="mt-2 text-gray-600">{tr('Đang tải booking...', 'Loading bookings...')}</p>
+            <p className="mt-2 text-gray-600">Đang tải booking...</p>
           </div>
         ) : (
           <div className={`rounded-3xl border px-6 py-6 shadow-sm sm:px-8 ${upcomingConfirmedBookings.length > 0 ? 'border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white' : 'border-cyan-100 bg-gradient-to-r from-cyan-50 via-white to-white'}`}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl">
                 <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${upcomingConfirmedBookings.length > 0 ? 'bg-amber-100 text-amber-700' : 'bg-cyan-100 text-cyan-700'}`}>
-                  {upcomingConfirmedBookings.length > 0 ? tr('Thông báo chuyến đi', 'Trip notification') : tr('Lời chào từ CHMS', 'Greetings from CHMS')}
+                  {upcomingConfirmedBookings.length > 0 ? 'Thông báo chuyến đi' : 'Lời chào từ CHMS'}
                 </div>
                 <p className="mt-3 text-xl font-bold leading-8 text-gray-900 sm:text-2xl">
                   {upcomingConfirmedBookings.length > 0
-                    ? tr('Bạn đang có 1 chuyến đi sắp tới, hãy chú ý nhé.', 'You have 1 upcoming trip, please take note.')
-                    : tr('Chúng tôi rất vinh hạnh khi được đón tiếp bạn ở 1 homestay ven biển tuyệt đẹp.', 'We are honored to host you at a beautiful coastal homestay.')}
+                    ? 'Bạn đang có 1 chuyến đi sắp tới, hãy chú ý nhé.'
+                    : 'Chúng tôi rất vinh hạnh khi được đón tiếp bạn ở 1 homestay ven biển tuyệt đẹp.'}
                 </p>
                 {upcomingConfirmedBookings.length > 0 && (
                   <p className="mt-2 text-sm text-gray-600">
-                    {tr('Có', 'There are')} {upcomingConfirmedBookings.length} {tr('booking đã được xác nhận trong 7 ngày tới.', 'confirmed bookings in the next 7 days.')}
+                    Có {upcomingConfirmedBookings.length} booking đã được xác nhận trong 7 ngày tới.
                   </p>
                 )}
               </div>
@@ -305,7 +301,7 @@ export default function CustomerDashboard() {
                   onClick={() => setShowUpcomingModal(true)}
                   className="inline-flex items-center gap-2 rounded-full bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-black"
                 >
-                  {tr('Xem chuyến sắp tới', 'View upcoming trips')}
+                  Xem chuyến sắp tới
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
@@ -318,8 +314,8 @@ export default function CustomerDashboard() {
             <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">{tr('Chuyến đi sắp tới', 'Upcoming trips')}</h3>
-                  <p className="text-sm text-gray-500">{tr('Danh sách booking đã được xác nhận trong 7 ngày tới', 'List of confirmed bookings in the next 7 days')}</p>
+                  <h3 className="text-xl font-bold text-gray-900">Chuyến đi sắp tới</h3>
+                  <p className="text-sm text-gray-500">Danh sách booking đã được xác nhận trong 7 ngày tới</p>
                 </div>
                 <button
                   type="button"
@@ -333,14 +329,14 @@ export default function CustomerDashboard() {
               <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
                 {upcomingConfirmedBookings.length === 0 ? (
                   <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-5 py-6 text-center text-gray-700">
-                    {tr('Hiện tại bạn chưa có booking nào trong 7 ngày tới.', 'You currently have no bookings in the next 7 days.')}
+                    Hiện tại bạn chưa có booking nào trong 7 ngày tới.
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {upcomingConfirmedBookings.map((booking) => {
                       const hs = allHomestays.find((item) => item.id === booking.homestayId);
                       const homestayName = hs?.name || booking.homestayName || 'Homestay';
-                      const location = hs?.address || `${hs?.districtName || ''}${hs?.districtName && hs?.provinceName ? ', ' : ''}${hs?.provinceName || ''}`.trim() || tr('Đang cập nhật', 'Updating');
+                      const location = hs?.address || `${hs?.districtName || ''}${hs?.districtName && hs?.provinceName ? ', ' : ''}${hs?.provinceName || ''}`.trim() || 'Đang cập nhật';
 
                       return (
                         <div key={booking.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
@@ -353,7 +349,7 @@ export default function CustomerDashboard() {
                               </p>
                             </div>
                             <span className="inline-flex w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                              {tr('Đã xác nhận', 'Confirmed')}
+                              Đã xác nhận
                             </span>
                           </div>
 
@@ -367,8 +363,8 @@ export default function CustomerDashboard() {
                               <div className="mt-1 font-semibold">{new Date(booking.checkOut).toLocaleDateString('vi-VN')}</div>
                             </div>
                             <div className="rounded-xl bg-white px-4 py-3">
-                              <div className="text-xs uppercase tracking-wide text-gray-400">{tr('Khách', 'Guests')}</div>
-                              <div className="mt-1 font-semibold">{booking.guestsCount} {tr('khách', 'guests')}</div>
+                              <div className="text-xs uppercase tracking-wide text-gray-400">Khách</div>
+                              <div className="mt-1 font-semibold">{booking.guestsCount} khách</div>
                             </div>
                           </div>
                         </div>
@@ -386,7 +382,7 @@ export default function CustomerDashboard() {
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">
-                {tr('Kết Quả Tìm Kiếm', 'Search Results')} ({filteredHomestays.length})
+                Kết Quả Tìm Kiếm ({filteredHomestays.length})
                 {checkInDate && checkOutDate && (
                   <span className="ml-2 text-sm font-normal text-gray-500">
                     · {new Date(checkInDate).toLocaleDateString('vi-VN')} – {new Date(checkOutDate).toLocaleDateString('vi-VN')}
@@ -396,7 +392,7 @@ export default function CustomerDashboard() {
             </div>
             {filteredHomestays.length === 0 ? (
               <div className="text-center py-8 text-gray-600">
-                {tr('Không tìm thấy homestay phù hợp', 'No matching homestays found')}
+                Không tìm thấy homestay phù hợp
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -417,7 +413,7 @@ export default function CustomerDashboard() {
         {!selectedProvince && !selectedDistrict && !(checkInDate && checkOutDate) && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">{tr('Homestay Nổi Bật', 'Featured Homestays')}</h3>
+              <h3 className="text-xl font-semibold text-gray-900">Homestay Nổi Bật</h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -439,23 +435,23 @@ export default function CustomerDashboard() {
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
           <div className="relative z-10 max-w-3xl mx-auto text-center">
             <h3 className="text-3xl md:text-4xl font-bold mb-4">
-              {tr('🏖️ Trải Nghiệm Kỳ Nghỉ Tuyệt Vời', '🏖️ Enjoy an Amazing Vacation')}
+              🏖️ Trải Nghiệm Kỳ Nghỉ Tuyệt Vời
             </h3>
             <p className="text-lg text-blue-50 mb-6">
-              {tr('Khám phá những homestay ven biển đẹp nhất Việt Nam. Đặt phòng dễ dàng, giá cả hợp lý, dịch vụ tận tâm.', 'Discover Vietnam’s most beautiful coastal homestays. Easy booking, fair pricing, and dedicated service.')}
+              Khám phá những homestay ven biển đẹp nhất Việt Nam. Đặt phòng dễ dàng, giá cả hợp lý, dịch vụ tận tâm.
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm">
               <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>✓</span>
-                <span>{tr('Đặt phòng nhanh chóng', 'Fast booking')}</span>
+                <span>Đặt phòng nhanh chóng</span>
               </div>
               <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>✓</span>
-                <span>{tr('Giá tốt nhất', 'Best price')}</span>
+                <span>Giá tốt nhất</span>
               </div>
               <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>✓</span>
-                <span>{tr('Hỗ trợ 24/7', '24/7 support')}</span>
+                <span>Hỗ trợ 24/7</span>
               </div>
             </div>
           </div>

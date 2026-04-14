@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Lock, Eye, EyeOff, Waves, CheckCircle2 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
-import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 
 export default function ResetPasswordPage() {
   const [formData, setFormData] = useState({
@@ -60,10 +59,7 @@ export default function ResetPasswordPage() {
   const passwordStrength = getPasswordStrength(formData.password);
 
   return (
-    <div className="relative min-h-screen flex">
-      <div className="absolute top-4 right-4 z-10">
-        <LanguageSwitcher />
-      </div>
+    <div className="min-h-screen flex">
       {/* Left side - Reset Password Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-cyan-50">
         <div className="w-full max-w-md">

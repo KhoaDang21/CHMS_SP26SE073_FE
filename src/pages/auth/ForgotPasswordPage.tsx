@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { authService } from '../../services/authService';
 import ResetPasswordModal from '../../components/auth/ResetPasswordModal';
-import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -64,10 +63,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="relative h-screen flex overflow-hidden">
-      <div className="absolute top-4 right-4 z-10">
-        <LanguageSwitcher />
-      </div>
+    <div className="h-screen flex overflow-hidden">
       {/* Left side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50">
         <div className="w-full max-w-md">

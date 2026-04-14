@@ -37,14 +37,6 @@ export interface BookingStatusDetail {
   percentage: number;
 }
 
-export interface HomestaySeasonalPricing {
-  id: string;
-  name?: string;
-  startDate: string;
-  endDate: string;
-  price: number;
-}
-
 export interface BookingsReportData {
   totalBookings: number;
   statusDetails: BookingStatusDetail[];
@@ -72,7 +64,6 @@ export interface Homestay {
   amenities?: string[];
   amenityIds?: string[];
   amenityNames?: string[];
-  seasonalPricings?: HomestaySeasonalPricing[];
   rating?: number;
   reviewCount?: number;
   averageRating?: number;
