@@ -1,6 +1,6 @@
 export const apiConfig = {
   baseURL: import.meta.env.VITE_API_URL || "https://api.chms.io.vn",
-  timeout: 10000,
+  timeout: 60000,
 
   endpoints: {
     auth: {
