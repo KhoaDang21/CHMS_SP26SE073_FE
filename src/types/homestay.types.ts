@@ -1,5 +1,12 @@
 // Homestay related types
 
+export interface HomestaySeasonalPricing {
+  startDate: string;
+  endDate: string;
+  price?: number;
+  minStay?: number;
+}
+
 export interface DashboardStats {
   totalRevenue: number;
   revenueGrowth: number;
