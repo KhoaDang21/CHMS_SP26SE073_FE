@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import {
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Header from '../components/ui/header';
 import { authService } from '../services/authService';
+import { profileService } from '../services/profileService';
 import { minDelay } from '../utils/minDelay';
 import toast from 'react-hot-toast';
 
@@ -26,6 +27,43 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const currentUser = authService.getUser();
+  const [profileAvatar, setProfileAvatar] = useState('');
+
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      setProfileAvatar('');
+      return;
+    }
+
+    let isMounted = true;
+    const fetchAvatar = () => {
+      profileService.getProfile().then((res) => {
+        if (!isMounted) return;
+        const avatar = res.profile?.avatar?.trim();
+        setProfileAvatar(avatar || '');
+      }).catch(() => {
+        if (isMounted) setProfileAvatar('');
+      });
+    };
+
+    const onAvatarUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+      const avatarFromEvent = customEvent.detail?.trim();
+      if (avatarFromEvent) {
+        setProfileAvatar(avatarFromEvent);
+        return;
+      }
+      fetchAvatar();
+    };
+
+    fetchAvatar();
+    window.addEventListener('profile-avatar-updated', onAvatarUpdated);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('profile-avatar-updated', onAvatarUpdated);
+    };
+  }, []);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -69,6 +107,7 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
               </div>
               <SidebarContent
                 currentUser={currentUser}
+                profileAvatar={profileAvatar}
                 isActive={isActive}
                 navigate={(href) => { navigate(href); setMobileOpen(false); }}
                 onLogout={handleLogout}
@@ -83,6 +122,7 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden sticky top-20">
             <SidebarContent
               currentUser={currentUser}
+              profileAvatar={profileAvatar}
               isActive={isActive}
               navigate={navigate}
               onLogout={handleLogout}
@@ -103,24 +143,36 @@ export default function AccountLayout({ children }: AccountLayoutProps) {
 // ── Sidebar content (shared between mobile/desktop) ──────────────────────────
 function SidebarContent({
   currentUser,
+  profileAvatar,
   isActive,
   navigate,
   onLogout,
   loggingOut,
 }: {
   currentUser: ReturnType<typeof authService.getUser>;
+  profileAvatar: string;
   isActive: (href: string) => boolean;
   navigate: (href: string) => void;
   onLogout: () => void;
   loggingOut: boolean;
 }) {
+  const userAvatar = profileAvatar || ((currentUser as any)?.avatar ?? '') || ((currentUser as any)?.avatarUrl ?? '');
+
   return (
     <div className="flex flex-col h-full">
       {/* User info */}
       <div className="px-4 py-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0">
-            <User className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {userAvatar ? (
+              <img
+                src={userAvatar}
+                alt={currentUser?.name || 'User avatar'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="w-5 h-5 text-white" />
+            )}
           </div>
           <div className="min-w-0">
             <p className="font-semibold text-gray-900 text-sm truncate">{currentUser?.name || 'Người dùng'}</p>
