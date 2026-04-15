@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
 import { notificationService } from '../../services/notificationService';
 import type { Notification } from '../../services/notificationService';
+import { profileService } from '../../services/profileService';
 import { signalRService } from '../../services/signalRService';
 import { minDelay } from '../../utils/minDelay';
 
@@ -98,6 +99,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
   const location = useLocation();
   const isAuthenticated = authService.isAuthenticated();
   const currentUser = authService.getUser();
+  const [profileAvatar, setProfileAvatar] = useState('');
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -112,6 +114,42 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
 
 
   const currentNavigationItems = isAuthenticated ? authenticatedNavigationItems : navigationItems;
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setProfileAvatar('');
+      return;
+    }
+
+    let isMounted = true;
+    const fetchAvatar = () => {
+      profileService.getProfile().then((res) => {
+        if (!isMounted) return;
+        const avatar = res.profile?.avatar?.trim();
+        setProfileAvatar(avatar || '');
+      }).catch(() => {
+        if (isMounted) setProfileAvatar('');
+      });
+    };
+
+    const onAvatarUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+      const avatarFromEvent = customEvent.detail?.trim();
+      if (avatarFromEvent) {
+        setProfileAvatar(avatarFromEvent);
+        return;
+      }
+      fetchAvatar();
+    };
+
+    fetchAvatar();
+    window.addEventListener('profile-avatar-updated', onAvatarUpdated);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('profile-avatar-updated', onAvatarUpdated);
+    };
+  }, [isAuthenticated]);
 
   // Fetch unread count + kết nối SignalR khi đã đăng nhập
   useEffect(() => {
@@ -223,6 +261,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
 
 
   const isActivePath = (path: string) => location.pathname === path;
+  const userAvatar = profileAvatar || ((currentUser as any)?.avatar ?? '') || ((currentUser as any)?.avatarUrl ?? '');
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -386,8 +425,16 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center overflow-hidden">
+                      {userAvatar ? (
+                        <img
+                          src={userAvatar}
+                          alt={currentUser?.name || 'User avatar'}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-5 h-5 text-white" />
+                      )}
                     </div>
                     <span className="hidden sm:block text-gray-700 font-medium">
                       {currentUser?.name || 'User'}
@@ -396,6 +443,25 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
 
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                      <div className="px-4 pb-2 mb-1 border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {userAvatar ? (
+                              <img
+                                src={userAvatar}
+                                alt={currentUser?.name || 'User avatar'}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-4 h-4 text-white" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">{currentUser?.name || 'User'}</p>
+                            <p className="text-xs text-gray-400 truncate">{currentUser?.email || ''}</p>
+                          </div>
+                        </div>
+                      </div>
                       <button
                         onClick={() => { navigate('/customer/profile'); setIsUserMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"

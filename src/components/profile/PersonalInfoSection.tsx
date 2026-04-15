@@ -123,6 +123,7 @@ export default function PersonalInfoSection({ profile, onProfileUpdate, language
       const result = await profileService.uploadAvatar(profile.id, file);
       if (result.success && result.avatarUrl) {
         onProfileUpdate({ ...profile, avatar: result.avatarUrl });
+        window.dispatchEvent(new CustomEvent('profile-avatar-updated', { detail: result.avatarUrl }));
         toast.success(result.message || 'Avatar uploaded successfully');
       } else {
         toast.error(result.message || 'Failed to upload avatar');
