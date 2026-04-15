@@ -8,13 +8,17 @@ const resources = {
   en: { translation: enTranslations },
 };
 
+const LANGUAGE_KEY = 'language';
+const LANGUAGE_SELECTED_KEY = 'languageSelected';
+
 // Lấy ngôn ngữ từ localStorage hoặc browser, mặc định là vi
 const getInitialLanguage = () => {
-  const saved = localStorage.getItem('language');
-  if (saved) return saved;
-  
-  const browserLang = navigator.language.split('-')[0];
-  return browserLang === 'en' ? 'en' : 'vi';
+  const isUserSelected = localStorage.getItem(LANGUAGE_SELECTED_KEY) === '1';
+  if (!isUserSelected) return 'vi';
+
+  const saved = localStorage.getItem(LANGUAGE_KEY);
+  if (saved === 'en' || saved === 'vi') return saved;
+  return 'vi';
 };
 
 i18n

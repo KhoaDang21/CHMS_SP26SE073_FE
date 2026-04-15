@@ -5,6 +5,7 @@ import { useWishlist } from '../../contexts/WishlistContext';
 import { authService } from '../../services/authService';
 import toast from 'react-hot-toast';
 import type { Homestay } from '../../types/homestay.types';
+import { getActiveSeasonalPricing } from '../../utils/homestaySeasonalPricing';
 
 interface Props {
   homestay: Homestay;
@@ -26,6 +27,10 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
   const avgRating = homestay.averageRating ?? homestay.rating ?? 0;
   const reviewCount = homestay.totalReviews ?? homestay.reviewCount ?? 0;
   const avgDisplay = avgRating > 0 ? avgRating.toFixed(1) : null;
+  const activeSeasonal = getActiveSeasonalPricing(homestay.seasonalPricings);
+  const seasonalPrice = activeSeasonal?.price;
+  const hasSeasonalPrice = typeof seasonalPrice === 'number' && seasonalPrice > 0 && seasonalPrice !== homestay.pricePerNight;
+  const displayPrice = hasSeasonalPrice ? seasonalPrice : homestay.pricePerNight;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group flex flex-col">
@@ -100,8 +105,8 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
             <div className="flex items-end justify-between gap-2">
               <div className="flex items-baseline gap-1">
                 <span className="text-lg font-bold text-gray-900">
-                  {homestay.pricePerNight
-                    ? homestay.pricePerNight.toLocaleString('vi-VN') + 'đ'
+                  {displayPrice
+                    ? displayPrice.toLocaleString('vi-VN') + 'đ'
                     : '-'}
                 </span>
                 <span className="text-xs text-gray-400">/đêm</span>
@@ -110,10 +115,22 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
                 <span className="text-xs text-gray-400">{reviewCount} đánh giá</span>
               )}
             </div>
-            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-amber-600 bg-amber-50 rounded-md px-2 py-1">
-              <span>⚡</span>
-              <span>Giá có thể tăng vào cuối tuần/lễ theo mùa</span>
-            </div>
+            {hasSeasonalPrice ? (
+              <>
+                <div className="mt-1 text-xs text-gray-500">
+                  Giá niêm yết: <span className="line-through">{homestay.pricePerNight.toLocaleString('vi-VN')}đ</span>
+                </div>
+                <div className="mt-1.5 flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 rounded-md px-2 py-1">
+                  <span>🌿</span>
+                  <span>{activeSeasonal?.name ? `Giá theo mùa: ${activeSeasonal.name}` : 'Đang áp dụng giá theo mùa'}</span>
+                </div>
+              </>
+            ) : (
+              <div className="mt-1.5 flex items-center gap-1 text-[11px] text-amber-600 bg-amber-50 rounded-md px-2 py-1">
+                <span>⚡</span>
+                <span>Giá có thể thay đổi theo mùa/lễ</span>
+              </div>
+            )}
           </div>
         </div>
       </Link>
