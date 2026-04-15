@@ -1,6 +1,7 @@
 // Homestay related types
 
 export interface HomestaySeasonalPricing {
+  name?: string;
   startDate: string;
   endDate: string;
   price?: number;
@@ -82,6 +83,7 @@ export interface Homestay {
   cancellationPolicy?: string;
   houseRules?: string;
   depositPercentage?: number; // % cọc theo cấu hình homestay, mặc định 50 từ BE
+  seasonalPricings?: HomestaySeasonalPricing[];
   createdAt?: string;
   updatedAt?: string;
   addedAt?: string;

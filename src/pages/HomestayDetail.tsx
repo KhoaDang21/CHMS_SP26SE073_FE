@@ -20,6 +20,7 @@ import { experienceService } from '../services/experienceService'
 import type { LocalExperience } from '../types/experience.types'
 import { buildSpecialRequestsWithExperiences } from '../utils/bookingExperience'
 import type { OccupiedDateRange } from '../services/publicHomestayService'
+import { getActiveSeasonalPricing, getSeasonalPricingForStay } from '../utils/homestaySeasonalPricing'
 import { DayPicker } from 'react-day-picker'
 import { format, startOfDay, addDays } from 'date-fns'
 import 'react-day-picker/src/style.css'
@@ -406,10 +407,10 @@ export default function HomestayDetail() {
         // BE calculate trả về số decimal trực tiếp
         if (typeof calcResult === 'number' && Number.isFinite(calcResult)) return calcResult
         // fallback: homestay price * nights
-        const price = homestay?.pricePerNight
+        const price = getSeasonalPricingForStay(homestay?.seasonalPricings, checkIn, checkOut)?.price ?? homestay?.pricePerNight
         if (typeof price === 'number' && nights > 0) return price * nights
         return undefined
-    }, [calcResult, homestay, nights])
+    }, [calcResult, homestay, nights, checkIn, checkOut])
 
     const baseBookingTotal = useMemo(() => {
         const price = homestay?.pricePerNight
@@ -456,6 +457,20 @@ export default function HomestayDetail() {
         () => selectedExperienceItems.reduce((sum, entry) => sum + ((entry.item.price ?? 0) * entry.qty), 0),
         [selectedExperienceItems],
     )
+
+    const activeSeasonalPricing = useMemo(
+        () => getActiveSeasonalPricing(homestay?.seasonalPricings),
+        [homestay?.seasonalPricings],
+    )
+
+    const seasonalPricingForStay = useMemo(
+        () => getSeasonalPricingForStay(homestay?.seasonalPricings, checkIn, checkOut),
+        [checkIn, checkOut, homestay?.seasonalPricings],
+    )
+
+    const seasonalPricingToShow = seasonalPricingForStay ?? activeSeasonalPricing
+    const seasonalDisplayPrice = seasonalPricingToShow?.price
+    const hasSeasonalPricing = typeof seasonalDisplayPrice === 'number' && seasonalDisplayPrice > 0 && seasonalDisplayPrice !== homestay?.pricePerNight
 
     return (
         <>
@@ -714,10 +729,23 @@ export default function HomestayDetail() {
                             <div className="sticky top-24 bg-white rounded-2xl p-5 shadow border border-gray-100">
                                 <div className="flex items-baseline justify-between">
                                     <div>
-                                        <div className="text-2xl font-bold">{homestay.pricePerNight?.toLocaleString('vi-VN')}đ <span className="text-sm font-medium text-gray-600">/ đêm</span></div>
-                                        <div className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 inline-block">
-                                            Giá thực tế có thể thay đổi theo mùa/lễ. Chọn ngày để xem đơn giá áp dụng.
+                                        <div className="text-2xl font-bold">
+                                            {(hasSeasonalPricing ? seasonalDisplayPrice : homestay.pricePerNight)?.toLocaleString('vi-VN')}đ <span className="text-sm font-medium text-gray-600">/ đêm</span>
                                         </div>
+                                        {hasSeasonalPricing && homestay.pricePerNight ? (
+                                            <div className="mt-1 space-y-1">
+                                                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-1 inline-block">
+                                                    {seasonalPricingToShow?.name ? `Giá theo mùa: ${seasonalPricingToShow.name}` : 'Đang áp dụng giá theo mùa'}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    Giá niêm yết: <span className="line-through">{homestay.pricePerNight.toLocaleString('vi-VN')}đ</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 inline-block">
+                                                Giá thực tế có thể thay đổi theo mùa/lễ. Chọn ngày để xem đơn giá áp dụng.
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="text-right text-sm text-gray-600">
                                         {avgRating !== null ? `${avgRating} ★` : ''}
