@@ -2,6 +2,21 @@ import { apiService } from "./apiService";
 import { apiConfig } from "../config/apiConfig";
 import type { Homestay } from "../types/homestay.types";
 
+const normalizeSeasonalPricings = (item: any) => {
+  const raw = item?.seasonalPricings ?? item?.SeasonalPricings ?? item?.seasonalPrices ?? item?.SeasonalPrices ?? [];
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((price: any) => ({
+      name: price?.name ?? price?.Name ?? undefined,
+      startDate: String(price?.startDate ?? price?.StartDate ?? '').slice(0, 10),
+      endDate: String(price?.endDate ?? price?.EndDate ?? '').slice(0, 10),
+      price: Number(price?.price ?? price?.Price ?? 0),
+      minStay: Number(price?.minStay ?? price?.MinStay ?? 0) || undefined,
+    }))
+    .filter((price: any) => price.startDate && price.endDate && Number.isFinite(price.price) && price.price > 0);
+};
+
 export interface PagedHomestays {
   Items: Homestay[];
   CurrentPage: number;
@@ -78,6 +93,7 @@ export const publicHomestayService = {
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
         depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
+        seasonalPricings: normalizeSeasonalPricings(it),
         createdAt: it.createdAt ?? it.CreatedAt ?? "",
         updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
       }));
@@ -149,6 +165,7 @@ export const publicHomestayService = {
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
         depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
+        seasonalPricings: normalizeSeasonalPricings(it),
         createdAt: it.createdAt ?? it.CreatedAt ?? "",
         updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
       } as Homestay;
@@ -214,6 +231,7 @@ export const publicHomestayService = {
         ownerName: it.ownerName ?? it.OwnerName ?? "",
         status: it.status ?? it.Status ?? "ACTIVE",
         depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
+        seasonalPricings: normalizeSeasonalPricings(it),
         createdAt: it.createdAt ?? it.CreatedAt ?? "",
         updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
       }));
