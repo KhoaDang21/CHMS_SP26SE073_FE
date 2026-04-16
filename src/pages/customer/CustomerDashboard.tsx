@@ -34,7 +34,6 @@ export default function CustomerDashboard() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
-  const [minPrice, setMinPrice] = useState(PRICE_MIN);
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
   const [showPriceFilter, setShowPriceFilter] = useState(false);
 

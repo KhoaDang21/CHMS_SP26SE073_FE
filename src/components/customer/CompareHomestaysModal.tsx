@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Loader2, AlertCircle, Star, Users, Bed, Waves, MapPin, DollarSign } from 'lucide-react';
+import { useState } from 'react';
+import { X, Loader2, AlertCircle, Star, Users, Bed, Waves, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Homestay } from '../../types/homestay.types';
 import { publicHomestayService } from '../../services/publicHomestayService';
@@ -160,6 +160,8 @@ function SelectionView({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
       {homestays.map((homestay) => {
         const isSelected = selectedIds.includes(homestay.id);
+        const rating = homestay.averageRating ?? homestay.rating ?? 0;
+        const totalReviews = homestay.totalReviews ?? homestay.reviewCount ?? 0;
         return (
           <div
             key={homestay.id}
@@ -196,11 +198,11 @@ function SelectionView({
                 <p className="text-sm font-medium text-blue-600">
                   {formatVndPrice(homestay.pricePerNight)}/đêm
                 </p>
-                {homestay.averageRating > 0 && (
+                {rating > 0 && (
                   <div className="flex items-center gap-1 mt-1 text-xs">
                     <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                     <span className="text-gray-700">
-                      {homestay.averageRating.toFixed(1)} ({homestay.totalReviews})
+                      {rating.toFixed(1)} ({totalReviews})
                     </span>
                   </div>
                 )}
@@ -280,10 +282,10 @@ function ComparisonView({
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
             <span className="font-semibold text-gray-900">
-              {h.averageRating.toFixed(1)}
+              {(h.averageRating ?? h.rating ?? 0).toFixed(1)}
             </span>
           </div>
-          <span className="text-xs text-gray-500">({h.totalReviews} bình luận)</span>
+          <span className="text-xs text-gray-500">({h.totalReviews ?? h.reviewCount ?? 0} bình luận)</span>
         </div>
       ),
     },
