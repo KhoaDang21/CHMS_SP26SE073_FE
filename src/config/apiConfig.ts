@@ -211,6 +211,7 @@ export const apiConfig = {
     publicHomestays: {
       reviews: (homestayId: string) =>
         `/api/public/homestays/${homestayId}/reviews`,
+      compare: "/api/public/homestays/compare",
     },
     supportTickets: {
       create: "/api/support/tickets",
