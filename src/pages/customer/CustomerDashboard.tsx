@@ -10,13 +10,33 @@ import { districtService } from "../../services/districtService";
 import HomestayCard from "../../components/homestay/HomestayCard";
 import type { Province, District } from "../../types/homestay.types";
 
+const PRICE_MIN = 0;
+const PRICE_MAX = 5000000;
+const PRICE_STEP = 50000;
+
+const vndFormatter = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0,
+});
+
+function formatVnd(value: number): string {
+  return vndFormatter.format(Number(value) || 0);
+}
+
 export default function CustomerDashboard() {
   const navigate = useNavigate();
   const currentUser = authService.getUser();
+  const handleOpenCompare = () => {
+    navigate('/customer/favorites');
+  };
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
+  const [minPrice, setMinPrice] = useState(PRICE_MIN);
+  const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
+  const [showPriceFilter, setShowPriceFilter] = useState(false);
 
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [allDistricts, setAllDistricts] = useState<District[]>([]);
@@ -37,6 +57,11 @@ export default function CustomerDashboard() {
   // State for all homestays
   const [allHomestays, setAllHomestays] = useState<any[]>([]);
   const [filteredHomestays, setFilteredHomestays] = useState<any[]>([]);
+
+  const handlePriceChange = (value: number) => {
+    const normalized = Math.min(Math.max(value, PRICE_MIN), PRICE_MAX);
+    setMaxPrice(normalized);
+  };
 
   // Load provinces & districts once
   useEffect(() => {
@@ -139,7 +164,9 @@ export default function CustomerDashboard() {
     let result = allHomestays.filter(h => {
       const matchProvince = !selectedProvince || (h.provinceName || '').toLowerCase() === selectedProvince.toLowerCase();
       const matchDistrict = !district || (h.districtName || '').toLowerCase() === district.name.toLowerCase();
-      return matchProvince && matchDistrict;
+      const price = Number(h.pricePerNight ?? 0);
+      const matchMaxPrice = price <= maxPrice;
+      return matchProvince && matchDistrict && matchMaxPrice;
     });
 
     if (checkInDate && checkOutDate) {
@@ -162,7 +189,16 @@ export default function CustomerDashboard() {
     }
 
     setFilteredHomestays(result);
-  }, [selectedProvince, selectedDistrict, checkInDate, checkOutDate, allHomestays, allDistricts, myBookings]);
+  }, [selectedProvince, selectedDistrict, checkInDate, checkOutDate, maxPrice, allHomestays, allDistricts, myBookings]);
+
+  const hasPriceFilter = maxPrice < PRICE_MAX;
+
+  const hasSearchFilter = !!(
+    selectedProvince ||
+    selectedDistrict ||
+    (checkInDate && checkOutDate) ||
+    hasPriceFilter
+  );
 
   return (
     <MainLayout>
@@ -183,7 +219,7 @@ export default function CustomerDashboard() {
             <h3 className="text-xl font-semibold text-gray-900">Tìm Kiếm Homestay</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {/* Tỉnh/Thành */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành</label>
@@ -266,6 +302,46 @@ export default function CustomerDashboard() {
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 />
               </div>
+            </div>
+
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Lọc Giá (VNĐ/đêm)</label>
+              <button
+                type="button"
+                onClick={() => setShowPriceFilter((prev) => !prev)}
+                className="w-full px-4 py-3 text-left border border-gray-300 rounded-lg hover:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white"
+              >
+                {hasPriceFilter ? `0 - ${formatVnd(maxPrice)}` : 'Chọn mức giá'}
+              </button>
+
+              {showPriceFilter && (
+                <div className="absolute z-20 mt-2 w-full min-w-[260px] rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-gray-700">
+                    <span>0 VNĐ</span>
+                    <span>{formatVnd(maxPrice)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={PRICE_MIN}
+                    max={PRICE_MAX}
+                    step={PRICE_STEP}
+                    value={maxPrice}
+                    onChange={(e) => handlePriceChange(Number(e.target.value))}
+                    className="mt-3 w-full accent-cyan-500"
+                  />
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-gray-500">
+                    <span>0</span>
+                    <span>5.000.000</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMaxPrice(PRICE_MAX)}
+                    className="mt-3 text-xs text-cyan-700 hover:text-cyan-800 font-medium"
+                  >
+                    Đặt lại giá
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -378,7 +454,7 @@ export default function CustomerDashboard() {
         )}
 
         {/* Search Results */}
-        {(selectedProvince || selectedDistrict || (checkInDate && checkOutDate)) && (
+        {hasSearchFilter && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">
@@ -410,7 +486,7 @@ export default function CustomerDashboard() {
         )}
 
         {/* All Homestays */}
-        {!selectedProvince && !selectedDistrict && !(checkInDate && checkOutDate) && (
+        {!hasSearchFilter && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">Homestay Nổi Bật</h3>
@@ -457,6 +533,16 @@ export default function CustomerDashboard() {
           </div>
         </div>
       </div>
+
+      <button
+        onClick={handleOpenCompare}
+        className="fixed right-4 bottom-24 sm:right-6 sm:bottom-24 z-40 max-w-[340px] rounded-2xl border border-cyan-100 bg-white/95 backdrop-blur px-4 py-3 text-left shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all"
+      >
+        <p className="text-sm leading-5 text-gray-700">
+          Bạn có đang phân vân giữa các homestay của chúng tôi?
+          <span className="font-semibold text-cyan-700"> Hãy so sánh để quyết định dễ dàng hơn nhé.</span>
+        </p>
+      </button>
     </MainLayout>
   );
 }
