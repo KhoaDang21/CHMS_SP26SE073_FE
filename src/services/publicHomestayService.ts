@@ -276,4 +276,72 @@ export const publicHomestayService = {
       return [];
     }
   },
+
+  /** POST /api/public/homestays/compare — so sánh nhiều homestay */
+  async compare(
+    homestayIds: string[],
+    customerPreferences?: string,
+  ): Promise<Homestay[] | null> {
+    try {
+      const payload = {
+        homestayIds: homestayIds.filter(id => id?.trim()),
+        customerPreferences: customerPreferences?.trim() || undefined,
+      };
+
+      if (payload.homestayIds.length === 0) {
+        console.warn('compare: no homestay IDs provided');
+        return [];
+      }
+
+      const res = await apiService.post<any>(
+        apiConfig.endpoints.publicHomestays.compare,
+        payload,
+      );
+
+      // BE returns array of homestay objects directly or wrapped in data/Items
+      const rawList: any[] = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+          ? res
+          : [];
+
+      if (rawList.length === 0) return [];
+
+      // Normalize response to Homestay format
+      return rawList.map((it: any) => ({
+        id: (it.id ?? it.Id)?.toString?.() ?? String(it.Id ?? it.id ?? ''),
+        name: it.name ?? it.Name ?? '',
+        description: it.description ?? it.Description ?? '',
+        address: it.address ?? it.Address ?? '',
+        districtName: it.districtName ?? it.DistrictName ?? '',
+        provinceName: it.provinceName ?? it.ProvinceName ?? '',
+        city: it.city ?? it.City ?? '',
+        country: it.country ?? it.Country ?? '',
+        latitude: it.latitude ?? it.Latitude,
+        longitude: it.longitude ?? it.Longitude,
+        pricePerNight: it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
+        maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
+        bedrooms: it.bedrooms ?? it.Bedrooms ?? 0,
+        bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
+        area: it.area ?? it.Area,
+        images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
+        amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+        amenityIds: it.amenityIds ?? it.AmenityIds ?? [],
+        averageRating: it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
+        totalReviews: it.totalReviews ?? it.TotalReviews ?? it.reviewCount ?? it.ReviewCount ?? 0,
+        ownerId: it.ownerId ?? it.OwnerId ?? '',
+        ownerName: it.ownerName ?? it.OwnerName ?? '',
+        status: it.status ?? it.Status ?? 'ACTIVE',
+        depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
+        cancellationPolicy: it.cancellationPolicy ?? it.CancellationPolicy ?? '',
+        houseRules: it.houseRules ?? it.HouseRules ?? '',
+        seasonalPricings: normalizeSeasonalPricings(it),
+        createdAt: it.createdAt ?? it.CreatedAt ?? '',
+        updatedAt: it.updatedAt ?? it.UpdatedAt ?? '',
+      } as Homestay));
+    } catch (error) {
+      console.error('Error comparing homestays:', error);
+      return null;
+    }
+  },
 };
