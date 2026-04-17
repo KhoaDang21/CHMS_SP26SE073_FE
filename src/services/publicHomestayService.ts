@@ -29,6 +29,21 @@ export interface OccupiedDateRange {
   checkOut: string;
 }
 
+export interface HomestayCompareScore {
+  homestayId: string;
+  homestayName?: string;
+  matchScore?: number;
+  priceScore?: number;
+  amenityScore?: number;
+  locationScore?: number;
+}
+
+export interface HomestayCompareResult {
+  homestays: Homestay[];
+  aiAnalysisMarkdown?: string;
+  scores?: HomestayCompareScore[];
+}
+
 export const publicHomestayService = {
   // simple in-memory cache for last fetched list
   _cache: {
@@ -281,7 +296,7 @@ export const publicHomestayService = {
   async compare(
     homestayIds: string[],
     customerPreferences?: string,
-  ): Promise<Homestay[] | null> {
+  ): Promise<HomestayCompareResult | null> {
     try {
       const payload = {
         homestayIds: homestayIds.filter(id => id?.trim()),
@@ -290,7 +305,7 @@ export const publicHomestayService = {
 
       if (payload.homestayIds.length === 0) {
         console.warn('compare: no homestay IDs provided');
-        return [];
+        return { homestays: [] };
       }
 
       const res = await apiService.post<any>(
@@ -298,17 +313,53 @@ export const publicHomestayService = {
         payload,
       );
 
-      // BE returns array of homestay objects directly or wrapped in data/Items
-      const rawList: any[] = Array.isArray(res?.data)
-        ? res.data
-        : Array.isArray(res)
-          ? res
+      // Handle multiple BE response shapes:
+      // 1) []
+      // 2) { data: [] }
+      // 3) { data: { homestaysData: [] } }
+      // 4) { homestaysData: [] }
+      const rawList: any[] = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.homestaysData)
+            ? res.data.homestaysData
+            : Array.isArray(res?.data?.items)
+              ? res.data.items
+              : Array.isArray(res?.homestaysData)
+                ? res.homestaysData
+                : Array.isArray(res?.items)
+                  ? res.items
+                  : [];
+
+      const aiAnalysisMarkdown =
+        res?.data?.aiAnalysisMarkdown ??
+        res?.aiAnalysisMarkdown ??
+        undefined;
+
+      const rawScores: any[] = Array.isArray(res?.data?.scores)
+        ? res.data.scores
+        : Array.isArray(res?.scores)
+          ? res.scores
           : [];
 
-      if (rawList.length === 0) return [];
+      if (rawList.length === 0) {
+        return {
+          homestays: [],
+          aiAnalysisMarkdown,
+          scores: rawScores.map((s) => ({
+            homestayId: String(s?.homestayId ?? ''),
+            homestayName: s?.homestayName,
+            matchScore: Number(s?.matchScore ?? 0),
+            priceScore: Number(s?.priceScore ?? 0),
+            amenityScore: Number(s?.amenityScore ?? 0),
+            locationScore: Number(s?.locationScore ?? 0),
+          })),
+        };
+      }
 
       // Normalize response to Homestay format
-      return rawList.map((it: any) => ({
+      const homestays = rawList.map((it: any) => ({
         id: (it.id ?? it.Id)?.toString?.() ?? String(it.Id ?? it.id ?? ''),
         name: it.name ?? it.Name ?? '',
         description: it.description ?? it.Description ?? '',
@@ -339,6 +390,19 @@ export const publicHomestayService = {
         createdAt: it.createdAt ?? it.CreatedAt ?? '',
         updatedAt: it.updatedAt ?? it.UpdatedAt ?? '',
       } as Homestay));
+
+      return {
+        homestays,
+        aiAnalysisMarkdown,
+        scores: rawScores.map((s) => ({
+          homestayId: String(s?.homestayId ?? ''),
+          homestayName: s?.homestayName,
+          matchScore: Number(s?.matchScore ?? 0),
+          priceScore: Number(s?.priceScore ?? 0),
+          amenityScore: Number(s?.amenityScore ?? 0),
+          locationScore: Number(s?.locationScore ?? 0),
+        })),
+      };
     } catch (error) {
       console.error('Error comparing homestays:', error);
       return null;
