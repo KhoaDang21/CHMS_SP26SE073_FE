@@ -119,21 +119,21 @@ export default function StaffBookings() {
 
   const handleCheckIn = async (booking: Booking) => {
     if (booking.paymentStatus !== 'paid' && booking.paymentStatus !== 'deposit_paid') {
-      toast.error('Khách phải thanh toán cọc trước khi check-in');
+      toast.error('Khách phải thanh toán cọc trước khi nhận phòng');
       return;
     }
 
     try {
       const result = await staffBookingService.checkIn(booking.id);
       if (!result.success) {
-        toast.error(result.message || 'Không thể check-in booking');
+        toast.error(result.message || 'Không thể nhận phòng booking');
         return;
       }
-      toast.success(`Check-in thành công: ${booking.customerName}`);
+      toast.success(`Nhận phòng thành công: ${booking.customerName}`);
       await loadBookings();
     } catch (error) {
       console.error('Check-in booking error:', error);
-      toast.error('Không thể check-in booking');
+      toast.error('Không thể nhận phòng booking');
     }
   };
 
@@ -208,7 +208,7 @@ export default function StaffBookings() {
 
   const openExtendModal = (booking: Booking) => {
     if (!canExtendStay(booking)) {
-      toast.error('Chỉ có thể gia hạn khi booking đã check-in');
+      toast.error('Chỉ có thể gia hạn khi booking đã nhận phòng');
       return;
     }
 
@@ -241,7 +241,7 @@ export default function StaffBookings() {
     if (!extendBooking) return;
 
     if (!canExtendStay(extendBooking)) {
-      toast.error('Chỉ có thể gia hạn khi booking đã check-in');
+      toast.error('Chỉ có thể gia hạn khi booking đã nhận phòng');
       return;
     }
 
@@ -299,20 +299,52 @@ export default function StaffBookings() {
 
   const filterOptions: { value: FilterStatus; label: string }[] = [
     { value: 'all',           label: 'Tất cả' },
-    { value: 'checkin-today', label: 'Check-in hôm nay' },
-    { value: 'checkout-today',label: 'Check-out hôm nay' },
+    { value: 'checkin-today', label: 'Ngày nhận phòng hôm nay' },
+    { value: 'checkout-today',label: 'Ngày trả phòng hôm nay' },
     { value: 'confirmed',     label: 'Đã xác nhận/Đang lưu trú' },
     { value: 'completed',     label: 'Đã hoàn thành' },
   ];
 
+  const getBookingStatusText = (status: Booking['status']) => {
+    const labels: Record<string, string> = {
+      pending: 'Chờ thanh toán cọc',
+      confirmed: 'Đã xác nhận đặt phòng',
+      checked_in: 'Đang lưu trú',
+      checked_out: 'Đã trả phòng',
+      completed: 'Hoàn thành',
+      cancelled: 'Đã hủy',
+    };
+
+    return labels[status] ?? status;
+  };
+
+  const getPaymentStatusText = (paymentStatus: Booking['paymentStatus'], bookingStatus?: Booking['status']) => {
+    // Ưu tiên hiển thị theo nghiệp vụ vòng đời booking để tránh label gây hiểu nhầm.
+    if (bookingStatus === 'checked_in' || bookingStatus === 'checked_out' || bookingStatus === 'completed') {
+      return 'Đã thanh toán đầy đủ';
+    }
+
+    const labels: Record<string, string> = {
+      pending: 'Chờ thanh toán',
+      paid: 'Đã thanh toán đầy đủ',
+      deposit_paid: 'Đã đặt cọc',
+      unpaid: 'Chưa thanh toán',
+      failed: 'Thanh toán thất bại',
+      refunded: 'Đã hoàn tiền',
+      partially_refunded: 'Hoàn tiền một phần',
+    };
+
+    return labels[paymentStatus] ?? paymentStatus;
+  };
+
   const getStatusBadge = (status: Booking['status']) => {
     const badges = {
       pending:     { label: 'Chờ thanh toán cọc', class: 'bg-yellow-100 text-yellow-700' },
-      confirmed:   { label: 'Đã chấp nhận đặt phòng', class: 'bg-blue-100 text-blue-700' },
-      completed:   { label: 'Hoàn thành',         class: 'bg-gray-100 text-gray-700' },
-      checked_in:  { label: 'Đã check-in',        class: 'bg-green-100 text-green-700' },
-      checked_out: { label: 'Hoàn thành',         class: 'bg-gray-100 text-gray-700' },
-      cancelled:   { label: 'Đã hủy',             class: 'bg-red-100 text-red-700' },
+      confirmed:   { label: 'Đã xác nhận đặt phòng', class: 'bg-blue-100 text-blue-700' },
+      completed:   { label: 'Hoàn thành', class: 'bg-gray-100 text-gray-700' },
+      checked_in:  { label: 'Đang lưu trú', class: 'bg-green-100 text-green-700' },
+      checked_out: { label: 'Đã trả phòng', class: 'bg-gray-100 text-gray-700' },
+      cancelled:   { label: 'Đã hủy', class: 'bg-red-100 text-red-700' },
     };
     const badge = badges[status] ?? badges.pending;
     return <span className={`px-3 py-1 rounded-full text-xs font-medium ${badge.class}`}>{badge.label}</span>;
@@ -400,7 +432,7 @@ export default function StaffBookings() {
               </button>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Quản lý Bookings</h2>
-                <p className="text-sm text-gray-500">Check-in/Check-out khách hàng</p>
+                <p className="text-sm text-gray-500">Nhận phòng/Trả phòng khách hàng</p>
               </div>
             </div>
             <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
@@ -476,12 +508,12 @@ export default function StaffBookings() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
                           <div className="flex items-center gap-2 text-gray-600">
                             <ArrowDownRight className="w-4 h-4 text-green-500" />
-                            <span className="font-medium">Check-in:</span>
+                            <span className="font-medium">Ngày nhận phòng:</span>
                             <span>{new Date(booking.checkInDate).toLocaleDateString('vi-VN')}</span>
                           </div>
                           <div className="flex items-center gap-2 text-gray-600">
                             <ArrowUpRight className="w-4 h-4 text-blue-500" />
-                            <span className="font-medium">Check-out:</span>
+                            <span className="font-medium">Ngày trả phòng:</span>
                             <span>{new Date(booking.checkOutDate).toLocaleDateString('vi-VN')}</span>
                           </div>
                           <div className="flex items-center gap-2 text-gray-600">
@@ -519,7 +551,7 @@ export default function StaffBookings() {
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
                           >
                             <ArrowUpRight className="w-4 h-4" />
-                            {booking.paymentStatus === 'deposit_paid' ? 'Xác nhận tiền mặt & check-in' : 'Check-in'}
+                            {booking.paymentStatus === 'deposit_paid' ? 'Xác nhận tiền mặt & nhận phòng' : 'Nhận phòng'}
                           </button>
                         )}
                         {canCheckOut(booking) && (
@@ -529,7 +561,7 @@ export default function StaffBookings() {
                             className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium flex items-center justify-center gap-2"
                           >
                             <ArrowUpRight className="w-4 h-4" />
-                            Kiểm tra phòng & checkout
+                            Kiểm tra phòng & trả phòng
                           </button>
                         )}
                         {canExtendStay(booking) && (
@@ -612,18 +644,18 @@ export default function StaffBookings() {
                     </div>
                     <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
                       <div className="text-gray-500">Trạng thái</div>
-                      <div className="font-semibold text-gray-900 mt-1">{bookingDetail.status}</div>
+                      <div className="font-semibold text-gray-900 mt-1">{getBookingStatusText(bookingDetail.status)}</div>
                     </div>
                     <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
                       <div className="text-gray-500">Thanh toán</div>
-                      <div className="font-semibold text-gray-900 mt-1">{bookingDetail.paymentStatus}</div>
+                      <div className="font-semibold text-gray-900 mt-1">{getPaymentStatusText(bookingDetail.paymentStatus, bookingDetail.status)}</div>
                     </div>
                     <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-                      <div className="text-gray-500">Check-in</div>
+                      <div className="text-gray-500">Ngày nhận phòng</div>
                       <div className="font-semibold text-gray-900 mt-1">{new Date(bookingDetail.checkInDate).toLocaleDateString('vi-VN')}</div>
                     </div>
                     <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-                      <div className="text-gray-500">Check-out</div>
+                      <div className="text-gray-500">Ngày trả phòng</div>
                       <div className="font-semibold text-gray-900 mt-1">{new Date(bookingDetail.checkOutDate).toLocaleDateString('vi-VN')}</div>
                     </div>
                     <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
