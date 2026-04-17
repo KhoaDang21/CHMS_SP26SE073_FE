@@ -436,7 +436,7 @@ export default function StaffTickets() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
-                <RoleBadge role={currentUser?.role || 'staff'} size="sm" />
+                <RoleBadge role={currentUser?.role || 'staff'} size="md" />
               </div>
             </div>
           </div>
@@ -542,7 +542,7 @@ export default function StaffTickets() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" style={{ height: 'calc(100vh - 260px)', minHeight: 560 }}>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" style={{ height: 'calc(100vh - 100px)', minHeight: 840 }}>
             <div className="flex h-full">
               <div className={`flex flex-col border-r border-gray-100 flex-shrink-0 w-full lg:w-96 ${showList ? 'flex' : 'hidden'} lg:flex`}>
                 <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
