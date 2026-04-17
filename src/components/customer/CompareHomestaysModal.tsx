@@ -326,17 +326,22 @@ function ComparisonView({
     {
       key: 'rating',
       label: 'Đánh Giá',
-      getValue: (h) => (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-semibold text-gray-900">
-              {(h.averageRating ?? h.rating ?? 0).toFixed(1)}
-            </span>
+      getValue: (h) => {
+        const scoreAverageRating = scoreMap[h.id]?.averageRating;
+        const displayRating = scoreAverageRating ?? h.averageRating ?? h.rating ?? 0;
+
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <span className="font-semibold text-gray-900">
+                {displayRating.toFixed(1)}
+              </span>
+            </div>
+            <span className="text-xs text-gray-500">({h.totalReviews ?? h.reviewCount ?? 0} bình luận)</span>
           </div>
-          <span className="text-xs text-gray-500">({h.totalReviews ?? h.reviewCount ?? 0} bình luận)</span>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: 'aiScores',

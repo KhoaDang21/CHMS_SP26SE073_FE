@@ -36,6 +36,7 @@ export interface HomestayCompareScore {
   priceScore?: number;
   amenityScore?: number;
   locationScore?: number;
+  averageRating?: number;
 }
 
 export interface HomestayCompareResult {
@@ -343,65 +344,82 @@ export const publicHomestayService = {
           ? res.scores
           : [];
 
+      const parseOptionalNumber = (value: any): number | undefined => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      };
+
+      const normalizedScores: HomestayCompareScore[] = rawScores.map((s) => ({
+        homestayId: String(s?.homestayId ?? ''),
+        homestayName: s?.homestayName,
+        matchScore: parseOptionalNumber(s?.matchScore) ?? 0,
+        priceScore: parseOptionalNumber(s?.priceScore) ?? 0,
+        amenityScore: parseOptionalNumber(s?.amenityScore) ?? 0,
+        locationScore: parseOptionalNumber(s?.locationScore) ?? 0,
+        averageRating: parseOptionalNumber(s?.averageRating ?? s?.AverageRating),
+      }));
+
       if (rawList.length === 0) {
         return {
           homestays: [],
           aiAnalysisMarkdown,
-          scores: rawScores.map((s) => ({
-            homestayId: String(s?.homestayId ?? ''),
-            homestayName: s?.homestayName,
-            matchScore: Number(s?.matchScore ?? 0),
-            priceScore: Number(s?.priceScore ?? 0),
-            amenityScore: Number(s?.amenityScore ?? 0),
-            locationScore: Number(s?.locationScore ?? 0),
-          })),
+          scores: normalizedScores,
         };
       }
 
+      const scoreById = new Map(
+        normalizedScores
+          .filter((score) => score.homestayId)
+          .map((score) => [score.homestayId, score]),
+      );
+
       // Normalize response to Homestay format
-      const homestays = rawList.map((it: any) => ({
-        id: (it.id ?? it.Id)?.toString?.() ?? String(it.Id ?? it.id ?? ''),
-        name: it.name ?? it.Name ?? '',
-        description: it.description ?? it.Description ?? '',
-        address: it.address ?? it.Address ?? '',
-        districtName: it.districtName ?? it.DistrictName ?? '',
-        provinceName: it.provinceName ?? it.ProvinceName ?? '',
-        city: it.city ?? it.City ?? '',
-        country: it.country ?? it.Country ?? '',
-        latitude: it.latitude ?? it.Latitude,
-        longitude: it.longitude ?? it.Longitude,
-        pricePerNight: it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
-        maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
-        bedrooms: it.bedrooms ?? it.Bedrooms ?? 0,
-        bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
-        area: it.area ?? it.Area,
-        images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
-        amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
-        amenityIds: it.amenityIds ?? it.AmenityIds ?? [],
-        averageRating: it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
-        totalReviews: it.totalReviews ?? it.TotalReviews ?? it.reviewCount ?? it.ReviewCount ?? 0,
-        ownerId: it.ownerId ?? it.OwnerId ?? '',
-        ownerName: it.ownerName ?? it.OwnerName ?? '',
-        status: it.status ?? it.Status ?? 'ACTIVE',
-        depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
-        cancellationPolicy: it.cancellationPolicy ?? it.CancellationPolicy ?? '',
-        houseRules: it.houseRules ?? it.HouseRules ?? '',
-        seasonalPricings: normalizeSeasonalPricings(it),
-        createdAt: it.createdAt ?? it.CreatedAt ?? '',
-        updatedAt: it.updatedAt ?? it.UpdatedAt ?? '',
-      } as Homestay));
+      const homestays = rawList.map((it: any) => {
+        const id = (it.id ?? it.Id)?.toString?.() ?? String(it.Id ?? it.id ?? '');
+        const scoreRating = scoreById.get(id)?.averageRating;
+        const rawAverageRating = parseOptionalNumber(it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating);
+        const normalizedAverageRating =
+          rawAverageRating !== undefined && rawAverageRating > 0
+            ? rawAverageRating
+            : (scoreRating ?? 0);
+
+        return {
+          id,
+          name: it.name ?? it.Name ?? '',
+          description: it.description ?? it.Description ?? '',
+          address: it.address ?? it.Address ?? '',
+          districtName: it.districtName ?? it.DistrictName ?? '',
+          provinceName: it.provinceName ?? it.ProvinceName ?? '',
+          city: it.city ?? it.City ?? '',
+          country: it.country ?? it.Country ?? '',
+          latitude: it.latitude ?? it.Latitude,
+          longitude: it.longitude ?? it.Longitude,
+          pricePerNight: it.pricePerNight ?? it.PricePerNight ?? Number(it.price ?? 0),
+          maxGuests: it.maxGuests ?? it.MaxGuests ?? 0,
+          bedrooms: it.bedrooms ?? it.Bedrooms ?? 0,
+          bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
+          area: it.area ?? it.Area,
+          images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
+          amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+          amenityIds: it.amenityIds ?? it.AmenityIds ?? [],
+          averageRating: normalizedAverageRating,
+          totalReviews: it.totalReviews ?? it.TotalReviews ?? it.reviewCount ?? it.ReviewCount ?? 0,
+          ownerId: it.ownerId ?? it.OwnerId ?? '',
+          ownerName: it.ownerName ?? it.OwnerName ?? '',
+          status: it.status ?? it.Status ?? 'ACTIVE',
+          depositPercentage: it.depositPercentage ?? it.DepositPercentage ?? 20,
+          cancellationPolicy: it.cancellationPolicy ?? it.CancellationPolicy ?? '',
+          houseRules: it.houseRules ?? it.HouseRules ?? '',
+          seasonalPricings: normalizeSeasonalPricings(it),
+          createdAt: it.createdAt ?? it.CreatedAt ?? '',
+          updatedAt: it.updatedAt ?? it.UpdatedAt ?? '',
+        } as Homestay;
+      });
 
       return {
         homestays,
         aiAnalysisMarkdown,
-        scores: rawScores.map((s) => ({
-          homestayId: String(s?.homestayId ?? ''),
-          homestayName: s?.homestayName,
-          matchScore: Number(s?.matchScore ?? 0),
-          priceScore: Number(s?.priceScore ?? 0),
-          amenityScore: Number(s?.amenityScore ?? 0),
-          locationScore: Number(s?.locationScore ?? 0),
-        })),
+        scores: normalizedScores,
       };
     } catch (error) {
       console.error('Error comparing homestays:', error);
