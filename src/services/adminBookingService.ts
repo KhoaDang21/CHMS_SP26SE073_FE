@@ -107,8 +107,9 @@ const toBooking = (item: any): Booking => {
       item?.customerEmail || item?.email || item?.CustomerEmail || "",
     ),
     customerPhone: String(
-      item?.customerPhone ||
-        item?.contactPhone ||
+      item?.contactPhone ||
+        item?.ContactPhone ||
+        item?.customerPhone ||
         item?.ContactPhone ||
         item?.phoneNumber ||
         item?.Phone ||
