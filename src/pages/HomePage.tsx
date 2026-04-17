@@ -52,6 +52,11 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
 
+  const selectedProvinceName = useMemo(
+    () => provinces.find((p) => p.id === selectedProvince)?.name ?? '',
+    [provinces, selectedProvince],
+  );
+
   const handlePriceChange = (value: number) => {
     const normalized = Math.min(Math.max(value, PRICE_MIN), PRICE_MAX);
     setMaxPrice(normalized);
@@ -106,14 +111,14 @@ export default function HomePage() {
   // Filter districts when province changes
   useEffect(() => {
     setSelectedDistrict("");
-    if (!selectedProvince) {
+    if (!selectedProvinceName) {
       setFilteredDistricts([]);
     } else {
       setFilteredDistricts(
-        allDistricts.filter(d => d.provinceName === selectedProvince)
+        allDistricts.filter((d) => (d.provinceName || '').toLowerCase() === selectedProvinceName.toLowerCase())
       );
     }
-  }, [selectedProvince, allDistricts]);
+  }, [selectedProvinceName, allDistricts]);
 
   // Tập homestayId đã bị block trong khoảng ngày đang chọn
   const bookedHomestayIds = useMemo(() => {
@@ -135,7 +140,7 @@ export default function HomePage() {
     const district = allDistricts.find(d => d.id === selectedDistrict);
 
     let result = allHomestays.filter(h => {
-      const matchProvince = !selectedProvince || (h.provinceName || '').toLowerCase() === selectedProvince.toLowerCase();
+      const matchProvince = !selectedProvinceName || (h.provinceName || '').toLowerCase() === selectedProvinceName.toLowerCase();
       const matchDistrict = !district || (h.districtName || '').toLowerCase() === district.name.toLowerCase();
       const price = Number(h.pricePerNight ?? 0);
       const matchMaxPrice = price <= maxPrice;
@@ -159,7 +164,7 @@ export default function HomePage() {
     }
 
     setHomestays(result);
-  }, [selectedProvince, selectedDistrict, checkInDate, checkOutDate, maxPrice, allHomestays, allDistricts, myBookings]);
+  }, [selectedProvinceName, selectedDistrict, checkInDate, checkOutDate, maxPrice, allHomestays, allDistricts, myBookings]);
 
   const hasPriceFilter = maxPrice < PRICE_MAX;
 

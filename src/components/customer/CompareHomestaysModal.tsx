@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Loader2, AlertCircle, Star, Users, Bed, Waves, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Homestay } from '../../types/homestay.types';
+import type { HomestayCompareScore } from '../../services/publicHomestayService';
 import { publicHomestayService } from '../../services/publicHomestayService';
 
 const vndFormatter = new Intl.NumberFormat('vi-VN', {
@@ -28,7 +29,10 @@ export default function CompareHomestaysModal({
   onBooking,
 }: CompareHomestaysModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [customerPreferences, setCustomerPreferences] = useState('');
   const [comparisonData, setComparisonData] = useState<Homestay[]>([]);
+  const [aiAnalysisMarkdown, setAiAnalysisMarkdown] = useState('');
+  const [scoreMap, setScoreMap] = useState<Record<string, HomestayCompareScore>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<'select' | 'compare'>('select');
 
@@ -54,9 +58,16 @@ export default function CompareHomestaysModal({
 
     setIsLoading(true);
     try {
-      const result = await publicHomestayService.compare(selectedIds);
-      if (result && result.length > 0) {
-        setComparisonData(result);
+      const result = await publicHomestayService.compare(selectedIds, customerPreferences);
+      if (result && result.homestays.length > 0) {
+        setComparisonData(result.homestays);
+        setAiAnalysisMarkdown((result.aiAnalysisMarkdown ?? '').trim());
+        const mappedScores = Object.fromEntries(
+          (result.scores ?? [])
+            .filter((item) => item?.homestayId)
+            .map((item) => [item.homestayId, item]),
+        ) as Record<string, HomestayCompareScore>;
+        setScoreMap(mappedScores);
         setStep('compare');
       } else {
         toast.error('Không thể tải dữ liệu so sánh');
@@ -72,6 +83,8 @@ export default function CompareHomestaysModal({
   const handleBack = () => {
     setStep('select');
     setComparisonData([]);
+    setAiAnalysisMarkdown('');
+    setScoreMap({});
   };
 
   return (
@@ -97,10 +110,14 @@ export default function CompareHomestaysModal({
               homestays={availableHomestays}
               selectedIds={selectedIds}
               onSelect={handleSelectHomestay}
+              customerPreferences={customerPreferences}
+              onCustomerPreferencesChange={setCustomerPreferences}
             />
           ) : (
             <ComparisonView
               homestays={comparisonData}
+              aiAnalysisMarkdown={aiAnalysisMarkdown}
+              scoreMap={scoreMap}
               onBooking={onBooking}
             />
           )}
@@ -142,10 +159,14 @@ function SelectionView({
   homestays,
   selectedIds,
   onSelect,
+  customerPreferences,
+  onCustomerPreferencesChange,
 }: {
   homestays: Homestay[];
   selectedIds: string[];
   onSelect: (id: string) => void;
+  customerPreferences: string;
+  onCustomerPreferencesChange: (value: string) => void;
 }) {
   if (homestays.length === 0) {
     return (
@@ -157,70 +178,89 @@ function SelectionView({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-      {homestays.map((homestay) => {
-        const isSelected = selectedIds.includes(homestay.id);
-        const rating = homestay.averageRating ?? homestay.rating ?? 0;
-        const totalReviews = homestay.totalReviews ?? homestay.reviewCount ?? 0;
-        return (
-          <div
-            key={homestay.id}
-            onClick={() => onSelect(homestay.id)}
-            className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-              isSelected
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex gap-3">
-              {/* Image */}
-              <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                {homestay.images?.[0] ? (
-                  <img
-                    src={homestay.images[0]}
-                    alt={homestay.name}
-                    className="w-full h-full object-cover"
+    <div className="p-6 space-y-5">
+      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+        <label htmlFor="customer-preferences" className="block text-sm font-semibold text-gray-900 mb-2">
+          Yêu cầu của bạn cho AI phân tích
+        </label>
+        <textarea
+          id="customer-preferences"
+          value={customerPreferences}
+          onChange={(event) => onCustomerPreferencesChange(event.target.value)}
+          placeholder="Ví dụ: ưu tiên gần biển, có hồ bơi, ngân sách tối đa 1.5 triệu/đêm, phù hợp gia đình có trẻ nhỏ..."
+          rows={3}
+          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+        />
+        <p className="mt-2 text-xs text-gray-600">
+          Gợi ý càng cụ thể thì phần chấm điểm AI càng sát nhu cầu của bạn.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {homestays.map((homestay) => {
+          const isSelected = selectedIds.includes(homestay.id);
+          const rating = homestay.averageRating ?? homestay.rating ?? 0;
+          const totalReviews = homestay.totalReviews ?? homestay.reviewCount ?? 0;
+          return (
+            <div
+              key={homestay.id}
+              onClick={() => onSelect(homestay.id)}
+              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                isSelected
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex gap-3">
+                {/* Image */}
+                <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                  {homestay.images?.[0] ? (
+                    <img
+                      src={homestay.images[0]}
+                      alt={homestay.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center">
+                      <Waves className="w-8 h-8 text-white" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 truncate">{homestay.name}</h3>
+                  <p className="text-sm text-gray-600 flex items-center gap-1 mb-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {homestay.districtName}, {homestay.provinceName}
+                  </p>
+                  <p className="text-sm font-medium text-blue-600">
+                    {formatVndPrice(homestay.pricePerNight)}/đêm
+                  </p>
+                  {rating > 0 && (
+                    <div className="flex items-center gap-1 mt-1 text-xs">
+                      <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                      <span className="text-gray-700">
+                        {rating.toFixed(1)} ({totalReviews})
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Checkbox */}
+                <div className="flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => {}}
+                    className="w-5 h-5 rounded border-gray-300 text-blue-500"
                   />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center">
-                    <Waves className="w-8 h-8 text-white" />
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 truncate">{homestay.name}</h3>
-                <p className="text-sm text-gray-600 flex items-center gap-1 mb-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {homestay.districtName}, {homestay.provinceName}
-                </p>
-                <p className="text-sm font-medium text-blue-600">
-                  {formatVndPrice(homestay.pricePerNight)}/đêm
-                </p>
-                {rating > 0 && (
-                  <div className="flex items-center gap-1 mt-1 text-xs">
-                    <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                    <span className="text-gray-700">
-                      {rating.toFixed(1)} ({totalReviews})
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Checkbox */}
-              <div className="flex-shrink-0">
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => {}}
-                  className="w-5 h-5 rounded border-gray-300 text-blue-500"
-                />
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -228,11 +268,20 @@ function SelectionView({
 // Comparison View Component
 function ComparisonView({
   homestays,
+  aiAnalysisMarkdown,
+  scoreMap,
   onBooking,
 }: {
   homestays: Homestay[];
+  aiAnalysisMarkdown: string;
+  scoreMap: Record<string, HomestayCompareScore>;
   onBooking?: (homestayId: string) => void;
 }) {
+  const formatScore = (value?: number) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return '-';
+    return Math.round(value);
+  };
+
   const rows: Array<{
     key: string;
     label: string;
@@ -288,6 +337,36 @@ function ComparisonView({
           <span className="text-xs text-gray-500">({h.totalReviews ?? h.reviewCount ?? 0} bình luận)</span>
         </div>
       ),
+    },
+    {
+      key: 'aiScores',
+      label: 'Điểm AI',
+      getValue: (h) => {
+        const score = scoreMap[h.id];
+
+        if (!score) {
+          return <p className="text-gray-500 text-sm">Chưa có dữ liệu điểm AI</p>;
+        }
+
+        return (
+          <div className="space-y-2">
+            <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
+              Tổng hợp: {formatScore(score.matchScore)}/100
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+                Giá: {formatScore(score.priceScore)}/10
+              </span>
+              <span className="px-2 py-1 rounded-full bg-cyan-50 text-cyan-700">
+                Tiện nghi: {formatScore(score.amenityScore)}/10
+              </span>
+              <span className="px-2 py-1 rounded-full bg-indigo-50 text-indigo-700">
+                Vị trí: {formatScore(score.locationScore)}/10
+              </span>
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: 'guests',
@@ -379,26 +458,34 @@ function ComparisonView({
   ];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key} className="border-b border-gray-200 hover:bg-gray-50">
-              <td className="px-4 py-4 font-semibold text-gray-900 bg-gray-50 w-32 sticky left-0 z-10 min-w-max">
-                {row.label}
-              </td>
-              {homestays.map((h) => (
-                <td
-                  key={`${row.key}-${h.id}`}
-                  className="px-4 py-4 text-sm align-top min-w-64 w-80"
-                >
-                  {row.getValue(h)}
+    <div className="space-y-4">
+      {aiAnalysisMarkdown && (
+        <div className="mx-6 mt-4 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{aiAnalysisMarkdown}</p>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.key} className="border-b border-gray-200 hover:bg-gray-50">
+                <td className="px-4 py-4 font-semibold text-gray-900 bg-gray-50 w-32 sticky left-0 z-10 min-w-max">
+                  {row.label}
                 </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                {homestays.map((h) => (
+                  <td
+                    key={`${row.key}-${h.id}`}
+                    className="px-4 py-4 text-sm align-top min-w-64 w-80"
+                  >
+                    {row.getValue(h)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
