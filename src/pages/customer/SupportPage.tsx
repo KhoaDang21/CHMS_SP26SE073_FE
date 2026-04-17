@@ -712,7 +712,7 @@ export default function SupportPage() {
         {/* Main layout: list + detail */}
         <div
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-          style={{ height: 'calc(100vh - 220px)', minHeight: 500 }}
+          style={{ height: 'calc(100vh - 180px)', minHeight: 560 }}
         >
           <div className="flex h-full">
 
