@@ -63,6 +63,12 @@ export default function BookingsPage() {
   const [extraChargeDetailLoading, setExtraChargeDetailLoading] = useState(false);
   const totalExtraDetailAmount = extraDetailCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
 
+  const getHomestayById = (id?: string) => {
+    const key = (id || '').trim();
+    if (!key) return undefined;
+    return homestayMap[key] || homestayMap[key.toLowerCase()];
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -90,7 +96,10 @@ export default function BookingsPage() {
         const homestaysRes = await publicHomestayService.list({ page: 1, pageSize: 200 });
         const map: Record<string, Homestay> = {};
         (homestaysRes.Items || []).forEach((h) => {
-          map[h.id] = h;
+          const id = String(h.id || '').trim();
+          if (!id) return;
+          map[id] = h;
+          map[id.toLowerCase()] = h;
         });
         setHomestayMap(map);
       } catch (e) {
@@ -322,8 +331,8 @@ export default function BookingsPage() {
                     {/* Image section - full width on mobile, fixed height */}
                     <div className="relative h-48 sm:h-56 bg-gray-100 overflow-hidden">
                       {(() => {
-                        const hs = homestayMap[b.homestayId];
-                        const img = hs?.images?.[0] || '';
+                        const hs = getHomestayById(b.homestayId);
+                        const img = hs?.images?.[0] || b.homestayImage || '';
                         const alt = hs?.name || cleanLoadingText(b.homestayName) || 'Homestay';
                         return (
                           <ImageWithFallback
@@ -368,7 +377,7 @@ export default function BookingsPage() {
                       <div className="mb-4">
                         <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">
                           {(() => {
-                            const hs = homestayMap[b.homestayId];
+                            const hs = getHomestayById(b.homestayId);
                             const name = hs?.name || cleanLoadingText(b.homestayName);
                             return name || 'Homestay';
                           })()}
@@ -377,7 +386,7 @@ export default function BookingsPage() {
                           <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                           <span className="line-clamp-1">
                             {(() => {
-                              const hs = homestayMap[b.homestayId];
+                              const hs = getHomestayById(b.homestayId);
                               if (hs?.address) return hs.address;
                               const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
                               if (cityCountry) return cityCountry;
@@ -462,7 +471,7 @@ export default function BookingsPage() {
                                 <button
                                   onClick={() => setReviewingBooking({
                                     id: b.id,
-                                    homestayName: homestayMap[b.homestayId]?.name || cleanLoadingText(b.homestayName) || 'Homestay',
+                                    homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
                                   })}
                                   className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
                                 >
@@ -531,17 +540,17 @@ export default function BookingsPage() {
                         <div className="flex flex-col md:flex-row md:items-start gap-4">
                           <div className="md:flex-1">
                             <div
-                              onClick={() => setLightboxSrc((detailHomestay?.images && detailHomestay.images[0]) || homestayMap[selected.homestayId]?.images?.[0] || '')}
+                              onClick={() => setLightboxSrc((detailHomestay?.images && detailHomestay.images[0]) || getHomestayById(selected.homestayId)?.images?.[0] || selected.homestayImage || '')}
                               className="rounded-xl overflow-hidden bg-gray-100 h-56 md:h-48 cursor-pointer shadow-sm"
                             >
                               <ImageWithFallback
-                                src={(detailHomestay?.images && detailHomestay.images[0]) || homestayMap[selected.homestayId]?.images?.[0] || ''}
+                                src={(detailHomestay?.images && detailHomestay.images[0]) || getHomestayById(selected.homestayId)?.images?.[0] || selected.homestayImage || ''}
                                 alt={detailHomestay?.name || selected.homestayName || 'Homestay'}
                                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                               />
                             </div>
                             <div className="hidden md:flex gap-2 mt-3">
-                              {(detailHomestay?.images || homestayMap[selected.homestayId]?.images || []).slice(1, 5).map((img, i) => (
+                              {(detailHomestay?.images || getHomestayById(selected.homestayId)?.images || []).slice(1, 5).map((img, i) => (
                                 <div key={i} className="flex-1 h-20 rounded overflow-hidden cursor-pointer" onClick={() => setLightboxSrc(img ?? '')}>
                                   <ImageWithFallback src={img ?? ''} alt={`${detailHomestay?.name || selected.homestayName}-${i}`} className="w-full h-full object-cover" />
                                 </div>
@@ -551,16 +560,16 @@ export default function BookingsPage() {
 
                           <div className="md:w-80">
                             <h2 className="text-lg font-bold truncate">{detailHomestay?.name || selected.homestayName}</h2>
-                            <div className="text-sm text-gray-600 mt-1 mb-3 truncate">{detailHomestay?.address || detailHomestay?.city || homestayMap[selected.homestayId]?.address || 'Đang cập nhật'}</div>
-                            <div className="text-sm text-gray-700 mb-3 line-clamp-4">{detailHomestay?.description || homestayMap[selected.homestayId]?.description || '—'}</div>
+                            <div className="text-sm text-gray-600 mt-1 mb-3 truncate">{detailHomestay?.address || detailHomestay?.city || getHomestayById(selected.homestayId)?.address || 'Đang cập nhật'}</div>
+                            <div className="text-sm text-gray-700 mb-3 line-clamp-4">{detailHomestay?.description || getHomestayById(selected.homestayId)?.description || '—'}</div>
 
                             <div className="text-sm text-gray-600 space-y-1">
-                              <div>Giá/đêm: <span className="font-medium text-gray-900">{detailHomestay?.pricePerNight ? `${detailHomestay.pricePerNight.toLocaleString('vi-VN')}đ` : (homestayMap[selected.homestayId]?.pricePerNight ? `${homestayMap[selected.homestayId].pricePerNight.toLocaleString('vi-VN')}đ` : '—')}</span></div>
-                              <div>Số khách: <span className="font-medium text-gray-900">{detailHomestay?.maxGuests ?? homestayMap[selected.homestayId]?.maxGuests ?? '—'}</span></div>
+                              <div>Giá/đêm: <span className="font-medium text-gray-900">{detailHomestay?.pricePerNight ? `${detailHomestay.pricePerNight.toLocaleString('vi-VN')}đ` : (getHomestayById(selected.homestayId)?.pricePerNight ? `${getHomestayById(selected.homestayId)?.pricePerNight?.toLocaleString('vi-VN')}đ` : '—')}</span></div>
+                              <div>Số khách: <span className="font-medium text-gray-900">{detailHomestay?.maxGuests ?? getHomestayById(selected.homestayId)?.maxGuests ?? '—'}</span></div>
                               <div className="pt-2">
                                 <div className="text-sm font-semibold mb-2">Tiện nghi</div>
                                 <div className="flex flex-wrap gap-2">
-                                  {(detailHomestay?.amenities || homestayMap[selected.homestayId]?.amenities || []).slice(0, 8).map((a, i) => (
+                                  {(detailHomestay?.amenities || getHomestayById(selected.homestayId)?.amenities || []).slice(0, 8).map((a, i) => (
                                     <div key={i} className="text-sm bg-gray-100 px-3 py-1 rounded">{a}</div>
                                   ))}
                                 </div>
@@ -844,7 +853,7 @@ export default function BookingsPage() {
                           {(selected.status === 'PENDING' || (selected.status === 'CONFIRMED' && selected.paymentStatus === 'DEPOSIT_PAID')) && (
                             <button
                               onClick={() => {
-                                const hs = detailHomestay ?? homestayMap[selected.homestayId];
+                                const hs = detailHomestay ?? getHomestayById(selected.homestayId);
                                 const isDeposit = selected.status === 'PENDING';
                                 // amountDue: số tiền thực cần trả lần này — lấy từ BE, không tính lại
                                 const amountDue = isDeposit

@@ -157,8 +157,27 @@ export const staffBookingService = {
     }
   },
 
-  async extend(id: string, payload: Record<string, any>) {
-    return apiService.post<any>(apiConfig.endpoints.staffBookings.extend(id), payload);
+  async extend(
+    id: string,
+    payload: Record<string, any>,
+  ): Promise<{ success: boolean; message?: string; data?: any }> {
+    try {
+      const res = await apiService.post<any>(
+        apiConfig.endpoints.staffBookings.extend(id),
+        payload,
+      );
+      return {
+        success: res?.success ?? true,
+        message: res?.message,
+        data: res?.data ?? res?.result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error ? error.message : 'Không thể gia hạn booking',
+      };
+    }
   },
 
   async getAllBookings(params?: Record<string, any>): Promise<Booking[]> {
