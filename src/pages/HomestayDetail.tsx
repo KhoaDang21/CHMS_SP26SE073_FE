@@ -273,6 +273,10 @@ export default function HomestayDetail() {
         return rules
     }, [mergedOccupiedRanges])
 
+    const bookedDayModifiers = useMemo(() => {
+        return mergedOccupiedRanges.map(({ from, to }) => ({ from, to: addDays(to, -1) }))
+    }, [mergedOccupiedRanges])
+
     // Tính ngày checkout tối đa: ngày bắt đầu của occupied range đầu tiên SAU check-in
     // Ví dụ: checkIn=14, có booking 16-18 → checkout chỉ được chọn tối đa ngày 16 (không qua được)
     const checkOutDisabledDays = useMemo(() => {
@@ -782,7 +786,8 @@ export default function HomestayDetail() {
                                                         setShowCalendar(null)
                                                     }}
                                                     disabled={disabledDays}
-                                                    modifiersClassNames={{ today: 'rdp-today' }}
+                                                    modifiers={{ booked: bookedDayModifiers }}
+                                                    modifiersClassNames={{ today: 'rdp-today', booked: 'rdp-booked' }}
                                                 />
                                                 {occupiedDateRanges.length > 0 && (
                                                     <div className="px-3 pb-2 text-xs text-gray-400 flex items-center gap-1.5">
@@ -818,7 +823,8 @@ export default function HomestayDetail() {
                                                         setShowCalendar(null)
                                                     }}
                                                     disabled={checkOutDisabledDays}
-                                                    modifiersClassNames={{ today: 'rdp-today' }}
+                                                    modifiers={{ booked: bookedDayModifiers }}
+                                                    modifiersClassNames={{ today: 'rdp-today', booked: 'rdp-booked' }}
                                                 />
                                                 {occupiedDateRanges.length > 0 && (
                                                     <div className="px-3 pb-2 text-xs text-gray-500">

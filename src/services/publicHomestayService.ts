@@ -277,9 +277,19 @@ export const publicHomestayService = {
 
       const rawList: any[] = Array.isArray(res?.data)
         ? res.data
-        : Array.isArray(res)
-          ? res
-          : [];
+        : Array.isArray(res?.result)
+          ? res.result
+          : Array.isArray(res?.data?.items)
+            ? res.data.items
+            : Array.isArray(res?.data?.Items)
+              ? res.data.Items
+              : Array.isArray(res?.result?.items)
+                ? res.result.items
+                : Array.isArray(res?.result?.Items)
+                  ? res.result.Items
+                  : Array.isArray(res)
+                    ? res
+                    : [];
 
       return rawList
         .map((item) => ({

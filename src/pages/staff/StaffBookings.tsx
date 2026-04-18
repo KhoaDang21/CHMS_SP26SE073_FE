@@ -6,11 +6,14 @@ import {
   Bell,
   Calendar,
   ClipboardList,
+  Download,
   Home,
   LogOut,
+  Mail,
   Menu,
   MessageSquare,
   Phone,
+  Receipt,
   Search,
   Ticket,
   Users,
@@ -20,16 +23,41 @@ import {
 import { authService } from '../../services/authService';
 import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
+import { invoiceService, type Invoice } from '../../services/invoiceService';
 import { Pagination } from '../../components/common/Pagination';
 import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/src/style.css';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
 import { buildDisplaySpecialRequests } from '../../utils/bookingExperience';
 
 type FilterStatus = 'all' | 'checkin-today' | 'checkout-today' | 'confirmed' | 'completed';
 
 const dateKey = (value: string) => new Date(value).toISOString().split('T')[0];
+
+const toStartOfDay = (value: string | Date) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const toYmd = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const parseYmd = (value: string): Date | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setHours(0, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
 
 export default function StaffBookings() {
   const navigate = useNavigate();
@@ -48,10 +76,15 @@ export default function StaffBookings() {
   const [bookingDetail, setBookingDetail] = useState<Booking | null>(null);
   const [bookingDetailChargeLoading, setBookingDetailChargeLoading] = useState(false);
   const [bookingDetailCharges, setBookingDetailCharges] = useState<ExtraCharge[]>([]);
+  const [bookingInvoiceLoading, setBookingInvoiceLoading] = useState(false);
+  const [bookingInvoice, setBookingInvoice] = useState<Invoice | null>(null);
+  const [invoiceActionLoading, setInvoiceActionLoading] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [extendBooking, setExtendBooking] = useState<Booking | null>(null);
   const [newCheckOutDate, setNewCheckOutDate] = useState('');
+  const [showExtendCalendar, setShowExtendCalendar] = useState(false);
   const [extendSubmitting, setExtendSubmitting] = useState(false);
+  const [extendNotice, setExtendNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const loadBookings = async () => {
@@ -183,24 +216,77 @@ export default function StaffBookings() {
     setShowBookingDetailModal(true);
     setBookingDetailLoading(true);
     setBookingDetailChargeLoading(true);
+    setBookingInvoiceLoading(true);
     setBookingDetail(booking);
     setBookingDetailCharges([]);
+    setBookingInvoice(null);
 
     try {
-      const [detail, charges] = await Promise.all([
+      const [detail, charges, invoice] = await Promise.all([
         staffBookingService.getBookingById(booking.id),
         extraChargeService.listByBooking(booking.id),
+        invoiceService.getInvoice(booking.id),
       ]);
       setBookingDetail(detail || booking);
       setBookingDetailCharges(charges);
+      setBookingInvoice(invoice);
     } catch (error) {
       console.error('Load booking detail error:', error);
       toast.error('Không thể tải chi tiết booking');
       setBookingDetail(booking);
       setBookingDetailCharges([]);
+      setBookingInvoice(null);
     } finally {
       setBookingDetailLoading(false);
       setBookingDetailChargeLoading(false);
+      setBookingInvoiceLoading(false);
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
+    if (!bookingDetail) return;
+
+    try {
+      setInvoiceActionLoading(true);
+      const blob = await invoiceService.downloadInvoice(bookingDetail.id);
+      if (!blob) {
+        toast.error('Không thể tải hóa đơn');
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hoa-don-${bookingDetail.bookingCode || bookingDetail.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Đã tải hóa đơn');
+    } catch (error) {
+      console.error('Download invoice error:', error);
+      toast.error('Không thể tải hóa đơn');
+    } finally {
+      setInvoiceActionLoading(false);
+    }
+  };
+
+  const handleSendInvoiceEmail = async () => {
+    if (!bookingDetail) return;
+
+    try {
+      setInvoiceActionLoading(true);
+      const result = await invoiceService.sendInvoiceEmail(bookingDetail.id);
+      if (!result.success) {
+        toast.error(result.message || 'Không thể gửi email hóa đơn');
+        return;
+      }
+      toast.success(result.message || 'Đã gửi hóa đơn qua email');
+    } catch (error) {
+      console.error('Send invoice email error:', error);
+      toast.error('Không thể gửi email hóa đơn');
+    } finally {
+      setInvoiceActionLoading(false);
     }
   };
 
@@ -218,6 +304,8 @@ export default function StaffBookings() {
 
     setExtendBooking(booking);
     setNewCheckOutDate(suggestedDate);
+    setShowExtendCalendar(false);
+    setExtendNotice(null);
     setShowExtendModal(true);
   };
 
@@ -241,7 +329,9 @@ export default function StaffBookings() {
     if (!extendBooking) return;
 
     if (!canExtendStay(extendBooking)) {
-      toast.error('Chỉ có thể gia hạn khi booking đã nhận phòng');
+      const message = 'Chỉ có thể gia hạn khi booking đã nhận phòng';
+      setExtendNotice({ type: 'error', message });
+      toast.error(message);
       return;
     }
 
@@ -249,36 +339,51 @@ export default function StaffBookings() {
     const nextCheckOut = new Date(newCheckOutDate);
 
     if (Number.isNaN(nextCheckOut.getTime())) {
-      toast.error('Ngày checkout mới không hợp lệ');
+      const message = 'Ngày checkout mới không hợp lệ';
+      setExtendNotice({ type: 'error', message });
+      toast.error(message);
       return;
     }
 
     if (nextCheckOut <= currentCheckOut) {
-      toast.error('Ngày checkout mới phải sau ngày checkout hiện tại');
+      const message = 'Ngày checkout mới phải sau ngày checkout hiện tại';
+      setExtendNotice({ type: 'error', message });
+      toast.error(message);
       return;
     }
 
     if (hasBookingOverlap(extendBooking, newCheckOutDate)) {
-      toast.error('Không thể gia hạn vì bị trùng lịch với booking khác của homestay này');
+      const message = 'Không thể gia hạn vì bị trùng lịch với booking khác của homestay này';
+      setExtendNotice({ type: 'error', message });
+      toast.error(message);
       return;
     }
 
     try {
       setExtendSubmitting(true);
+      setExtendNotice(null);
       const result = await staffBookingService.extend(extendBooking.id, { newCheckOutDate });
-      if (result?.success === false) {
-        toast.error(result.message || 'Không thể gia hạn booking');
+      if (!result.success) {
+        const message = result.message || 'Không thể gia hạn booking';
+        setExtendNotice({ type: 'error', message });
+        toast.error(message);
         return;
       }
 
-      toast.success('Gia hạn ngày ở thành công');
+      const message = result.message || 'Gia hạn ngày ở thành công';
+      setExtendNotice({ type: 'success', message });
+      toast.success(message);
       setShowExtendModal(false);
       setExtendBooking(null);
       setNewCheckOutDate('');
+      setShowExtendCalendar(false);
+      setExtendNotice(null);
       await loadBookings();
     } catch (error) {
       console.error('Extend booking error:', error);
-      toast.error('Không thể gia hạn booking');
+      const message = error instanceof Error ? error.message : 'Không thể gia hạn booking';
+      setExtendNotice({ type: 'error', message });
+      toast.error(message);
     } finally {
       setExtendSubmitting(false);
     }
@@ -337,6 +442,21 @@ export default function StaffBookings() {
     return labels[paymentStatus] ?? paymentStatus;
   };
 
+  const getInvoicePaymentStatusText = (status?: string) => {
+    const value = String(status || '').toUpperCase();
+    const labels: Record<string, string> = {
+      FULLY_PAID: 'Đã thanh toán đầy đủ',
+      DEPOSIT_PAID: 'Đã đặt cọc',
+      UNPAID: 'Chưa thanh toán',
+      PENDING: 'Chờ thanh toán',
+      PAID: 'Đã thanh toán đầy đủ',
+      REFUNDED: 'Đã hoàn tiền',
+      PARTIALLY_REFUNDED: 'Hoàn tiền một phần',
+      FAILED: 'Thanh toán thất bại',
+    };
+    return labels[value] ?? status ?? '—';
+  };
+
   const getStatusBadge = (status: Booking['status']) => {
     const badges = {
       pending:     { label: 'Chờ thanh toán cọc', class: 'bg-yellow-100 text-yellow-700' },
@@ -355,6 +475,45 @@ export default function StaffBookings() {
     booking.status === 'confirmed' && (booking.paymentStatus === 'paid' || booking.paymentStatus === 'deposit_paid');
   const canCheckOut = (booking: Booking) => booking.status === 'checked_in';
   const totalBookingDetailAmount = bookingDetailCharges.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+  const extendMinDate = useMemo(() => {
+    if (!extendBooking) return toStartOfDay(new Date());
+    const checkout = toStartOfDay(extendBooking.checkOutDate);
+    if (!checkout) return toStartOfDay(new Date());
+    const min = new Date(checkout);
+    min.setDate(min.getDate() + 1);
+    return min;
+  }, [extendBooking]);
+
+  const extendBookedModifiers = useMemo(() => {
+    if (!extendBooking?.homestayId) return [] as Array<{ from: Date; to: Date }>;
+
+    return bookings
+      .filter((item) => {
+        if (item.id === extendBooking.id) return false;
+        if (item.homestayId !== extendBooking.homestayId) return false;
+        return item.status !== 'cancelled';
+      })
+      .map((item) => {
+        const from = toStartOfDay(item.checkInDate);
+        const checkout = toStartOfDay(item.checkOutDate);
+        if (!from || !checkout) return null;
+
+        const to = new Date(checkout);
+        to.setDate(to.getDate() - 1);
+        if (to < from) return null;
+
+        return { from, to };
+      })
+      .filter((item): item is { from: Date; to: Date } => item !== null);
+  }, [bookings, extendBooking]);
+
+  const extendDisabledDays = useMemo(() => {
+    const rules: Array<{ before: Date } | { from: Date; to: Date }> = [];
+    if (extendMinDate) rules.push({ before: extendMinDate });
+    extendBookedModifiers.forEach((range) => rules.push(range));
+    return rules;
+  }, [extendMinDate, extendBookedModifiers]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -704,6 +863,101 @@ export default function StaffBookings() {
                       </div>
                     )}
                   </div>
+
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 space-y-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-indigo-700" />
+                        <h4 className="text-sm font-semibold text-indigo-900">Hóa đơn booking</h4>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={handleDownloadInvoice}
+                          disabled={invoiceActionLoading || bookingInvoiceLoading}
+                          type="button"
+                          className="px-3 py-1.5 rounded-lg border border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-100 text-sm font-medium disabled:opacity-60"
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <Download className="w-4 h-4" />
+                            Tải PDF
+                          </span>
+                        </button>
+                        <button
+                          onClick={handleSendInvoiceEmail}
+                          disabled={invoiceActionLoading || bookingInvoiceLoading}
+                          type="button"
+                          className="px-3 py-1.5 rounded-lg border border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-100 text-sm font-medium disabled:opacity-60"
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <Mail className="w-4 h-4" />
+                            Gửi email
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {bookingInvoiceLoading ? (
+                      <div className="text-sm text-gray-500">Đang tải hóa đơn...</div>
+                    ) : bookingInvoice ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Mã hóa đơn</p>
+                          <p className="font-semibold text-gray-900 break-all">{bookingInvoice.id || '—'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Khách hàng</p>
+                          <p className="font-semibold text-gray-900">{bookingInvoice.customerName || bookingDetail.customerName || '—'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Homestay</p>
+                          <p className="font-semibold text-gray-900">{bookingInvoice.homestayName || bookingDetail.homestayName || '—'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Địa chỉ</p>
+                          <p className="font-semibold text-gray-900">{bookingInvoice.address || '—'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Trạng thái thanh toán</p>
+                          <p className="font-semibold text-gray-900">{getInvoicePaymentStatusText(bookingInvoice.paymentStatus)}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Ngày nhận phòng</p>
+                          <p className="font-semibold text-gray-900">{bookingInvoice.checkIn ? new Date(bookingInvoice.checkIn).toLocaleDateString('vi-VN') : '—'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Ngày trả phòng</p>
+                          <p className="font-semibold text-gray-900">{bookingInvoice.checkOut ? new Date(bookingInvoice.checkOut).toLocaleDateString('vi-VN') : '—'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Giá phòng</p>
+                          <p className="font-semibold text-gray-900">{Number(bookingInvoice.roomPrice || bookingInvoice.unitPrice || 0).toLocaleString('vi-VN')} VND</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Tiền cọc</p>
+                          <p className="font-semibold text-gray-900">{Number(bookingInvoice.depositAmount || 0).toLocaleString('vi-VN')} VND</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Số tiền còn lại</p>
+                          <p className="font-semibold text-gray-900">{Number(bookingInvoice.remainingAmount || 0).toLocaleString('vi-VN')} VND</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Dịch vụ phát sinh</p>
+                          <p className="font-semibold text-gray-900">{Array.isArray(bookingInvoice.services) ? bookingInvoice.services.length : 0} mục</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Thời gian tạo</p>
+                          <p className="font-semibold text-gray-900">{bookingInvoice.createdAt ? new Date(bookingInvoice.createdAt).toLocaleString('vi-VN') : '—'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-indigo-100 px-3 py-2">
+                          <p className="text-gray-500">Tổng tiền</p>
+                          <p className="font-bold text-indigo-700">{Number(bookingInvoice.totalAmount || 0).toLocaleString('vi-VN')} VND</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">Chưa lấy được dữ liệu hóa đơn cho booking này.</div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -741,18 +995,54 @@ export default function StaffBookings() {
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Ngày checkout mới</label>
-                <input
-                  type="date"
-                  value={newCheckOutDate}
-                  min={new Date(extendBooking.checkOutDate).toISOString().split('T')[0]}
-                  onChange={(e) => setNewCheckOutDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                />
+                <div className="relative mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowExtendCalendar((prev) => !prev)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 flex items-center justify-between"
+                  >
+                    <span>{newCheckOutDate ? new Date(newCheckOutDate).toLocaleDateString('vi-VN') : 'Chọn ngày checkout'}</span>
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                  </button>
+
+                  {showExtendCalendar && (
+                    <div className="absolute left-0 top-[calc(100%+8px)] z-50 rounded-lg border border-gray-200 bg-white shadow-xl w-fit">
+                      <DayPicker
+                        mode="single"
+                        selected={parseYmd(newCheckOutDate) ?? undefined}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          setNewCheckOutDate(toYmd(date));
+                          setShowExtendCalendar(false);
+                          setExtendNotice(null);
+                        }}
+                        disabled={extendDisabledDays}
+                        modifiers={{ booked: extendBookedModifiers }}
+                        modifiersClassNames={{ today: 'rdp-today', booked: 'rdp-booked' }}
+                        showOutsideDays
+                        className="chms-calendar"
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Ngày đã có khách đặt sẽ bị làm mờ và không thể chọn.</p>
               </div>
 
               <p className="text-xs text-gray-500">
                 Hệ thống sẽ kiểm tra trùng lịch với booking khác của cùng homestay trước khi gia hạn.
               </p>
+
+              {extendNotice && (
+                <div
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    extendNotice.type === 'success'
+                      ? 'bg-green-50 border-green-200 text-green-800'
+                      : 'bg-red-50 border-red-200 text-red-700'
+                  }`}
+                >
+                  {extendNotice.message}
+                </div>
+              )}
             </div>
 
             <div className="p-6 border-t border-gray-200 flex gap-3">
@@ -762,6 +1052,8 @@ export default function StaffBookings() {
                   setShowExtendModal(false);
                   setExtendBooking(null);
                   setNewCheckOutDate('');
+                  setShowExtendCalendar(false);
+                  setExtendNotice(null);
                 }}
                 type="button"
                 className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"

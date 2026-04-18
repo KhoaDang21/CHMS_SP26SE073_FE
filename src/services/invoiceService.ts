@@ -7,8 +7,19 @@ export interface Invoice {
   bookingCode?: string;
   homestayName?: string;
   customerName?: string;
+  address?: string;
   checkIn: string;
   checkOut: string;
+  roomPrice?: number;
+  depositAmount?: number;
+  remainingAmount?: number;
+  services?: Array<{
+    name?: string;
+    description?: string;
+    amount?: number;
+    quantity?: number;
+  }>;
+  createdAt?: string;
   totalNights?: number;
   guestsCount?: number;
   unitPrice?: number;
@@ -29,26 +40,41 @@ export const invoiceService = {
       const response = await apiService.get<any>(
         apiConfig.endpoints.invoices.detail(bookingId),
       );
-      const data = response?.data ?? response;
+      const data =
+        response?.data?.data ??
+        response?.result?.data ??
+        response?.data ??
+        response?.result ??
+        response;
       if (!data) return null;
 
+      const roomPrice = Number(data.roomPrice ?? data.unitPrice ?? 0);
+      const depositAmount = Number(data.depositAmount ?? 0);
+      const remainingAmount = Number(data.remainingAmount ?? 0);
+
       return {
-        id: data.id ?? "",
+        id: data.id ?? data.invoiceId ?? data.bookingId ?? bookingId,
         bookingId: data.bookingId ?? bookingId,
         bookingCode: data.bookingCode ?? "",
         homestayName: data.homestayName ?? "",
         customerName: data.customerName ?? "",
+        address: data.address ?? "",
         checkIn: data.checkIn ?? "",
         checkOut: data.checkOut ?? "",
+        roomPrice,
+        depositAmount,
+        remainingAmount,
+        services: Array.isArray(data.services) ? data.services : [],
+        createdAt: data.createdAt ?? "",
         totalNights: data.totalNights ?? 0,
         guestsCount: data.guestsCount ?? 0,
-        unitPrice: data.unitPrice ?? 0,
-        subtotal: data.subtotal ?? 0,
+        unitPrice: Number(data.unitPrice ?? data.roomPrice ?? 0),
+        subtotal: Number(data.subtotal ?? data.roomPrice ?? roomPrice),
         discountAmount: data.discountAmount ?? 0,
         tax: data.tax ?? 0,
-        totalAmount: data.totalAmount ?? 0,
+        totalAmount: Number(data.totalAmount ?? 0),
         paymentStatus: data.paymentStatus ?? "",
-        invoiceDate: data.invoiceDate ?? "",
+        invoiceDate: data.invoiceDate ?? data.createdAt ?? "",
         dueDate: data.dueDate ?? "",
         notes: data.notes ?? "",
       };
