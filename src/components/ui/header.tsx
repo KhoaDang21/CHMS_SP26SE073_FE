@@ -19,17 +19,20 @@ interface HeaderProps {
 
 const navigationItems = [
   { name: 'Home', nameVi: 'Trang Chủ', href: '/' },
-  { name: 'Travel Guides', nameVi: 'Cẩm Nang Du Lịch', href: '/travel-guides' },
+  { name: 'Booking', nameVi: 'Đặt Phòng', href: '/customer/bookings' },
   { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/experiences' },
+  { name: 'Travel Guides', nameVi: 'Cẩm Nang Du Lịch', href: '/travel-guides' },
+  { name: 'Favorites', nameVi: 'Yêu Thích', href: '/customer/favorites' },
+  { name: 'Messages', nameVi: 'Hỗ Trợ', href: '/customer/messages' },
   { name: 'About', nameVi: 'Giới Thiệu', href: '/about' },
   { name: 'Contact', nameVi: 'Liên Hệ', href: '/contact' },
 ];
 
 const authenticatedNavigationItems = [
   { name: 'Dashboard', nameVi: 'Trang Chủ', href: '/customer/dashboard', icon: Compass },
-  { name: 'Travel Guides', nameVi: 'Cẩm Nang Du Lịch', href: '/travel-guides', icon: BookOpen },
   { name: 'Booking', nameVi: 'Đặt Phòng', href: '/customer/bookings', icon: Compass },
   { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/customer/experiences', icon: Star },
+  { name: 'Travel Guides', nameVi: 'Cẩm Nang Du Lịch', href: '/travel-guides', icon: BookOpen },
   { name: 'Favorites', nameVi: 'Yêu Thích', href: '/customer/favorites', icon: Heart },
   { name: 'Messages', nameVi: 'Hỗ Trợ', href: '/customer/messages', icon: MessageCircle },
 ];
