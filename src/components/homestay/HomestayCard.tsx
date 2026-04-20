@@ -44,23 +44,23 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
           />
           {/* Favorite button — chỉ hiện khi đã login */}
           {isLoggedIn && (
-          <button
-            onClick={async (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              try {
-                await toggle(homestay.id);
-                toast.success(isFavorite ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
-              } catch (err) {
-                toast.error('Không thể thay đổi trạng thái yêu thích');
-              }
-            }}
-            title={isFavorite ? 'Bỏ thích' : 'Lưu yêu thích'}
-            className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow hover:scale-105 transition-transform"
-            type="button"
-          >
-            <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-          </button>
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                  await toggle(homestay.id);
+                  toast.success(isFavorite ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
+                } catch (err) {
+                  toast.error('Không thể thay đổi trạng thái yêu thích');
+                }
+              }}
+              title={isFavorite ? 'Bỏ thích' : 'Lưu yêu thích'}
+              className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow hover:scale-105 transition-transform"
+              type="button"
+            >
+              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+            </button>
           )}
           {/* Booked overlay */}
           {isBooked && (
@@ -91,13 +91,15 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
           </p>
 
           {/* Guests + bedrooms + bathrooms */}
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
+          <div className="flex items-center gap-3 text-xs text-gray-500 flex-nowrap">
+            <span className="flex items-center gap-1 whitespace-nowrap">
               <Users className="w-3 h-3" />
               {homestay.maxGuests ?? '-'} khách
             </span>
-            <span>🛏 {homestay.bedrooms ?? '-'} phòng ngủ</span>
-            {homestay.bathrooms ? <span>🚿 {homestay.bathrooms} WC</span> : null}
+            <span className="whitespace-nowrap">🛏 {homestay.bedrooms ?? '-'} PN</span>
+            {homestay.bathrooms ? (
+              <span className="whitespace-nowrap">🚿 {homestay.bathrooms}</span>
+            ) : null}
           </div>
 
           {/* Price */}
@@ -141,8 +143,8 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
           onClick={isBooked ? undefined : (onBook ?? (() => navigate(`/homestays/${homestay.id}`)))}
           disabled={isBooked}
           className={`w-full px-4 py-2 rounded-lg transition-all text-sm font-medium ${isBooked
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
+            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
             }`}
         >
           {isBooked ? 'Đã đặt trong khoảng này' : 'Đặt Ngay'}

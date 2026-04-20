@@ -294,9 +294,8 @@ export default function HomestayDetailPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } bg-white shadow-lg w-64`}
+        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } bg-white shadow-lg w-64`}
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
@@ -322,11 +321,10 @@ export default function HomestayDetailPage() {
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
@@ -427,27 +425,26 @@ export default function HomestayDetailPage() {
             </div>
 
             <div
-              className={`inline-block px-4 py-2 rounded-lg text-sm font-medium ${
-                homestay.status === 'ACTIVE'
-                  ? 'bg-green-100 text-green-700'
-                  : homestay.status === 'OCCUPIED'
+              className={`inline-block px-4 py-2 rounded-lg text-sm font-medium ${homestay.status === 'ACTIVE'
+                ? 'bg-green-100 text-green-700'
+                : homestay.status === 'OCCUPIED'
                   ? 'bg-blue-100 text-blue-700'
                   : homestay.status === 'CLEANING'
-                  ? 'bg-cyan-100 text-cyan-700'
-                  : homestay.status === 'INACTIVE'
-                  ? 'bg-gray-100 text-gray-700'
-                  : 'bg-orange-100 text-orange-700'
-              }`}
+                    ? 'bg-cyan-100 text-cyan-700'
+                    : homestay.status === 'INACTIVE'
+                      ? 'bg-gray-100 text-gray-700'
+                      : 'bg-orange-100 text-orange-700'
+                }`}
             >
               {homestay.status === 'ACTIVE'
                 ? '✓ Đang hoạt động'
                 : homestay.status === 'OCCUPIED'
-                ? '🏠 Đang có người ở'
-                : homestay.status === 'CLEANING'
-                ? '🧹 Đang dọn dẹp'
-                : homestay.status === 'INACTIVE'
-                ? '⊗ Tạm ngưng'
-                : '⚠ Bảo trì'}
+                  ? '🏠 Đang có người ở'
+                  : homestay.status === 'CLEANING'
+                    ? '🧹 Đang dọn dẹp'
+                    : homestay.status === 'INACTIVE'
+                      ? '⊗ Tạm ngưng'
+                      : '⚠ Bảo trì'}
             </div>
           </div>
 
@@ -498,11 +495,10 @@ export default function HomestayDetailPage() {
                   <button
                     key={idx}
                     onClick={() => setCurrentImageIndex(idx)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                      idx === currentImageIndex
-                        ? 'border-blue-600 ring-2 ring-blue-200'
-                        : 'border-gray-200 hover:border-blue-400'
-                    }`}
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${idx === currentImageIndex
+                      ? 'border-blue-600 ring-2 ring-blue-200'
+                      : 'border-gray-200 hover:border-blue-400'
+                      }`}
                   >
                     <img
                       src={img}
@@ -615,11 +611,10 @@ export default function HomestayDetailPage() {
                             </td>
                             <td className="px-4 py-3 text-sm">
                               <span
-                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                                  price.status === 'ACTIVE'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-gray-100 text-gray-700'
-                                }`}
+                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${price.status === 'ACTIVE'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-700'
+                                  }`}
                               >
                                 {price.status === 'ACTIVE' ? 'Kích hoạt' : 'Tạm tắt'}
                               </span>
