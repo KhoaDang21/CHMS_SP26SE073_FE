@@ -7,6 +7,7 @@ import {
   Sparkles,
   UserCog,
   Users,
+  Bike,
 } from 'lucide-react';
 
 export const managerNavItems = [
@@ -16,6 +17,7 @@ export const managerNavItems = [
   { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
   { id: 'homestays', label: 'Xem Homestay', icon: Home, path: '/manager/homestays' },
   { id: 'experiences', label: 'Dịch vụ địa phương', icon: Sparkles, path: '/manager/experiences' },
+  { id: 'bicycles', label: 'Mini-game xe đạp', icon: Bike, path: '/manager/bicycles' },
   { id: 'travel-guides', label: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides' },
   { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/manager/reviews' },
 ] as const;

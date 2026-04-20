@@ -3,6 +3,7 @@ import {
   Home,
   BookOpen,
   Sparkles,
+  Bike,
   CalendarDays,
   Users,
   UserCog,
@@ -42,6 +43,12 @@ export const adminNavItems = [
     label: "Dịch vụ địa phương",
     icon: Sparkles,
     path: "/admin/experiences",
+  },
+  {
+    id: "bicycles",
+    label: "Mini-game xe đạp",
+    icon: Bike,
+    path: "/admin/bicycles",
   },
   {
     id: "travel-guides",

@@ -29,6 +29,7 @@ const normalizeHomestay = (it: any): Homestay => ({
   description: it.description ?? it.Description ?? '',
   address: it.address ?? it.Address ?? '',
   districtId: it.districtId ?? it.DistrictId ?? '',
+  provinceId: it.provinceId ?? it.ProvinceId ?? it.province?.id ?? it.Province?.Id ?? '',
   districtName: it.districtName ?? it.DistrictName ?? '',
   provinceName: it.provinceName ?? it.ProvinceName ?? '',
   city: it.city ?? it.City ?? '',

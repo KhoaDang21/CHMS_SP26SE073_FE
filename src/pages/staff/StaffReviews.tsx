@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
+  Bike,
   BookOpen,
   Calendar,
   CheckCircle2,
@@ -105,6 +106,7 @@ export default function StaffReviews() {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
     { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: false },
     { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: true },
+    { name: 'Mini-game xe đạp', icon: Bike, path: '/staff/bicycles', active: false },
     { name: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides', active: false },
     { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: false },
   ];

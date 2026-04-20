@@ -29,6 +29,7 @@ import { adminNavItems } from '../../config/adminNavItems';
 import { managerNavItems } from '../../config/managerNavItems';
 import { homestayService } from '../../services/homestayService';
 import type { Homestay } from '../../types/homestay.types';
+import { employeeService } from '../../services/employeeService';
 
 const initialServiceForm: ExperiencePayload = {
   homestayId: '',
@@ -62,6 +63,49 @@ const isValidHttpUrl = (value: string) => {
 
 const fallbackExperienceImage = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80';
 
+const normalizeText = (value: unknown): string => String(value ?? '').trim().toLowerCase();
+
+const pickProvinceValue = (item: any): { id: string | null; name: string | null } => {
+  const provinceId =
+    item?.managedProvinceId ||
+    item?.assignedProvinceId ||
+    item?.managedProvince?.id ||
+    item?.assignedProvince?.id ||
+    item?.provinceId ||
+    null;
+
+  const provinceName =
+    item?.managedProvinceName ||
+    item?.assignedProvinceName ||
+    item?.managedProvince?.name ||
+    item?.assignedProvince?.name ||
+    item?.provinceName ||
+    null;
+
+  return {
+    id: provinceId ? String(provinceId) : null,
+    name: provinceName ? String(provinceName) : null,
+  };
+};
+
+const homestayMatchesProvince = (
+  homestay: Homestay,
+  province: { id: string | null; name: string | null },
+): boolean => {
+  const homestayProvinceId = String((homestay as any)?.provinceId || '').trim();
+  const homestayProvinceName = String(homestay?.provinceName || '').trim();
+
+  if (province.id && homestayProvinceId) {
+    return homestayProvinceId === province.id;
+  }
+
+  if (province.name && homestayProvinceName) {
+    return normalizeText(homestayProvinceName) === normalizeText(province.name);
+  }
+
+  return false;
+};
+
 export default function ExperienceManagement() {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
@@ -75,6 +119,10 @@ export default function ExperienceManagement() {
   const [services, setServices] = useState<LocalExperience[]>([]);
   const [categories, setCategories] = useState<ExperienceCategory[]>([]);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
+  const [managerProvince, setManagerProvince] = useState<{ id: string | null; name: string | null }>({
+    id: null,
+    name: null,
+  });
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('services');
 
@@ -100,9 +148,32 @@ export default function ExperienceManagement() {
         serviceCategoryService.list(),
         homestayService.getAllAdminHomestays(),
       ]);
-      setServices(serviceList);
+
+      let province = { id: null as string | null, name: null as string | null };
+      if (!isAdmin && user?.id) {
+        const profile = await employeeService.getEmployeeById(String(user.id));
+        if (profile) {
+          province = pickProvinceValue(profile);
+        }
+      }
+
+      const allowedHomestays = isAdmin
+        ? homeList
+        : homeList.filter((item) => homestayMatchesProvince(item, province));
+
+      const allowedHomestayIds = new Set(allowedHomestays.map((item) => item.id));
+      const scopedServices = isAdmin
+        ? serviceList
+        : serviceList.filter((item) => allowedHomestayIds.has(String(item.homestayId || '')));
+
+      setManagerProvince(province);
+      setServices(scopedServices);
       setCategories(categoryList);
-      setHomestays(homeList);
+      setHomestays(allowedHomestays);
+
+      if (!isAdmin && !province.id && !province.name) {
+        toast.warning('Bạn chưa được phân công tỉnh quản lý, danh sách dịch vụ sẽ trống.');
+      }
     } catch (error) {
       console.error('Load experience management data error:', error);
       toast.error('Không thể tải dữ liệu');
@@ -200,6 +271,10 @@ export default function ExperienceManagement() {
     }
     if (!serviceForm.name?.trim()) {
       toast.error('Vui lòng nhập tên dịch vụ');
+      return;
+    }
+    if (!isAdmin && !homestays.some((item) => item.id === serviceForm.homestayId)) {
+      toast.error('Homestay không thuộc tỉnh bạn được phân công');
       return;
     }
     if (serviceForm.imageUrl?.trim() && serviceForm.imageUrl.trim().startsWith('data:')) {
@@ -408,6 +483,11 @@ export default function ExperienceManagement() {
 
           {activeTab === 'services' && (
             <div className="space-y-4">
+              {!isAdmin && (
+                <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
+                  Phạm vi hiển thị theo tỉnh quản lý: {managerProvince.name || 'Chưa phân công'}
+                </div>
+              )}
               <div className="bg-white rounded-xl shadow-md p-4">
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="flex-1 relative">
