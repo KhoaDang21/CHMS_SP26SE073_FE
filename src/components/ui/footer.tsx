@@ -18,8 +18,8 @@ export default function Footer() {
       { name: 'Điều Khoản Sử Dụng', href: '#' },
     ],
     services: [
-      { name: 'Khám Phá Homestay', href: '/explore' },
-      { name: 'Đặt Phòng', href: '/explore' },
+      { name: 'Khám Phá Homestay', href: '/' },
+      { name: 'Đặt Phòng', href: '/' },
       { name: 'Trở Thành Chủ Nhà', href: '#' },
       { name: 'Đối Tác', href: '#' },
     ],
