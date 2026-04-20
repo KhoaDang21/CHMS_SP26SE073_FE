@@ -20,6 +20,7 @@ interface HeaderProps {
 const navigationItems = [
   { name: 'Home', nameVi: 'Trang Chủ', href: '/' },
   { name: 'About', nameVi: 'Giới Thiệu', href: '/about' },
+  { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/experiences' },
   { name: 'Contact', nameVi: 'Liên Hệ', href: '/contact' },
 ];
 

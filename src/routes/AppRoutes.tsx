@@ -82,6 +82,7 @@ export function AppRoutes() {
       <Route path="/homestays/:id" element={<HomestayDetail />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
+      <Route path="/experiences" element={<LocalExperiencesPage />} />
       <Route path="/auth/login" element={<LoginPage />} />
       <Route path="/auth/register" element={<RegisterPage />} />
       <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
