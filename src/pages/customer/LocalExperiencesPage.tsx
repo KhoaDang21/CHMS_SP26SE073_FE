@@ -348,7 +348,7 @@ export default function LocalExperiencesPage() {
                       </div>
 
                       <Link
-                        to={card.homestay ? `/homestays/${card.homestay.id}` : '/explore'}
+                        to={card.homestay ? `/homestays/${card.homestay.id}` : '/'}
                         onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center gap-2 rounded-full bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-600 shadow-md"
                       >
@@ -502,7 +502,7 @@ export default function LocalExperiencesPage() {
                   {/* Actions */}
                   <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
                     <Link
-                      to={selectedExperienceCard.homestay ? `/homestays/${selectedExperienceCard.homestay.id}` : '/explore'}
+                      to={selectedExperienceCard.homestay ? `/homestays/${selectedExperienceCard.homestay.id}` : '/'}
                       className="flex items-center justify-between w-full rounded-2xl bg-gray-900 px-6 py-4 text-sm font-bold text-white transition hover:bg-cyan-600 shadow-lg group"
                     >
                       <span className="flex items-center gap-2">
