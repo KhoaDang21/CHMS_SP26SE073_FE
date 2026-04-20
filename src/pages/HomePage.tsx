@@ -16,6 +16,15 @@ const PRICE_MIN = 0;
 const PRICE_MAX = 5000000;
 const PRICE_STEP = 50000;
 
+const HERO_IMAGES = [
+  'https://static.vinwonders.com/production/vui-choi-tai-bien-doc-let.jpg',
+  'https://static.vinwonders.com/2022/04/doc-let-nha-trang.jpg',
+  'https://static.vinwonders.com/2022/04/doc-let-nha-trang-9.jpg',
+  'https://static.vinwonders.com/production/ruong-muoi-hon-khoi.jpg',
+  'https://cdn-media.sforum.vn/storage/app/media/ctvseo_MH/%E1%BA%A3nh%20%C4%91%E1%BA%B9p%20ninh%20thu%E1%BA%ADn/anh-dep-ninh-thuan-3.jpg',
+  'https://cdn-media.sforum.vn/storage/app/media/ctvseo_MH/%E1%BA%A3nh%20%C4%91%E1%BA%B9p%20ninh%20thu%E1%BA%ADn/anh-dep-ninh-thuan-2.jpg',
+];
+
 const vndFormatter = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
   currency: 'VND',
@@ -34,6 +43,7 @@ export default function HomePage() {
   const [checkOutDate, setCheckOutDate] = useState("");
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
   const [showPriceFilter, setShowPriceFilter] = useState(false);
+  const [activeHeroImage, setActiveHeroImage] = useState(0);
 
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [allDistricts, setAllDistricts] = useState<District[]>([]);
@@ -62,10 +72,27 @@ export default function HomePage() {
     setMaxPrice(normalized);
   };
 
+  const scrollToSearchSection = () => {
+    const section = document.getElementById('home-search-section');
+    if (!section) return;
+
+    const offset = 90;
+    const targetTop = window.scrollY + section.getBoundingClientRect().top - offset;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+  };
+
   // Load provinces & districts once
   useEffect(() => {
     provinceService.getAllProvinces().then(setProvinces);
     districtService.getAllDistricts().then(setAllDistricts);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveHeroImage((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   // Load bookings nếu đã login (để tính booked dates)
@@ -178,22 +205,46 @@ export default function HomePage() {
   return (
     <MainLayout>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Hero Section */}
-        <div className="text-center py-12">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            Khám Phá Homestay
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">
-              Ven Biển Tuyệt Đẹp
-            </span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Tìm kiếm và đặt những homestay ven biển tuyệt vời nhất Việt Nam.
-            Trải nghiệm kỳ nghỉ hoàn hảo với view biển tuyệt đẹp.
-          </p>
-        </div>
+        {/* Hero Banner */}
+        <section className="relative overflow-hidden rounded-[2rem] min-h-[420px] sm:min-h-[500px] lg:min-h-[560px]">
+          {HERO_IMAGES.map((image, index) => (
+            <img
+              key={image}
+              src={image}
+              alt="Banner homestay ven biển"
+              className={`absolute inset-0 h-full w-full object-cover chms-hero-slide ${activeHeroImage === index ? 'opacity-100' : 'opacity-0'}`}
+              style={{ transition: 'opacity 900ms ease-in-out' }}
+            />
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-900/45 to-cyan-950/20" />
+          <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-cyan-300/20 blur-3xl" />
+          <div className="absolute -bottom-24 left-10 w-80 h-80 rounded-full bg-sky-300/20 blur-3xl" />
+
+          <div className="relative z-10 h-full flex items-center">
+            <div className="px-6 sm:px-10 lg:px-14 max-w-4xl py-14 sm:py-20">
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs sm:text-sm font-semibold tracking-wide text-white/90 backdrop-blur">
+                Coastal Homestay
+              </p>
+              <h1 className="mt-5 text-white text-4xl sm:text-5xl lg:text-6xl font-black leading-tight">
+                Chào mừng đến với
+                <span className="block text-cyan-300">Coastal Homestay</span>
+              </h1>
+              <p className="mt-4 max-w-2xl text-base sm:text-lg text-white/85 leading-relaxed">
+                Hệ thống Homestay ven biển thân thiện, tiện nghi, giá cả hợp lý, dịch vụ tận tâm đang chờ bạn khám phá.
+              </p>
+              <button
+                type="button"
+                onClick={scrollToSearchSection}
+                className="mt-7 inline-flex items-center gap-2 rounded-full bg-amber-400 px-6 py-3 font-bold text-slate-900 transition hover:bg-amber-300"
+              >
+                Khám phá
+              </button>
+            </div>
+          </div>
+        </section>
 
         {/* Search Section */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+        <div id="home-search-section" className="relative z-20 -mt-14 sm:-mt-16 lg:-mt-20 bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-white/70 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-gray-900">Tìm Kiếm Homestay</h3>
           </div>
@@ -201,7 +252,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {/* Tỉnh/Thành */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Điểm đến</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 <select
@@ -209,7 +260,7 @@ export default function HomePage() {
                   onChange={(e) => setSelectedProvince(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white"
                 >
-                  <option value="">Tất cả tỉnh/thành</option>
+                  <option value="">Chọn điểm đến, khách sạn theo sở thích ...</option>
                   {provinces.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -219,7 +270,7 @@ export default function HomePage() {
 
             {/* Quận/Huyện */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Quận/Huyện</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Khu vực</label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 <select
@@ -228,7 +279,7 @@ export default function HomePage() {
                   disabled={!selectedProvince}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
                 >
-                  <option value="">Tất cả quận/huyện</option>
+                  <option value="">Chọn khu vực lưu trú</option>
                   {filteredDistricts.map(d => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
@@ -238,7 +289,7 @@ export default function HomePage() {
 
             {/* Ngày Nhận Phòng */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày Nhận Phòng</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày nhận</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -260,7 +311,7 @@ export default function HomePage() {
             {/* Ngày Trả Phòng */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày Trả Phòng
+                Ngày trả
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -282,7 +333,7 @@ export default function HomePage() {
             </div>
 
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Lọc Giá (VNĐ/đêm)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mức giá (VNĐ/đêm)</label>
               <button
                 type="button"
                 onClick={() => setShowPriceFilter((prev) => !prev)}
