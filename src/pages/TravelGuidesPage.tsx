@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Building2, Calendar, ImagePlus, LayoutDashboard, Loader2, LogOut, Menu, MessageSquare, PlusCircle, Sparkles, Ticket, X } from 'lucide-react';
+import { Bike, BookOpen, Building2, Calendar, ImagePlus, LayoutDashboard, Loader2, LogOut, Menu, MessageSquare, PlusCircle, Sparkles, Ticket, X } from 'lucide-react';
 import { toast } from 'sonner';
 import MainLayout from '../layouts/MainLayout';
 import { authService } from '../services/authService';
@@ -218,6 +218,7 @@ export default function TravelGuidesPage() {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard' },
     { id: 'bookings', label: 'Bookings', icon: Calendar, path: '/staff/bookings' },
     { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/staff/reviews' },
+    { id: 'bicycles', label: 'Mini-game xe đạp', icon: Bike, path: '/staff/bicycles' },
     { id: 'travel-guides', label: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides' },
     { id: 'tickets', label: 'Tickets', icon: Ticket, path: '/staff/tickets' },
   ];

@@ -294,6 +294,18 @@ export const apiConfig = {
       pending: "/api/manager/cultural-guides/pending",
       updateStatus: (id: string) => `/api/manager/cultural-guides/${id}/status`,
     },
+    gamificationBicycles: {
+      rent: "/api/gamification-bicycles/rent",
+      return: "/api/gamification-bicycles/return",
+    },
+    managerBicycles: {
+      list: (homestayId: string) => `/api/manager/bicycles/${homestayId}`,
+      create: "/api/manager/bicycles",
+      damageCatalogs: (homestayId: string) => `/api/manager/bicycles/damage-catalogs/${homestayId}`,
+      createDamageCatalog: "/api/manager/bicycles/damage-catalogs",
+      localRoutes: (homestayId: string) => `/api/manager/bicycles/local-routes/${homestayId}`,
+      createLocalRoute: "/api/manager/bicycles/local-routes",
+    },
     staffCustomers: {
       search: "/api/staff/customers/search",
       detail: (id: string) => `/api/staff/customers/${id}`,
