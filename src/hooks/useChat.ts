@@ -18,7 +18,7 @@ type ChatAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_MESSAGES"; payload: ChatMessage[] }
   | { type: "ADD_USER_MESSAGE"; payload: string }
-  | { type: "ADD_AI_MESSAGE"; payload: string }
+  | { type: "ADD_AI_MESSAGE"; payload: { message: string; isRecommendation?: boolean; recommendedHomestays?: any[] } }
   | { type: "SET_ERROR"; payload: string | null }
   | { type: "CLEAR_MESSAGES" };
 
@@ -53,8 +53,10 @@ const chatReducer = (state: ChatState, action: ChatAction): ChatState => {
           ...state.messages,
           {
             sender: "AI",
-            message: action.payload,
+            message: action.payload.message,
             timestamp: new Date().toISOString(),
+            isRecommendation: action.payload.isRecommendation,
+            recommendedHomestays: action.payload.recommendedHomestays,
           },
         ],
       };
@@ -127,7 +129,11 @@ export const useChat = () => {
         // Add AI response
         dispatch({
           type: "ADD_AI_MESSAGE",
-          payload: response.replyMessage || "Xin lỗi, tôi chưa hiểu.",
+          payload: {
+            message: response.replyMessage || "Xin lỗi, tôi chưa hiểu.",
+            isRecommendation: response.isRecommendation,
+            recommendedHomestays: response.recommendedHomestays,
+          },
         });
       } catch (error) {
         const errorMsg =
