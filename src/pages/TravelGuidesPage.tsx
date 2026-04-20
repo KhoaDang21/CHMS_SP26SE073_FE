@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookOpen, ImagePlus, Loader2, Megaphone, MessageSquare, PlusCircle, Sparkles, X } from 'lucide-react';
+import { BookOpen, ImagePlus, Loader2, MessageSquare, PlusCircle, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 import MainLayout from '../layouts/MainLayout';
 import { authService } from '../services/authService';
 import { culturalGuidesService, type CulturalGuide } from '../services/culturalGuidesService';
-import { bookingService } from '../services/bookingService';
 import { publicHomestayService } from '../services/publicHomestayService';
 import type { Homestay } from '../types/homestay.types';
 
@@ -33,20 +32,34 @@ function getStatusClass(raw?: string): string {
   return 'bg-gray-100 text-gray-700 border border-gray-200';
 }
 
+function splitContentBlocks(value: string) {
+  return String(value || '')
+    .split(/\n{2,}/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getGuideImages(guide: CulturalGuide): string[] {
+  const images = Array.isArray(guide.imageUrls) ? guide.imageUrls : [];
+  if (images.length > 0) return images;
+  if (guide.image) return [guide.image];
+  return [];
+}
+
 export default function TravelGuidesPage() {
   const currentUser = authService.getUser();
   const isAuthenticated = authService.isAuthenticated();
   const role = currentUser?.role;
 
-  const canCreate = isAuthenticated && (role === 'customer' || role === 'admin' || role === 'staff');
+  const canCreate = isAuthenticated && (role === 'customer' || role === 'admin' || role === 'staff' || role === 'manager');
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [guides, setGuides] = useState<CulturalGuide[]>([]);
-  const [myGuides, setMyGuides] = useState<CulturalGuide[]>([]);
   const [allHomestays, setAllHomestays] = useState<Homestay[]>([]);
-  const [customerAllowedHomestayIds, setCustomerAllowedHomestayIds] = useState<Set<string>>(new Set());
+  const [expandedGuideIds, setExpandedGuideIds] = useState<Set<string>>(new Set());
 
+  const [selectedHomestayId, setSelectedHomestayId] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -60,39 +73,22 @@ export default function TravelGuidesPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [publicGuides, homestayPaged] = await Promise.all([
-        culturalGuidesService.getPublicGuides(undefined, selectedType === 'all' ? undefined : selectedType),
-        publicHomestayService.list({ page: 1, pageSize: 300 }),
-      ]);
-
-      setGuides(publicGuides);
+      const homestayPaged = await publicHomestayService.list({ page: 1, pageSize: 300 });
       setAllHomestays(homestayPaged.Items || []);
 
-      if (role === 'customer') {
-        const [bookings, mine] = await Promise.all([
-          bookingService.getMyBookings(),
-          culturalGuidesService.getMyGuides(),
-        ]);
+      const typeFilter = selectedType === 'all' ? undefined : selectedType;
+      const guidesByHomestay = selectedHomestayId !== 'all'
+        ? await culturalGuidesService.getGuidesByHomestay(selectedHomestayId)
+        : await culturalGuidesService.getPublicGuides(undefined, typeFilter);
 
-        const allowed = new Set<string>();
-        bookings.forEach((booking) => {
-          const bookingStatus = String(booking.status || '').toUpperCase();
-          if (booking.homestayId && (bookingStatus === 'COMPLETED' || bookingStatus === 'CHECKED_OUT' || bookingStatus === 'CHECKED_IN')) {
-            allowed.add(booking.homestayId);
-          }
-        });
+      const visibleGuides = typeFilter
+        ? guidesByHomestay.filter((guide) => String(guide.type || '').toLowerCase() === String(typeFilter).toLowerCase())
+        : guidesByHomestay;
 
-        setCustomerAllowedHomestayIds(allowed);
-        setMyGuides(mine);
+      setGuides(visibleGuides);
 
-        if (!homestayId && allowed.size > 0) {
-          const firstId = Array.from(allowed)[0];
-          setHomestayId(firstId);
-        }
-      } else if (role === 'admin' || role === 'staff') {
-        if (!homestayId && (homestayPaged.Items || []).length > 0) {
-          setHomestayId((homestayPaged.Items || [])[0].id);
-        }
+      if (selectedHomestayId === 'all' && homestayPaged.Items?.length && homestayId === '') {
+        setHomestayId(homestayPaged.Items[0].id);
       }
     } catch (error) {
       console.error('Load travel guides error:', error);
@@ -105,14 +101,9 @@ export default function TravelGuidesPage() {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedType, role]);
+  }, [selectedHomestayId, selectedType, role]);
 
-  const allowedHomestays = useMemo(() => {
-    if (role === 'customer') {
-      return allHomestays.filter((item) => customerAllowedHomestayIds.has(item.id));
-    }
-    return allHomestays;
-  }, [allHomestays, customerAllowedHomestayIds, role]);
+  const allowedHomestays = useMemo(() => allHomestays, [allHomestays]);
 
   const filteredGuides = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -125,6 +116,25 @@ export default function TravelGuidesPage() {
       || (guide.type || '').toLowerCase().includes(q)
     ));
   }, [guides, searchQuery]);
+
+  const toggleGuideExpanded = (guideId: string) => {
+    setExpandedGuideIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(guideId)) {
+        next.delete(guideId);
+      } else {
+        next.add(guideId);
+      }
+      return next;
+    });
+  };
+
+  const isGuideExpanded = (guideId: string) => expandedGuideIds.has(guideId);
+
+  const shouldShowExpandButton = (guide: CulturalGuide) => {
+    const text = String(guide.content || guide.description || '');
+    return text.length > 260 || splitContentBlocks(text).length > 3 || getGuideImages(guide).length > 1;
+  };
 
   const handleSelectImages = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -158,11 +168,6 @@ export default function TravelGuidesPage() {
 
     if (!homestayId) {
       toast.error('Vui lòng chọn homestay liên quan');
-      return;
-    }
-
-    if (role === 'customer' && !customerAllowedHomestayIds.has(homestayId)) {
-      toast.error('Bạn chỉ có thể đăng bài cho homestay đã từng lưu trú');
       return;
     }
 
@@ -211,7 +216,7 @@ export default function TravelGuidesPage() {
             <p className="mt-3 max-w-3xl text-gray-600 leading-relaxed">
               Nơi khách đã từng lưu trú chia sẻ cảm nhận và kinh nghiệm du lịch.
               {' '}
-              Admin và Staff có thể đăng thông tin, thông báo để cập nhật cho cộng đồng.
+              Admin, Manager và Staff có thể đăng thông tin, thông báo để cập nhật cho cộng đồng.
             </p>
             {canCreate && (
               <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -240,25 +245,6 @@ export default function TravelGuidesPage() {
           </section>
         )}
 
-        {role === 'customer' && myGuides.length > 0 && (
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">Bài viết của tôi</h2>
-            <div className="space-y-2">
-              {myGuides.slice(0, 5).map((guide) => (
-                <div key={guide.id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{guide.title}</p>
-                    <p className="text-xs text-gray-500 truncate">{guide.content || guide.description}</p>
-                  </div>
-                  <span className={`shrink-0 text-xs px-2 py-1 rounded-full ${getStatusClass(guide.status)}`}>
-                    {normalizeStatus(guide.status)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
           <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -266,13 +252,25 @@ export default function TravelGuidesPage() {
               Bài viết cộng đồng
             </h2>
 
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 w-full md:w-auto">
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm theo tiêu đề, nội dung, tác giả..."
                 className="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none"
               />
+              <select
+                value={selectedHomestayId}
+                onChange={(e) => setSelectedHomestayId(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none"
+              >
+                <option value="all">Tất cả homestay</option>
+                {allowedHomestays.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
@@ -297,35 +295,68 @@ export default function TravelGuidesPage() {
               Chưa có bài viết nào phù hợp.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="space-y-5">
               {filteredGuides.map((guide) => (
-                <article key={guide.id} className="rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow bg-white">
-                  {guide.image && (
-                    <img
-                      src={guide.image}
-                      alt={guide.title}
-                      className="w-full h-44 object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  )}
-                  <div className="p-4 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
-                        {guide.type || 'Guide'}
-                      </span>
-                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusClass(guide.status)}`}>
-                        {normalizeStatus(guide.status)}
-                      </span>
+                <article key={guide.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-start">
+                    <div className="w-full sm:w-[280px] shrink-0 bg-gray-100 sm:self-stretch sm:min-h-[240px]">
+                      {getGuideImages(guide).length > 0 ? (
+                        <img
+                          src={getGuideImages(guide)[0]}
+                          alt={guide.title}
+                          className="h-56 w-full object-cover sm:h-full"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-56 sm:h-full items-center justify-center bg-gradient-to-br from-cyan-50 to-blue-50 text-cyan-500">
+                          <BookOpen className="h-10 w-10" />
+                        </div>
+                      )}
                     </div>
 
-                    <h3 className="font-bold text-gray-900 line-clamp-2">{guide.title}</h3>
-                    <p className="text-sm text-gray-600 line-clamp-3">{guide.content || guide.description}</p>
+                    <div className="flex-1 p-5 sm:p-6 space-y-4 sm:min-h-[240px]">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200 font-medium">
+                          {guide.type || 'Guide'}
+                        </span>
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusClass(guide.status)}`}>
+                          {normalizeStatus(guide.status)}
+                        </span>
+                        {guide.homestayId && (
+                          <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                            Homestay: {allowedHomestays.find((item) => item.id === guide.homestayId)?.name || guide.homestayId}
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="pt-1 text-xs text-gray-500 space-y-1">
-                      <p>Tác giả: {guide.author || 'Ẩn danh'}</p>
-                      <p>{guide.createdAt ? vndDate.format(new Date(guide.createdAt)) : 'Không rõ thời gian'}</p>
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-black text-gray-900 leading-tight">{guide.title}</h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                          <span>Tác giả: {guide.author || 'Ẩn danh'}</span>
+                          <span>•</span>
+                          <span>{guide.createdAt ? vndDate.format(new Date(guide.createdAt)) : 'Không rõ thời gian'}</span>
+                        </div>
+                      </div>
+
+                      <div className={`space-y-3 text-sm leading-7 text-gray-700 ${isGuideExpanded(guide.id) ? '' : 'max-h-32 overflow-hidden'}`}>
+                        {splitContentBlocks(guide.content || guide.description).map((block, index) => (
+                          <p key={`${guide.id}-block-${index}`} className="whitespace-pre-line">
+                            {block}
+                          </p>
+                        ))}
+                      </div>
+
+                      {shouldShowExpandButton(guide) && (
+                        <button
+                          type="button"
+                          onClick={() => toggleGuideExpanded(guide.id)}
+                          className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-100 transition-colors"
+                        >
+                          {isGuideExpanded(guide.id) ? 'Thu gọn' : 'Xem thêm'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </article>
@@ -428,7 +459,7 @@ export default function TravelGuidesPage() {
                   disabled={submitting || (role === 'customer' && allowedHomestays.length === 0)}
                   className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white hover:from-cyan-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
                   Đăng bài
                 </button>
               </div>
