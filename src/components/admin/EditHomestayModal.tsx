@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X, MapPin, Sparkles, Image } from 'lucide-react';
+import { X, MapPin, Sparkles, Image, Star } from 'lucide-react';
 import type { Amenity } from '../../types/amenity.types';
 import type { District, Homestay, HomestayImage, UpdateHomestayDTO } from '../../types/homestay.types';
 import { adminAmenityService } from '../../services/adminAmenityService';
@@ -117,6 +117,16 @@ export default function EditHomestayModal({
   const removeFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const setThumbnailImage = (index: number) => {
+    setExistingImageUrls((prev) => {
+      if (index <= 0 || index >= prev.length) return prev;
+      const next = [...prev];
+      const [picked] = next.splice(index, 1);
+      next.unshift(picked);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -478,12 +488,30 @@ export default function EditHomestayModal({
                           e.currentTarget.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format';
                         }}
                       />
-                      <div className="absolute top-1 left-1 bg-gray-900/70 text-white text-[10px] px-1.5 py-0.5 rounded">
-                        {index + 1}
-                      </div>
+                      {index === 0 ? (
+                        <div className="absolute top-1 left-1 bg-amber-500/95 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <Star className="w-3 h-3" />
+                          Thumbnail
+                        </div>
+                      ) : (
+                        <div className="absolute top-1 left-1 bg-gray-900/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                          {index + 1}
+                        </div>
+                      )}
+
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setThumbnailImage(index)}
+                          className="absolute bottom-1 left-1 right-1 bg-white/95 text-[10px] text-gray-700 border border-gray-200 rounded px-1.5 py-1 hover:bg-amber-50 hover:border-amber-200"
+                        >
+                          Đặt làm thumbnail
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
+                <p className="mt-2 text-xs text-gray-500">Ảnh ở vị trí đầu tiên sẽ là thumbnail hiển thị chính.</p>
               </div>
             )}
 

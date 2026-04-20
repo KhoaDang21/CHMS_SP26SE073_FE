@@ -5,6 +5,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Bell,
+  BookOpen,
   Calendar,
   CheckCircle,
   Clock,
@@ -198,6 +199,7 @@ export default function StaffDashboard() {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: true },
     { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: false },
     { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: false },
+    { name: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides', active: false },
     { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: false },
   ];
 

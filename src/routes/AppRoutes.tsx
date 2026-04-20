@@ -38,6 +38,7 @@ import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import NotificationsPage from '../pages/customer/NotificationsPage';
 import BookingExperiencesPage from '../pages/customer/BookingExperiencesPage';
 import LocalExperiencesPage from '../pages/customer/LocalExperiencesPage';
+import TravelGuidesPage from '../pages/TravelGuidesPage';
 import { authService } from '../services/authService';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ExperienceManagement from '../pages/shared/ExperienceManagement';
@@ -78,10 +79,10 @@ export function AppRoutes() {
       {/* Public Routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/experiences" element={<LocalExperiencesPage />} />
+      <Route path="/travel-guides" element={<TravelGuidesPage />} />
       <Route path="/homestays/:id" element={<HomestayDetail />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
-      <Route path="/experiences" element={<LocalExperiencesPage />} />
       <Route path="/auth/login" element={<LoginPage />} />
       <Route path="/auth/register" element={<RegisterPage />} />
       <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
