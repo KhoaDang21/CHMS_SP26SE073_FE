@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Bike, CheckCircle2, Gauge, Loader2, LogOut, MapPinned, Menu, ShieldAlert, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
+import { employeeService } from '../../services/employeeService';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { adminNavItems } from '../../config/adminNavItems';
+import { managerNavItems } from '../../config/managerNavItems';
 import {
   bicycleGamificationService,
   type HiddenGemPayload,
@@ -16,6 +19,15 @@ const tabs = [
   { key: 'bicycles', label: 'Kho xe đạp', icon: Gauge },
   { key: 'damage', label: 'Bảng phạt hư hỏng', icon: ShieldAlert },
   { key: 'routes', label: 'Lộ trình & Hidden Gems', icon: MapPinned },
+] as const;
+
+const staffNavItems = [
+  { id: 'dashboard', label: 'Dashboard', path: '/staff/dashboard' },
+  { id: 'bookings', label: 'Bookings', path: '/staff/bookings' },
+  { id: 'reviews', label: 'Reviews', path: '/staff/reviews' },
+  { id: 'bicycles', label: 'Mini-game xe đạp', path: '/staff/bicycles' },
+  { id: 'travel-guides', label: 'Cẩm nang du lịch', path: '/travel-guides' },
+  { id: 'tickets', label: 'Tickets', path: '/staff/tickets' },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
@@ -30,6 +42,35 @@ const toNumber = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const normalizeText = (value: unknown): string => String(value ?? '').trim().toLowerCase();
+
+const extractAssignedHomestayIds = (employee: any): string[] => {
+  const rawIds = Array.isArray(employee?.assignedHomestayIds) ? employee.assignedHomestayIds : [];
+  const fromIds = rawIds.map((item: unknown) => String(item ?? '').trim()).filter(Boolean);
+
+  const fromObjects = Array.isArray(employee?.assignedHomestays)
+    ? employee.assignedHomestays
+        .map((item: any) => String(item?.id ?? item?.homestayId ?? '').trim())
+        .filter(Boolean)
+    : [];
+
+  return Array.from(new Set([...fromIds, ...fromObjects]));
+};
+
+const homestayMatchesAnyAssignedHome = (homestay: Homestay, assignedIds: string[]): boolean => {
+  const homestayId = String(homestay?.id ?? '').trim();
+  if (homestayId && assignedIds.includes(homestayId)) {
+    return true;
+  }
+
+  const homestayName = String(homestay?.name ?? '').trim();
+  if (homestayName) {
+    return assignedIds.some((assigned) => normalizeText(assigned) === normalizeText(homestayName));
+  }
+
+  return false;
+};
+
 export default function BicycleGamificationPage() {
   const navigate = useNavigate();
   const user = authService.getUser();
@@ -42,6 +83,7 @@ export default function BicycleGamificationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
   const [selectedHomestayId, setSelectedHomestayId] = useState('');
+  const [assignedHomestayIds, setAssignedHomestayIds] = useState<string[]>([]);
 
   const [activeTab, setActiveTab] = useState<TabKey>('operation');
 
@@ -67,6 +109,12 @@ export default function BicycleGamificationPage() {
   const [estimatedMinutes, setEstimatedMinutes] = useState('20');
   const [hiddenGemsJson, setHiddenGemsJson] = useState('[\n  {"name": "Quán cà phê ven biển", "latitude": 16.0678, "longitude": 108.2208, "rewardPoints": 10}\n]');
 
+  const navItems = role === 'admin'
+    ? adminNavItems
+    : role === 'manager'
+      ? managerNavItems
+      : staffNavItems;
+
   const visibleTabs = useMemo(() => {
     if (canManage) return tabs;
     return tabs.filter((tab) => tab.key === 'operation');
@@ -84,9 +132,30 @@ export default function BicycleGamificationPage() {
       try {
         const paged = await publicHomestayService.list({ page: 1, pageSize: 300 });
         const list = paged.Items || [];
-        setHomestays(list);
-        if (list.length > 0) {
-          setSelectedHomestayId((prev) => prev || list[0].id);
+
+        if (role === 'staff') {
+          const staffId = String(user?.id || '').trim();
+          const profile = staffId ? await employeeService.getEmployeeById(staffId) : null;
+          const ids = extractAssignedHomestayIds(profile);
+          const filtered = ids.length > 0
+            ? list.filter((homestay) => homestayMatchesAnyAssignedHome(homestay, ids))
+            : [];
+
+          setAssignedHomestayIds(ids);
+          setHomestays(filtered);
+
+          if (filtered.length > 0) {
+            setSelectedHomestayId((prev) => (filtered.some((homestay) => homestay.id === prev) ? prev : filtered[0].id));
+          } else {
+            setSelectedHomestayId('');
+            toast.warning('Bạn chưa được phân công homestay nào cho chức năng này.');
+          }
+        } else {
+          setAssignedHomestayIds([]);
+          setHomestays(list);
+          if (list.length > 0) {
+            setSelectedHomestayId((prev) => prev || list[0].id);
+          }
         }
       } catch (error) {
         console.error('Load homestays error:', error);
@@ -309,38 +378,6 @@ export default function BicycleGamificationPage() {
 
   if (!isAllowed) return null;
 
-  const getNavItems = () => {
-    if (role === 'admin') {
-      return [
-        { name: 'Dashboard', path: '/admin/dashboard' },
-        { name: 'Quản lý Homestay', path: '/admin/homestays' },
-        { name: 'Đơn đặt phòng', path: '/admin/bookings' },
-        { name: 'Tiện ích', path: '/admin/amenities' },
-        { name: 'Mini-game xe đạp', path: '/admin/bicycles', active: true },
-        { name: 'Cẩm nang du lịch', path: '/travel-guides' },
-      ];
-    }
-    if (role === 'manager') {
-      return [
-        { name: 'Dashboard', path: '/manager/dashboard' },
-        { name: 'Đơn đặt phòng', path: '/manager/bookings' },
-        { name: 'Khách hàng', path: '/manager/customers' },
-        { name: 'Nhân viên', path: '/manager/staff' },
-        { name: 'Mini-game xe đạp', path: '/manager/bicycles', active: true },
-        { name: 'Cẩm nang du lịch', path: '/travel-guides' },
-      ];
-    }
-    // staff
-    return [
-      { name: 'Dashboard', path: '/staff/dashboard' },
-      { name: 'Bookings', path: '/staff/bookings' },
-      { name: 'Reviews', path: '/staff/reviews' },
-      { name: 'Mini-game xe đạp', path: '/staff/bicycles', active: true },
-      { name: 'Cẩm nang du lịch', path: '/travel-guides' },
-      { name: 'Tickets', path: '/staff/tickets' },
-    ];
-  };
-
   const handleLogout = () => {
     authService.logout();
     toast.success('Đăng xuất thành công!');
@@ -414,16 +451,16 @@ export default function BicycleGamificationPage() {
           </div>
 
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {getNavItems().map((item) => (
+            {navItems.map((item) => (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 type="button"
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
-                  item.active ? styles.navActive : styles.navInactive
+                  item.id === 'bicycles' ? styles.navActive : styles.navInactive
                 }`}
               >
-                <span className="truncate">{item.name}</span>
+                <span className="truncate">{item.label}</span>
               </button>
             ))}
           </nav>
@@ -471,9 +508,6 @@ export default function BicycleGamificationPage() {
                   Bicycle Gamification
                 </p>
                 <h1 className="mt-3 text-2xl font-black text-gray-900 sm:text-3xl">Vận hành xe đạp mini-game</h1>
-                <p className="mt-2 text-sm text-gray-600">
-                  Phân quyền web: Admin, Manager, Staff. Customer chỉ dùng trên mobile app.
-                </p>
               </div>
               <div className="rounded-xl border border-cyan-200 bg-white px-4 py-3 text-sm text-gray-700">
                 <p>
@@ -522,6 +556,11 @@ export default function BicycleGamificationPage() {
                 ))}
               </select>
             </div>
+            {role === 'staff' && assignedHomestayIds.length > 0 && (
+              <p className="mt-2 text-xs text-gray-500">
+                Danh sách này chỉ gồm homestay được phân công cho bạn.
+              </p>
+            )}
           </section>
 
           {loading ? (

@@ -55,6 +55,7 @@ export default function TravelGuidesPage() {
   const currentUser = authService.getUser();
   const isAuthenticated = authService.isAuthenticated();
   const role = currentUser?.role;
+  const isAdmin = role === 'admin';
   const isBackofficeRole = role === 'admin' || role === 'manager' || role === 'staff';
 
   const canCreate = isAuthenticated && (role === 'customer' || role === 'admin' || role === 'staff' || role === 'manager');
@@ -132,9 +133,23 @@ export default function TravelGuidesPage() {
     setSelectedGuideDetail(null);
   };
 
-  const shouldShowExpandButton = (guide: CulturalGuide) => {
-    const text = String(guide.content || guide.description || '');
-    return text.length > 260 || splitContentBlocks(text).length > 3 || getGuideImages(guide).length > 1;
+  const handleDeleteGuide = async (guide: CulturalGuide) => {
+    if (!isAdmin) return;
+
+    const confirmed = window.confirm(`Bạn có chắc muốn xoá bài "${guide.title}" không?`);
+    if (!confirmed) return;
+
+    const result = await culturalGuidesService.adminDeleteGuide(guide.id);
+    if (!result.success) {
+      toast.error(result.message || 'Không thể xoá bài viết');
+      return;
+    }
+
+    toast.success(result.message || 'Xoá bài viết thành công');
+    if (selectedGuideDetail?.id === guide.id) {
+      setSelectedGuideDetail(null);
+    }
+    await loadData();
   };
 
   const handleSelectImages = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -367,7 +382,7 @@ export default function TravelGuidesPage() {
                         ))}
                       </div>
 
-                      {shouldShowExpandButton(guide) && (
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() => openGuideDetail(guide)}
@@ -375,7 +390,16 @@ export default function TravelGuidesPage() {
                         >
                           Xem chi tiết
                         </button>
-                      )}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGuide(guide)}
+                            className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
+                          >
+                            Xoá
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -550,6 +574,18 @@ export default function TravelGuidesPage() {
                   ))}
                 </div>
               </div>
+
+              {isAdmin && (
+                <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteGuide(selectedGuideDetail)}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                  >
+                    Xoá bài viết
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
