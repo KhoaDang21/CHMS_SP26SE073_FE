@@ -40,6 +40,7 @@ export default function ManagerBookings() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
+  const [dateFilter, setDateFilter] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [stats, setStats] = useState<BookingStats>({
@@ -190,11 +191,11 @@ export default function ManagerBookings() {
 
   useEffect(() => {
     filterBookings();
-  }, [bookings, searchQuery, statusFilter]);
+  }, [bookings, searchQuery, statusFilter, dateFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, dateFilter]);
 
   const loadBookings = async () => {
     setLoading(true);
@@ -263,6 +264,14 @@ export default function ManagerBookings() {
 
     if (statusFilter !== 'all') {
       filtered = filtered.filter((b) => b.status === statusFilter);
+    }
+
+    if (dateFilter) {
+      filtered = filtered.filter(
+        (b) =>
+          new Date(b.checkInDate).toISOString().split('T')[0] === dateFilter ||
+          new Date(b.checkOutDate).toISOString().split('T')[0] === dateFilter,
+      );
     }
 
     setFilteredBookings(filtered);
@@ -487,7 +496,7 @@ export default function ManagerBookings() {
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -513,6 +522,16 @@ export default function ManagerBookings() {
                   <option value="completed">Hoàn thành</option>
                   <option value="cancelled">Đã hủy</option>
                 </select>
+              </div>
+
+              <div>
+                <input
+                  type="date"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Lọc theo ngày check-in hoặc check-out"
+                />
               </div>
             </div>
 
