@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Bell,
+  BookOpen,
   Calendar,
   CheckCircle2,
   Clock,
@@ -136,6 +137,7 @@ export default function StaffTickets() {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
     { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: false },
     { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: false },
+    { name: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides', active: false },
     { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: true },
   ];
 

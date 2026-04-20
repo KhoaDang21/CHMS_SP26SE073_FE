@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Bell, Compass, Heart, User, LogOut, MessageCircle,
-  BellRing, Waves, Menu, X, Trash2, CheckCheck, Star,
+  BellRing, Waves, Menu, X, Trash2, CheckCheck, Star, BookOpen,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
@@ -19,14 +19,15 @@ interface HeaderProps {
 
 const navigationItems = [
   { name: 'Home', nameVi: 'Trang Chủ', href: '/' },
+  { name: 'Travel Guides', nameVi: 'Cẩm Nang Du Lịch', href: '/travel-guides' },
   { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/experiences' },
   { name: 'About', nameVi: 'Giới Thiệu', href: '/about' },
-  { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/experiences' },
   { name: 'Contact', nameVi: 'Liên Hệ', href: '/contact' },
 ];
 
 const authenticatedNavigationItems = [
   { name: 'Dashboard', nameVi: 'Trang Chủ', href: '/customer/dashboard', icon: Compass },
+  { name: 'Travel Guides', nameVi: 'Cẩm Nang Du Lịch', href: '/travel-guides', icon: BookOpen },
   { name: 'Booking', nameVi: 'Đặt Phòng', href: '/customer/bookings', icon: Compass },
   { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/customer/experiences', icon: Star },
   { name: 'Favorites', nameVi: 'Yêu Thích', href: '/customer/favorites', icon: Heart },
