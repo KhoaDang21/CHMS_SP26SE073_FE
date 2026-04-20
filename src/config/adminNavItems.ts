@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Home,
+  BookOpen,
   Sparkles,
   CalendarDays,
   Users,
@@ -41,6 +42,12 @@ export const adminNavItems = [
     label: "Dịch vụ địa phương",
     icon: Sparkles,
     path: "/admin/experiences",
+  },
+  {
+    id: "travel-guides",
+    label: "Cẩm nang du lịch",
+    icon: BookOpen,
+    path: "/travel-guides",
   },
   {
     id: "customers",

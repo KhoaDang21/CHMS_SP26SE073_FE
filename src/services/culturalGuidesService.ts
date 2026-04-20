@@ -5,13 +5,17 @@ export interface CulturalGuide {
   id: string;
   title: string;
   description: string;
+  content?: string;
   location?: string;
+  locationId?: string;
+  homestayId?: string;
   type?: string;
   author?: string;
   rating?: number;
   views?: number;
   status?: string;
   image?: string;
+  imageUrls?: string[];
   createdAt?: string;
 }
 
@@ -27,12 +31,74 @@ export interface GuideApproval {
 }
 
 export interface CreateGuideRequest {
+  homestayId?: string;
   title: string;
-  description: string;
-  location: string;
+  description?: string;
+  content?: string;
+  location?: string;
   type?: string;
   image?: File;
+  imageFiles?: File[];
 }
+
+const splitImageUrls = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => String(item || '').trim())
+      .filter(Boolean);
+  }
+
+  const value = String(raw || '').trim();
+  if (!value) return [];
+
+  return value
+    .split('|')
+    .map((url) => url.trim())
+    .filter(Boolean);
+};
+
+const mapGuide = (item: any): CulturalGuide => {
+  const imageUrls = splitImageUrls(
+    item?.imageUrls
+      ?? item?.ImageUrls
+      ?? item?.imageUrl
+      ?? item?.ImageUrl
+      ?? item?.image
+      ?? item?.Image,
+  );
+
+  const content = item?.content ?? item?.Content ?? item?.description ?? item?.Description ?? '';
+
+  return {
+    id: item?.id ?? item?.Id ?? '',
+    title: item?.title ?? item?.Title ?? '',
+    description: content,
+    content,
+    location: item?.location ?? item?.Location ?? item?.locationName ?? item?.LocationName ?? '',
+    locationId: item?.locationId ?? item?.LocationId ?? undefined,
+    homestayId: item?.homestayId ?? item?.HomestayId ?? undefined,
+    type: item?.type ?? item?.Type ?? '',
+    author: item?.author ?? item?.authorName ?? item?.customerName ?? item?.AuthorName ?? '',
+    rating: Number(item?.rating ?? item?.Rating ?? 0),
+    views: Number(item?.views ?? item?.Views ?? 0),
+    status: item?.status ?? item?.Status ?? 'PUBLISHED',
+    image: imageUrls[0] ?? '',
+    imageUrls,
+    createdAt: item?.createdAt ?? item?.CreatedAt ?? item?.submittedAt ?? item?.SubmittedAt ?? '',
+  };
+};
+
+const unwrapList = (response: any): any[] => {
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data?.items)) return response.data.items;
+  if (Array.isArray(response?.items)) return response.items;
+  return [];
+};
+
+const unwrapItem = (response: any): any => {
+  return response?.data ?? response?.result ?? response ?? null;
+};
 
 export const culturalGuidesService = {
   /** GET /api/public/cultural-guides — danh sách hướng dẫn công khai */
@@ -48,25 +114,9 @@ export const culturalGuidesService = {
       const response = await apiService.get<any>(
         `${apiConfig.endpoints.culturalGuides.publicList}?${params.toString()}`,
       );
-      const rawList = Array.isArray(response?.data)
-        ? response.data
-        : Array.isArray(response)
-          ? response
-          : [];
+      const rawList = unwrapList(response);
 
-      return rawList.map((item: any) => ({
-        id: item.id ?? "",
-        title: item.title ?? "",
-        description: item.description ?? "",
-        location: item.location ?? "",
-        type: item.type ?? "",
-        author: item.author ?? item.authorName ?? "",
-        rating: item.rating ?? 0,
-        views: item.views ?? 0,
-        status: item.status ?? "PUBLISHED",
-        image: item.image ?? item.imageUrl ?? "",
-        createdAt: item.createdAt ?? "",
-      }));
+      return rawList.map(mapGuide);
     } catch (error) {
       console.error("Get public guides error:", error);
       return [];
@@ -79,22 +129,10 @@ export const culturalGuidesService = {
       const response = await apiService.get<any>(
         apiConfig.endpoints.culturalGuides.publicDetail(id),
       );
-      const data = response?.data ?? response;
+      const data = unwrapItem(response);
       if (!data) return null;
 
-      return {
-        id: data.id ?? "",
-        title: data.title ?? "",
-        description: data.description ?? "",
-        location: data.location ?? "",
-        type: data.type ?? "",
-        author: data.author ?? data.authorName ?? "",
-        rating: data.rating ?? 0,
-        views: data.views ?? 0,
-        status: data.status ?? "PUBLISHED",
-        image: data.image ?? data.imageUrl ?? "",
-        createdAt: data.createdAt ?? "",
-      };
+      return mapGuide(data);
     } catch (error) {
       console.error("Get guide detail error:", error);
       return null;
@@ -107,25 +145,9 @@ export const culturalGuidesService = {
       const response = await apiService.get<any>(
         apiConfig.endpoints.culturalGuides.publicByHomestay(homestayId),
       );
-      const rawList = Array.isArray(response?.data)
-        ? response.data
-        : Array.isArray(response)
-          ? response
-          : [];
+      const rawList = unwrapList(response);
 
-      return rawList.map((item: any) => ({
-        id: item.id ?? "",
-        title: item.title ?? "",
-        description: item.description ?? "",
-        location: item.location ?? "",
-        type: item.type ?? "",
-        author: item.author ?? item.authorName ?? "",
-        rating: item.rating ?? 0,
-        views: item.views ?? 0,
-        status: item.status ?? "PUBLISHED",
-        image: item.image ?? item.imageUrl ?? "",
-        createdAt: item.createdAt ?? "",
-      }));
+      return rawList.map(mapGuide);
     } catch (error) {
       console.error("Get homestay guides error:", error);
       return [];
@@ -138,35 +160,25 @@ export const culturalGuidesService = {
   ): Promise<{ success: boolean; message: string; data?: CulturalGuide }> {
     try {
       const formData = new FormData();
+      if (data.homestayId) formData.append("homestayId", data.homestayId);
       formData.append("title", data.title);
-      formData.append("description", data.description);
-      formData.append("location", data.location);
+      formData.append("content", data.content ?? data.description ?? "");
       if (data.type) formData.append("type", data.type);
-      if (data.image) formData.append("image", data.image);
+      if (data.imageFiles?.length) {
+        data.imageFiles.forEach((file) => formData.append("imageFiles", file));
+      } else if (data.image) {
+        formData.append("imageFiles", data.image);
+      }
 
       const response = await apiService.postForm<any>(
         apiConfig.endpoints.culturalGuides.customerCreate,
         formData,
       );
-      const item = response?.data ?? response;
+      const item = unwrapItem(response);
       return {
         success: response?.success ?? true,
         message: response?.message ?? "Tạo hướng dẫn thành công!",
-        data: item?.id
-          ? {
-              id: item.id ?? "",
-              title: item.title ?? "",
-              description: item.description ?? "",
-              location: item.location ?? "",
-              type: item.type ?? "",
-              author: item.author ?? "",
-              rating: item.rating ?? 0,
-              views: item.views ?? 0,
-              status: item.status ?? "PENDING",
-              image: item.image ?? item.imageUrl ?? "",
-              createdAt: item.createdAt ?? "",
-            }
-          : undefined,
+        data: item?.id ? mapGuide(item) : undefined,
       };
     } catch (error) {
       console.error("Create guide error:", error);
@@ -184,25 +196,9 @@ export const culturalGuidesService = {
       const response = await apiService.get<any>(
         apiConfig.endpoints.culturalGuides.customerMyGuides,
       );
-      const rawList = Array.isArray(response?.data)
-        ? response.data
-        : Array.isArray(response)
-          ? response
-          : [];
+      const rawList = unwrapList(response);
 
-      return rawList.map((item: any) => ({
-        id: item.id ?? "",
-        title: item.title ?? "",
-        description: item.description ?? "",
-        location: item.location ?? "",
-        type: item.type ?? "",
-        author: item.author ?? "",
-        rating: item.rating ?? 0,
-        views: item.views ?? 0,
-        status: item.status ?? "PENDING",
-        image: item.image ?? item.imageUrl ?? "",
-        createdAt: item.createdAt ?? "",
-      }));
+      return rawList.map(mapGuide);
     } catch (error) {
       console.error("Get my guides error:", error);
       return [];
@@ -216,35 +212,25 @@ export const culturalGuidesService = {
   ): Promise<{ success: boolean; message: string; data?: CulturalGuide }> {
     try {
       const formData = new FormData();
+      if (data.homestayId) formData.append("homestayId", data.homestayId);
       formData.append("title", data.title);
-      formData.append("description", data.description);
-      formData.append("location", data.location);
+      formData.append("content", data.content ?? data.description ?? "");
       if (data.type) formData.append("type", data.type);
-      if (data.image) formData.append("image", data.image);
+      if (data.imageFiles?.length) {
+        data.imageFiles.forEach((file) => formData.append("imageFiles", file));
+      } else if (data.image) {
+        formData.append("imageFiles", data.image);
+      }
 
       const response = await apiService.postForm<any>(
         apiConfig.endpoints.culturalGuides.adminCreate,
         formData,
       );
-      const item = response?.data ?? response;
+      const item = unwrapItem(response);
       return {
         success: response?.success ?? true,
         message: response?.message ?? "Hướng dẫn đã tạo thành công!",
-        data: item?.id
-          ? {
-              id: item.id ?? "",
-              title: item.title ?? "",
-              description: item.description ?? "",
-              location: item.location ?? "",
-              type: item.type ?? "",
-              author: item.author ?? "",
-              rating: item.rating ?? 0,
-              views: item.views ?? 0,
-              status: item.status ?? "PUBLISHED",
-              image: item.image ?? item.imageUrl ?? "",
-              createdAt: item.createdAt ?? "",
-            }
-          : undefined,
+        data: item?.id ? mapGuide(item) : undefined,
       };
     } catch (error) {
       console.error("Admin create guide error:", error);
@@ -319,6 +305,7 @@ export const culturalGuidesService = {
         {
           status,
           reason,
+          rejectReason: reason,
         },
       );
       return {
