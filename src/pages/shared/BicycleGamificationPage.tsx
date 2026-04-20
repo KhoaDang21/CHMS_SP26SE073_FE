@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bike, CheckCircle2, Gauge, Loader2, LogOut, MapPinned, Menu, ShieldAlert, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
+import { employeeService } from '../../services/employeeService';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
@@ -30,6 +31,35 @@ const toNumber = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const normalizeText = (value: unknown): string => String(value ?? '').trim().toLowerCase();
+
+const extractAssignedHomestayIds = (employee: any): string[] => {
+  const rawIds = Array.isArray(employee?.assignedHomestayIds) ? employee.assignedHomestayIds : [];
+  const fromIds = rawIds.map((item: unknown) => String(item ?? '').trim()).filter(Boolean);
+
+  const fromObjects = Array.isArray(employee?.assignedHomestays)
+    ? employee.assignedHomestays
+        .map((item: any) => String(item?.id ?? item?.homestayId ?? '').trim())
+        .filter(Boolean)
+    : [];
+
+  return Array.from(new Set([...fromIds, ...fromObjects]));
+};
+
+const homestayMatchesAnyAssignedHome = (homestay: Homestay, assignedIds: string[]): boolean => {
+  const homestayId = String(homestay?.id ?? '').trim();
+  if (homestayId && assignedIds.includes(homestayId)) {
+    return true;
+  }
+
+  const homestayName = String(homestay?.name ?? '').trim();
+  if (homestayName) {
+    return assignedIds.some((assigned) => normalizeText(assigned) === normalizeText(homestayName));
+  }
+
+  return false;
+};
+
 export default function BicycleGamificationPage() {
   const navigate = useNavigate();
   const user = authService.getUser();
@@ -42,6 +72,7 @@ export default function BicycleGamificationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
   const [selectedHomestayId, setSelectedHomestayId] = useState('');
+  const [assignedHomestayIds, setAssignedHomestayIds] = useState<string[]>([]);
 
   const [activeTab, setActiveTab] = useState<TabKey>('operation');
 
@@ -84,9 +115,30 @@ export default function BicycleGamificationPage() {
       try {
         const paged = await publicHomestayService.list({ page: 1, pageSize: 300 });
         const list = paged.Items || [];
-        setHomestays(list);
-        if (list.length > 0) {
-          setSelectedHomestayId((prev) => prev || list[0].id);
+
+        if (role === 'staff') {
+          const staffId = String(user?.id || '').trim();
+          const profile = staffId ? await employeeService.getEmployeeById(staffId) : null;
+          const ids = extractAssignedHomestayIds(profile);
+          const filtered = ids.length > 0
+            ? list.filter((homestay) => homestayMatchesAnyAssignedHome(homestay, ids))
+            : [];
+
+          setAssignedHomestayIds(ids);
+          setHomestays(filtered);
+
+          if (filtered.length > 0) {
+            setSelectedHomestayId((prev) => (filtered.some((homestay) => homestay.id === prev) ? prev : filtered[0].id));
+          } else {
+            setSelectedHomestayId('');
+            toast.warning('Bạn chưa được phân công homestay nào cho chức năng này.');
+          }
+        } else {
+          setAssignedHomestayIds([]);
+          setHomestays(list);
+          if (list.length > 0) {
+            setSelectedHomestayId((prev) => prev || list[0].id);
+          }
         }
       } catch (error) {
         console.error('Load homestays error:', error);
@@ -471,9 +523,6 @@ export default function BicycleGamificationPage() {
                   Bicycle Gamification
                 </p>
                 <h1 className="mt-3 text-2xl font-black text-gray-900 sm:text-3xl">Vận hành xe đạp mini-game</h1>
-                <p className="mt-2 text-sm text-gray-600">
-                  Phân quyền web: Admin, Manager, Staff. Customer chỉ dùng trên mobile app.
-                </p>
               </div>
               <div className="rounded-xl border border-cyan-200 bg-white px-4 py-3 text-sm text-gray-700">
                 <p>
@@ -522,6 +571,11 @@ export default function BicycleGamificationPage() {
                 ))}
               </select>
             </div>
+            {role === 'staff' && assignedHomestayIds.length > 0 && (
+              <p className="mt-2 text-xs text-gray-500">
+                Danh sách này chỉ gồm homestay được phân công cho bạn.
+              </p>
+            )}
           </section>
 
           {loading ? (
