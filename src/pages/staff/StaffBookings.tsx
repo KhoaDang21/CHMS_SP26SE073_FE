@@ -68,6 +68,7 @@ export default function StaffBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [dateFilter, setDateFilter] = useState('');
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutBooking, setCheckoutBooking] = useState<Booking | null>(null);
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
@@ -131,12 +132,20 @@ export default function StaffBookings() {
       );
     }
 
+    if (dateFilter) {
+      filtered = filtered.filter(
+        (b) =>
+          dateKey(b.checkInDate) === dateFilter ||
+          dateKey(b.checkOutDate) === dateFilter,
+      );
+    }
+
     return filtered;
-  }, [bookings, searchTerm, filterStatus]);
+  }, [bookings, searchTerm, filterStatus, dateFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus]);
+  }, [searchTerm, filterStatus, dateFilter]);
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
@@ -614,6 +623,13 @@ export default function StaffBookings() {
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 />
               </div>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                title="Lọc theo ngày check-in hoặc check-out"
+              />
               <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
                 {filterOptions.map((option) => (
                   <button

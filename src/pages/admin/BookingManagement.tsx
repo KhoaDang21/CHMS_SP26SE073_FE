@@ -29,6 +29,7 @@ export default function BookingManagement() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
+  const [dateFilter, setDateFilter] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [stats, setStats] = useState<BookingStats>(initialStats);
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,8 +37,8 @@ export default function BookingManagement() {
   const user = authService.getCurrentUser();
 
   useEffect(() => { loadBookings(); }, []);
-  useEffect(() => { filterBookings(); }, [bookings, searchQuery, statusFilter]);
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter]);
+  useEffect(() => { filterBookings(); }, [bookings, searchQuery, statusFilter, dateFilter]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, dateFilter]);
 
   const loadBookings = async () => {
     setLoading(true);
@@ -69,6 +70,13 @@ export default function BookingManagement() {
       );
     }
     if (statusFilter !== 'all') filtered = filtered.filter((b) => b.status === statusFilter);
+    if (dateFilter) {
+      filtered = filtered.filter(
+        (b) =>
+          new Date(b.checkInDate).toISOString().split('T')[0] === dateFilter ||
+          new Date(b.checkOutDate).toISOString().split('T')[0] === dateFilter,
+      );
+    }
     setFilteredBookings(filtered);
   };
 
@@ -302,6 +310,13 @@ export default function BookingManagement() {
                 <option value="completed">Hoàn thành</option>
                 <option value="cancelled">Đã hủy</option>
               </select>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="Lọc theo ngày check-in hoặc check-out"
+              />
             </div>
             <p className="text-xs text-gray-500 mt-2">
               Hiển thị <span className="font-semibold text-gray-700">{filteredBookings.length}</span> / {stats.total} đơn
