@@ -22,6 +22,7 @@ export interface CreateBicyclePayload {
   bicycleCode: string;
   type: string;
   pricePerDay: number;
+  status?: string;
 }
 
 export interface CreateDamageCatalogPayload {
@@ -32,6 +33,7 @@ export interface CreateDamageCatalogPayload {
 
 export interface HiddenGemPayload {
   name: string;
+  description?: string;
   latitude: number;
   longitude: number;
   rewardPoints?: number;
@@ -40,8 +42,10 @@ export interface HiddenGemPayload {
 export interface CreateLocalRoutePayload {
   homestayId?: string;
   routeName: string;
+  description?: string;
+  totalDistanceKm: number;
+  estimatedMinutes: number;
   polylineMap: string;
-  distanceKm: number;
   hiddenGems: HiddenGemPayload[];
 }
 
