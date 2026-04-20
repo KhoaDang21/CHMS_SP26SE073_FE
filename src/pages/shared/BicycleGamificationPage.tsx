@@ -7,6 +7,8 @@ import { employeeService } from '../../services/employeeService';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { adminNavItems } from '../../config/adminNavItems';
+import { managerNavItems } from '../../config/managerNavItems';
 import {
   bicycleGamificationService,
   type HiddenGemPayload,
@@ -17,6 +19,15 @@ const tabs = [
   { key: 'bicycles', label: 'Kho xe đạp', icon: Gauge },
   { key: 'damage', label: 'Bảng phạt hư hỏng', icon: ShieldAlert },
   { key: 'routes', label: 'Lộ trình & Hidden Gems', icon: MapPinned },
+] as const;
+
+const staffNavItems = [
+  { id: 'dashboard', label: 'Dashboard', path: '/staff/dashboard' },
+  { id: 'bookings', label: 'Bookings', path: '/staff/bookings' },
+  { id: 'reviews', label: 'Reviews', path: '/staff/reviews' },
+  { id: 'bicycles', label: 'Mini-game xe đạp', path: '/staff/bicycles' },
+  { id: 'travel-guides', label: 'Cẩm nang du lịch', path: '/travel-guides' },
+  { id: 'tickets', label: 'Tickets', path: '/staff/tickets' },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
@@ -97,6 +108,12 @@ export default function BicycleGamificationPage() {
   const [distanceKm, setDistanceKm] = useState('2');
   const [estimatedMinutes, setEstimatedMinutes] = useState('20');
   const [hiddenGemsJson, setHiddenGemsJson] = useState('[\n  {"name": "Quán cà phê ven biển", "latitude": 16.0678, "longitude": 108.2208, "rewardPoints": 10}\n]');
+
+  const navItems = role === 'admin'
+    ? adminNavItems
+    : role === 'manager'
+      ? managerNavItems
+      : staffNavItems;
 
   const visibleTabs = useMemo(() => {
     if (canManage) return tabs;
@@ -361,38 +378,6 @@ export default function BicycleGamificationPage() {
 
   if (!isAllowed) return null;
 
-  const getNavItems = () => {
-    if (role === 'admin') {
-      return [
-        { name: 'Dashboard', path: '/admin/dashboard' },
-        { name: 'Quản lý Homestay', path: '/admin/homestays' },
-        { name: 'Đơn đặt phòng', path: '/admin/bookings' },
-        { name: 'Tiện ích', path: '/admin/amenities' },
-        { name: 'Mini-game xe đạp', path: '/admin/bicycles', active: true },
-        { name: 'Cẩm nang du lịch', path: '/travel-guides' },
-      ];
-    }
-    if (role === 'manager') {
-      return [
-        { name: 'Dashboard', path: '/manager/dashboard' },
-        { name: 'Đơn đặt phòng', path: '/manager/bookings' },
-        { name: 'Khách hàng', path: '/manager/customers' },
-        { name: 'Nhân viên', path: '/manager/staff' },
-        { name: 'Mini-game xe đạp', path: '/manager/bicycles', active: true },
-        { name: 'Cẩm nang du lịch', path: '/travel-guides' },
-      ];
-    }
-    // staff
-    return [
-      { name: 'Dashboard', path: '/staff/dashboard' },
-      { name: 'Bookings', path: '/staff/bookings' },
-      { name: 'Reviews', path: '/staff/reviews' },
-      { name: 'Mini-game xe đạp', path: '/staff/bicycles', active: true },
-      { name: 'Cẩm nang du lịch', path: '/travel-guides' },
-      { name: 'Tickets', path: '/staff/tickets' },
-    ];
-  };
-
   const handleLogout = () => {
     authService.logout();
     toast.success('Đăng xuất thành công!');
@@ -466,16 +451,16 @@ export default function BicycleGamificationPage() {
           </div>
 
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {getNavItems().map((item) => (
+            {navItems.map((item) => (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 type="button"
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
-                  item.active ? styles.navActive : styles.navInactive
+                  item.id === 'bicycles' ? styles.navActive : styles.navInactive
                 }`}
               >
-                <span className="truncate">{item.name}</span>
+                <span className="truncate">{item.label}</span>
               </button>
             ))}
           </nav>

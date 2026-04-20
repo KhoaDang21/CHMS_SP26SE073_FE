@@ -19,11 +19,8 @@ interface HeaderProps {
 
 const navigationItems = [
   { name: 'Home', nameVi: 'Trang Chủ', href: '/' },
-  { name: 'Booking', nameVi: 'Đặt Phòng', href: '/customer/bookings' },
-  { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/experiences' },
   { name: 'Travel Guides', nameVi: 'Cẩm Nang Du Lịch', href: '/travel-guides' },
-  { name: 'Favorites', nameVi: 'Yêu Thích', href: '/customer/favorites' },
-  { name: 'Messages', nameVi: 'Hỗ Trợ', href: '/customer/messages' },
+  { name: 'Experiences', nameVi: 'Dịch Vụ Địa Phương', href: '/experiences' },
   { name: 'About', nameVi: 'Giới Thiệu', href: '/about' },
   { name: 'Contact', nameVi: 'Liên Hệ', href: '/contact' },
 ];

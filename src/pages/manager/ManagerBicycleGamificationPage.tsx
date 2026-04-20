@@ -11,6 +11,7 @@ import { employeeService } from '../../services/employeeService';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { adminNavItems } from '../../config/adminNavItems';
 import { managerNavItems } from '../../config/managerNavItems';
 import {
   bicycleGamificationService,
@@ -265,6 +266,7 @@ export default function ManagerBicycleGamificationPage() {
   const navigate = useNavigate();
   const user = authService.getUser();
   const role = user?.role;
+  const isAdmin = role === 'admin';
   const isAllowed = role === 'admin' || role === 'manager';
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -324,7 +326,7 @@ export default function ManagerBicycleGamificationPage() {
   const [hiddenGemLongitude, setHiddenGemLongitude] = useState('');
   const [hiddenGemRewardPoints, setHiddenGemRewardPoints] = useState('10');
 
-  const navItems = managerNavItems;
+  const navItems = isAdmin ? adminNavItems : managerNavItems;
 
   useEffect(() => {
     if (!isAllowed) {
@@ -851,8 +853,8 @@ export default function ManagerBicycleGamificationPage() {
             <div className="flex items-center gap-2">
               <Building2 className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="font-bold text-gray-900">CHMS Manager</h1>
-                <p className="text-xs text-gray-500">Quản lý vận hành</p>
+                <h1 className="font-bold text-gray-900">CHMS {isAdmin ? 'Admin' : 'Manager'}</h1>
+                <p className="text-xs text-gray-500">{isAdmin ? 'Management System' : 'Quản lý vận hành'}</p>
               </div>
             </div>
             <button
@@ -887,10 +889,10 @@ export default function ManagerBicycleGamificationPage() {
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold">
-                {user?.name?.charAt(0)?.toUpperCase() ?? 'M'}
+                {user?.name?.charAt(0)?.toUpperCase() ?? (isAdmin ? 'A' : 'M')}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate">{user?.name ?? 'Manager'}</p>
+                <p className="font-medium text-gray-900 truncate">{user?.name ?? (isAdmin ? 'Admin' : 'Manager')}</p>
                 <div className="mt-1">{user?.role && <RoleBadge role={user.role} size="sm" />}</div>
               </div>
             </div>
