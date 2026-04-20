@@ -98,61 +98,42 @@ function HomestayCard({ homestay }: { homestay: RecommendedHomestay }) {
     const name = homestay.name || homestay.Name || 'Homestay';
     const address = homestay.address || homestay.Address || 'Đang cập nhật';
     const price = homestay.price || homestay.Price || 0;
-    const amenities = homestay.amenities || homestay.Amenities || '';
     const thumbnail = homestay.thumbnailUrl || homestay.ThumbnailUrl || '';
 
-    const handleBookClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        navigate(`/homestays/${id}`);
-    };
-
     return (
-        <div className="bg-white rounded-xl border border-gray-150 overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group"
-            onClick={() => navigate(`/homestays/${id}`)}>
-            {/* Image */}
-            <div className="relative h-40 w-full overflow-hidden bg-gray-200">
+        <div
+            className="flex gap-3 bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md hover:border-blue-100 transition-all duration-200 cursor-pointer group p-2.5"
+            onClick={() => navigate(`/homestays/${id}`)}
+        >
+            {/* Thumbnail */}
+            <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
                 <ImageWithFallback
                     src={thumbnail}
                     alt={name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
             </div>
 
-            {/* Content */}
-            <div className="p-4 flex flex-col gap-3">
-                {/* Name */}
-                <h5 className="font-bold text-sm text-gray-900 line-clamp-2 leading-tight">{name}</h5>
-
-                {/* Location */}
-                <div className="flex items-start gap-2 text-xs text-gray-600">
-                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-gray-400" />
-                    <span className="line-clamp-2 leading-tight">{address}</span>
+            {/* Info */}
+            <div className="flex flex-col justify-center flex-1 min-w-0 gap-1.5">
+                <h5 className="font-semibold text-sm text-gray-900 line-clamp-2 leading-snug">{name}</h5>
+                <div className="flex items-center gap-1 text-gray-400">
+                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                    <span className="text-xs text-gray-500 truncate">{address}</span>
                 </div>
-
-                {/* Price */}
-                <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-bold text-gray-900">
+                <div className="flex items-baseline gap-0.5">
+                    <span className="text-sm font-bold text-blue-600 whitespace-nowrap">
                         {price.toLocaleString('vi-VN')}₫
                     </span>
-                    <span className="text-xs text-gray-500">/đêm</span>
+                    <span className="text-xs text-gray-400 whitespace-nowrap">/đêm</span>
                 </div>
+            </div>
 
-                {/* Amenities */}
-                {amenities && (
-                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-2.5 border border-orange-100">
-                        <p className="text-xs text-gray-700 line-clamp-2 leading-relaxed">
-                            🏠 {amenities}
-                        </p>
-                    </div>
-                )}
-
-                {/* Book button */}
-                <button
-                    onClick={handleBookClick}
-                    className="w-full mt-auto px-3 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-bold rounded-full hover:from-blue-600 hover:to-cyan-600 active:scale-95 transition-all shadow-md hover:shadow-lg"
-                >
-                    Xem & Đặt
-                </button>
+            {/* Arrow indicator */}
+            <div className="flex items-center flex-shrink-0 self-center">
+                <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
             </div>
         </div>
     );
@@ -195,8 +176,11 @@ export default function AiBubbleContent({
             {/* Recommended homestays as cards — chỉ hiện nếu có */}
             {hasHomestays && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
-                    <p className="text-xs font-semibold text-gray-700 mb-2">🏠 Gợi ý cho bạn:</p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <p className="text-xs font-semibold text-gray-700 mb-2.5 flex items-center gap-1.5">
+                        <span className="text-base">🏠</span>
+                        <span>Gợi ý cho bạn</span>
+                    </p>
+                    <div className="flex flex-col gap-2">
                         {recommendedHomestays!.map((homestay, idx) => (
                             <HomestayCard key={idx} homestay={homestay} />
                         ))}
