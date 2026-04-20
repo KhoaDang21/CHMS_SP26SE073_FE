@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bike, CheckCircle2, Gauge, Loader2, MapPinned, ShieldAlert } from 'lucide-react';
+import { Bike, CheckCircle2, Gauge, Loader2, LogOut, MapPinned, Menu, ShieldAlert, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import type { Homestay } from '../../types/homestay.types';
+import { RoleBadge } from '../../components/common/RoleBadge';
 import {
   bicycleGamificationService,
   type HiddenGemPayload,
@@ -36,6 +37,7 @@ export default function BicycleGamificationPage() {
   const canManage = role === 'admin' || role === 'manager';
   const isAllowed = role === 'admin' || role === 'manager' || role === 'staff';
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
@@ -62,6 +64,7 @@ export default function BicycleGamificationPage() {
   const [routeName, setRouteName] = useState('');
   const [polylineMap, setPolylineMap] = useState('');
   const [distanceKm, setDistanceKm] = useState('2');
+  const [estimatedMinutes, setEstimatedMinutes] = useState('20');
   const [hiddenGemsJson, setHiddenGemsJson] = useState('[\n  {"name": "Quán cà phê ven biển", "latitude": 16.0678, "longitude": 108.2208, "rewardPoints": 10}\n]');
 
   const visibleTabs = useMemo(() => {
@@ -284,8 +287,9 @@ export default function BicycleGamificationPage() {
       const result = await bicycleGamificationService.createLocalRoute({
         homestayId: selectedHomestayId,
         routeName: routeName.trim(),
+        totalDistanceKm: toNumber(distanceKm),
+        estimatedMinutes: toNumber(estimatedMinutes),
         polylineMap: polylineMap.trim(),
-        distanceKm: toNumber(distanceKm),
         hiddenGems,
       });
 
@@ -305,271 +309,429 @@ export default function BicycleGamificationPage() {
 
   if (!isAllowed) return null;
 
+  const getNavItems = () => {
+    if (role === 'admin') {
+      return [
+        { name: 'Dashboard', path: '/admin/dashboard' },
+        { name: 'Quản lý Homestay', path: '/admin/homestays' },
+        { name: 'Đơn đặt phòng', path: '/admin/bookings' },
+        { name: 'Tiện ích', path: '/admin/amenities' },
+        { name: 'Mini-game xe đạp', path: '/admin/bicycles', active: true },
+        { name: 'Cẩm nang du lịch', path: '/travel-guides' },
+      ];
+    }
+    if (role === 'manager') {
+      return [
+        { name: 'Dashboard', path: '/manager/dashboard' },
+        { name: 'Đơn đặt phòng', path: '/manager/bookings' },
+        { name: 'Khách hàng', path: '/manager/customers' },
+        { name: 'Nhân viên', path: '/manager/staff' },
+        { name: 'Mini-game xe đạp', path: '/manager/bicycles', active: true },
+        { name: 'Cẩm nang du lịch', path: '/travel-guides' },
+      ];
+    }
+    // staff
+    return [
+      { name: 'Dashboard', path: '/staff/dashboard' },
+      { name: 'Bookings', path: '/staff/bookings' },
+      { name: 'Reviews', path: '/staff/reviews' },
+      { name: 'Mini-game xe đạp', path: '/staff/bicycles', active: true },
+      { name: 'Cẩm nang du lịch', path: '/travel-guides' },
+      { name: 'Tickets', path: '/staff/tickets' },
+    ];
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    toast.success('Đăng xuất thành công!');
+    navigate('/auth/login');
+  };
+
+  const getSidebarStyles = () => {
+    if (role === 'staff') {
+      return {
+        container: 'bg-gradient-to-br from-cyan-600 to-blue-700 text-white',
+        border: 'border-cyan-500/30',
+        headerBg: 'bg-white/20',
+        userAvatarBg: 'bg-gradient-to-br from-cyan-400 to-blue-500',
+        navActive: 'bg-white/20 text-white font-medium',
+        navInactive: 'text-cyan-100 hover:bg-white/10',
+        hoverText: 'text-cyan-100 hover:bg-white/10',
+      };
+    }
+    // Admin & Manager: white sidebar
+    return {
+      container: 'bg-white shadow-lg text-gray-900',
+      border: 'border-gray-200',
+      headerBg: 'bg-transparent',
+      userAvatarBg: 'bg-gradient-to-br from-blue-500 to-cyan-500',
+      navActive: 'bg-blue-50 text-blue-600 font-medium',
+      navInactive: 'text-gray-700 hover:bg-gray-50',
+      hoverText: 'text-gray-700 hover:bg-gray-50',
+    };
+  };
+
+  const styles = getSidebarStyles();
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-blue-50 p-6 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-semibold text-cyan-700">
-                <Bike className="h-4 w-4" />
-                Bicycle Gamification
-              </p>
-              <h1 className="mt-3 text-2xl font-black text-gray-900 sm:text-3xl">Vận hành xe đạp mini-game</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                Phân quyền web: Admin, Manager, Staff. Customer chỉ dùng trên mobile app.
-              </p>
+    <div className={`min-h-screen flex ${role === 'staff' ? 'bg-gray-50' : 'bg-gradient-to-br from-blue-50 to-cyan-50'}`}>
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 ${styles.container} transform transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
+        <div className="flex flex-col h-full">
+          <div className={`flex items-center justify-between p-6 border-b ${styles.border}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 ${styles.headerBg} rounded-lg flex items-center justify-center`}>
+                <Bike className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg">CHMS</h1>
+                <p className={`text-xs ${role === 'staff' ? 'text-cyan-200' : 'text-gray-500'}`}>
+                  {role?.toUpperCase() === 'MANAGER' ? 'Quản lý vận hành' : role?.toUpperCase() === 'ADMIN' ? 'Management System' : 'Staff Portal'}
+                </p>
+              </div>
             </div>
-            <div className="rounded-xl border border-cyan-200 bg-white px-4 py-3 text-sm text-gray-700">
-              <p>
-                Role hiện tại: <span className="font-semibold uppercase text-cyan-700">{role}</span>
-              </p>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden" type="button">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className={`p-6 border-b ${styles.border}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-full ${styles.userAvatarBg} flex items-center justify-center ${role === 'staff' ? 'text-white' : 'text-white'} font-bold text-lg`}>
+                {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`font-medium truncate ${role === 'staff' ? 'text-white' : 'text-gray-900'}`}>
+                  {user?.name ?? 'User'}
+                </p>
+                <RoleBadge role={user?.role || 'staff'} size="sm" />
+              </div>
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {visibleTabs.map((tab) => {
-              const Icon = tab.icon;
-              const active = tab.key === activeTab;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                    active
-                      ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'
-                  }`}
-                >
-                  <p className="flex items-center gap-2 text-sm font-semibold">
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {getNavItems().map((item) => (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                type="button"
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
+                  item.active ? styles.navActive : styles.navInactive
+                }`}
+              >
+                <span className="truncate">{item.name}</span>
+              </button>
+            ))}
+          </nav>
 
-        <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">Homestay</label>
-            <select
-              value={selectedHomestayId}
-              onChange={(e) => setSelectedHomestayId(e.target.value)}
-              className="min-w-[260px] rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200"
+          <div className={`p-4 border-t ${styles.border}`}>
+            <button
+              onClick={handleLogout}
+              type="button"
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${styles.hoverText}`}
             >
-              {homestays.map((homestay) => (
-                <option key={homestay.id} value={homestay.id}>
-                  {homestay.name}
-                </option>
-              ))}
-            </select>
+              <LogOut className="w-5 h-5 flex-shrink-0" />
+              <span>Đăng xuất</span>
+            </button>
           </div>
-        </section>
+        </div>
+      </aside>
 
-        {loading ? (
-          <div className="mt-8 flex flex-col items-center justify-center py-12 text-gray-500">
-            <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
-            <p className="mt-2">Đang tải dữ liệu...</p>
+      <div className={`flex-1 lg:ml-64 transition-colors ${role === 'staff' ? 'bg-gray-50' : 'bg-gradient-to-br from-blue-50 to-cyan-50'}`}>
+        {/* Header */}
+        <header className={`border-b sticky top-0 z-40 ${role === 'staff' ? 'bg-white border-gray-200' : 'bg-white/50 backdrop-blur border-gray-200/50'}`}>
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                type="button"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Mini-game Xe Đạp</h2>
+                <p className="text-sm text-gray-500">Vận hành gamification cho khách</p>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="mt-6 space-y-6">
-            {activeTab === 'operation' && (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h2 className="text-lg font-bold text-gray-900">Bàn giao xe cho khách</h2>
-                  <p className="mt-1 text-sm text-gray-500">POST /api/gamification-bicycles/rent</p>
-                  <div className="mt-4 space-y-3">
-                    <input
-                      value={rentBookingId}
-                      onChange={(e) => setRentBookingId(e.target.value)}
-                      placeholder="bookingId"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={rentBicycleId}
-                      onChange={(e) => setRentBicycleId(e.target.value)}
-                      placeholder="bicycleId"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleRent}
-                      disabled={submitting}
-                      className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-60"
-                    >
-                      <CheckCircle2 className="h-4 w-4" /> Bàn giao xe
-                    </button>
-                  </div>
-                </div>
+        </header>
 
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h2 className="text-lg font-bold text-gray-900">Thu hồi xe & phạt hư hỏng</h2>
-                  <p className="mt-1 text-sm text-gray-500">POST /api/gamification-bicycles/return</p>
-                  <div className="mt-4 space-y-3">
-                    <input
-                      value={returnRentalId}
-                      onChange={(e) => setReturnRentalId(e.target.value)}
-                      placeholder="rentalId"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={returnDamageIds}
-                      onChange={(e) => setReturnDamageIds(e.target.value)}
-                      placeholder="damageCatalogIds (cách nhau bằng dấu phẩy)"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleReturn}
-                      disabled={submitting}
-                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-                    >
-                      <CheckCircle2 className="h-4 w-4" /> Thu hồi xe
-                    </button>
-                  </div>
-                </div>
+        {/* Main Content */}
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <section className="rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-blue-50 p-6 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-semibold text-cyan-700">
+                  <Bike className="h-4 w-4" />
+                  Bicycle Gamification
+                </p>
+                <h1 className="mt-3 text-2xl font-black text-gray-900 sm:text-3xl">Vận hành xe đạp mini-game</h1>
+                <p className="mt-2 text-sm text-gray-600">
+                  Phân quyền web: Admin, Manager, Staff. Customer chỉ dùng trên mobile app.
+                </p>
               </div>
-            )}
+              <div className="rounded-xl border border-cyan-200 bg-white px-4 py-3 text-sm text-gray-700">
+                <p>
+                  Role hiện tại: <span className="font-semibold uppercase text-cyan-700">{role}</span>
+                </p>
+              </div>
+            </div>
 
-            {canManage && activeTab === 'bicycles' && (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h2 className="text-lg font-bold text-gray-900">Thêm xe mới</h2>
-                  <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles</p>
-                  <div className="mt-4 space-y-3">
-                    <input
-                      value={bicycleCode}
-                      onChange={(e) => setBicycleCode(e.target.value)}
-                      placeholder="bicycleCode"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={bicycleType}
-                      onChange={(e) => setBicycleType(e.target.value)}
-                      placeholder="type"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={pricePerDay}
-                      onChange={(e) => setPricePerDay(e.target.value)}
-                      placeholder="pricePerDay"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCreateBicycle}
-                      disabled={submitting}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      Thêm xe
-                    </button>
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = tab.key === activeTab;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                      active
+                        ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'
+                    }`}
+                  >
+                    <p className="flex items-center gap-2 text-sm font-semibold">
+                      <Icon className="h-4 w-4" />
+                      {tab.label}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm font-medium text-gray-700">Homestay</label>
+              <select
+                value={selectedHomestayId}
+                onChange={(e) => setSelectedHomestayId(e.target.value)}
+                className="min-w-[260px] rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200"
+              >
+                {homestays.map((homestay) => (
+                  <option key={homestay.id} value={homestay.id}>
+                    {homestay.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </section>
+
+          {loading ? (
+            <div className="mt-8 flex flex-col items-center justify-center py-12 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
+              <p className="mt-2">Đang tải dữ liệu...</p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-6">
+              {activeTab === 'operation' && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-200 p-5">
+                    <h2 className="text-lg font-bold text-gray-900">Bàn giao xe cho khách</h2>
+                    <p className="mt-1 text-sm text-gray-500">POST /api/gamification-bicycles/rent</p>
+                    <div className="mt-4 space-y-3">
+                      <input
+                        value={rentBookingId}
+                        onChange={(e) => setRentBookingId(e.target.value)}
+                        placeholder="bookingId"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={rentBicycleId}
+                        onChange={(e) => setRentBicycleId(e.target.value)}
+                        placeholder="bicycleId"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRent}
+                        disabled={submitting}
+                        className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-60"
+                      >
+                        <CheckCircle2 className="h-4 w-4" /> Bàn giao xe
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 p-5">
+                    <h2 className="text-lg font-bold text-gray-900">Thu hồi xe & phạt hư hỏng</h2>
+                    <p className="mt-1 text-sm text-gray-500">POST /api/gamification-bicycles/return</p>
+                    <div className="mt-4 space-y-3">
+                      <input
+                        value={returnRentalId}
+                        onChange={(e) => setReturnRentalId(e.target.value)}
+                        placeholder="rentalId"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={returnDamageIds}
+                        onChange={(e) => setReturnDamageIds(e.target.value)}
+                        placeholder="damageCatalogIds (cách nhau bằng dấu phẩy)"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleReturn}
+                        disabled={submitting}
+                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        <CheckCircle2 className="h-4 w-4" /> Thu hồi xe
+                      </button>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h3 className="text-base font-bold text-gray-900">Danh sách xe</h3>
-                  <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/{'{homestayId}'}</p>
-                  <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
-                    {JSON.stringify(bicycles, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            )}
+              {canManage && activeTab === 'bicycles' && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-200 p-5">
+                    <h2 className="text-lg font-bold text-gray-900">Thêm xe mới</h2>
+                    <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles</p>
+                    <div className="mt-4 space-y-3">
+                      <input
+                        value={bicycleCode}
+                        onChange={(e) => setBicycleCode(e.target.value)}
+                        placeholder="bicycleCode"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={bicycleType}
+                        onChange={(e) => setBicycleType(e.target.value)}
+                        placeholder="type"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={pricePerDay}
+                        onChange={(e) => setPricePerDay(e.target.value)}
+                        placeholder="pricePerDay"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateBicycle}
+                        disabled={submitting}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                      >
+                        Thêm xe
+                      </button>
+                    </div>
+                  </div>
 
-            {canManage && activeTab === 'damage' && (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h2 className="text-lg font-bold text-gray-900">Thêm lỗi hư hỏng</h2>
-                  <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles/damage-catalogs</p>
-                  <div className="mt-4 space-y-3">
-                    <input
-                      value={damageName}
-                      onChange={(e) => setDamageName(e.target.value)}
-                      placeholder="damageName"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={fineAmount}
-                      onChange={(e) => setFineAmount(e.target.value)}
-                      placeholder="fineAmount"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCreateDamage}
-                      disabled={submitting}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      Thêm lỗi
-                    </button>
+                  <div className="rounded-2xl border border-gray-200 p-5">
+                    <h3 className="text-base font-bold text-gray-900">Danh sách xe</h3>
+                    <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/{'{homestayId}'}</p>
+                    <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
+                      {JSON.stringify(bicycles, null, 2)}
+                    </pre>
                   </div>
                 </div>
+              )}
 
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h3 className="text-base font-bold text-gray-900">Danh sách bảng phạt</h3>
-                  <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/damage-catalogs/{'{homestayId}'}</p>
-                  <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
-                    {JSON.stringify(damageCatalogs, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            )}
+              {canManage && activeTab === 'damage' && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-200 p-5">
+                    <h2 className="text-lg font-bold text-gray-900">Thêm lỗi hư hỏng</h2>
+                    <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles/damage-catalogs</p>
+                    <div className="mt-4 space-y-3">
+                      <input
+                        value={damageName}
+                        onChange={(e) => setDamageName(e.target.value)}
+                        placeholder="damageName"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={fineAmount}
+                        onChange={(e) => setFineAmount(e.target.value)}
+                        placeholder="fineAmount"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateDamage}
+                        disabled={submitting}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                      >
+                        Thêm lỗi
+                      </button>
+                    </div>
+                  </div>
 
-            {canManage && activeTab === 'routes' && (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h2 className="text-lg font-bold text-gray-900">Tạo lộ trình mới</h2>
-                  <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles/local-routes</p>
-                  <div className="mt-4 space-y-3">
-                    <input
-                      value={routeName}
-                      onChange={(e) => setRouteName(e.target.value)}
-                      placeholder="routeName"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={polylineMap}
-                      onChange={(e) => setPolylineMap(e.target.value)}
-                      placeholder="polylineMap"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      value={distanceKm}
-                      onChange={(e) => setDistanceKm(e.target.value)}
-                      placeholder="distanceKm"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <textarea
-                      value={hiddenGemsJson}
-                      onChange={(e) => setHiddenGemsJson(e.target.value)}
-                      rows={6}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCreateRoute}
-                      disabled={submitting}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      Tạo lộ trình
-                    </button>
+                  <div className="rounded-2xl border border-gray-200 p-5">
+                    <h3 className="text-base font-bold text-gray-900">Danh sách bảng phạt</h3>
+                    <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/damage-catalogs/{'{homestayId}'}</p>
+                    <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
+                      {JSON.stringify(damageCatalogs, null, 2)}
+                    </pre>
                   </div>
                 </div>
+              )}
 
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h3 className="text-base font-bold text-gray-900">Danh sách lộ trình</h3>
-                  <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/local-routes/{'{homestayId}'}</p>
-                  <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
-                    {JSON.stringify(localRoutes, null, 2)}
-                  </pre>
+              {canManage && activeTab === 'routes' && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-200 p-5">
+                    <h2 className="text-lg font-bold text-gray-900">Tạo lộ trình mới</h2>
+                    <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles/local-routes</p>
+                    <div className="mt-4 space-y-3">
+                      <input
+                        value={routeName}
+                        onChange={(e) => setRouteName(e.target.value)}
+                        placeholder="routeName"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={polylineMap}
+                        onChange={(e) => setPolylineMap(e.target.value)}
+                        placeholder="polylineMap"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={distanceKm}
+                        onChange={(e) => setDistanceKm(e.target.value)}
+                        placeholder="distanceKm"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        value={estimatedMinutes}
+                        onChange={(e) => setEstimatedMinutes(e.target.value)}
+                        placeholder="estimatedMinutes"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <textarea
+                        value={hiddenGemsJson}
+                        onChange={(e) => setHiddenGemsJson(e.target.value)}
+                        rows={6}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateRoute}
+                        disabled={submitting}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                      >
+                        Tạo lộ trình
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 p-5">
+                    <h3 className="text-base font-bold text-gray-900">Danh sách lộ trình</h3>
+                    <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/local-routes/{'{homestayId}'}</p>
+                    <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
+                      {JSON.stringify(localRoutes, null, 2)}
+                    </pre>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

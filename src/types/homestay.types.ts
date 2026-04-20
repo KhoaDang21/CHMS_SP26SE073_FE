@@ -56,6 +56,7 @@ export interface Homestay {
   description: string;
   address: string;
   districtId?: string;
+  provinceId?: string;
   city?: string;
   country?: string;
   districtName?: string;
