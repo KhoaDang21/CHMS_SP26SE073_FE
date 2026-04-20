@@ -174,7 +174,7 @@ export default function ManagerHomestayManagement() {
 
   const handleOpenEditModal = async (homestay: Homestay) => {
     // Open modal immediately so user can edit even if detail API is slow/fails.
-    setEditingHomestay(homestay);
+    setEditingHomestay({ ...homestay });
     setShowEditModal(true);
 
     setUpdatingHomestay(true);
@@ -185,7 +185,7 @@ export default function ManagerHomestayManagement() {
         return;
       }
 
-      setEditingHomestay(detail);
+      setEditingHomestay({ ...detail });
     } catch (error) {
       console.error('Error loading homestay detail for editing:', error);
       toast.warning('Không tải được chi tiết mới nhất, đang dùng dữ liệu hiện tại');
