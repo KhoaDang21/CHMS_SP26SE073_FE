@@ -157,6 +157,8 @@ export default function AiChatWidget() {
               sender: (h.sender === 'User' ? 'User' : 'AI') as 'User' | 'AI',
               message: h.message,
               timestamp: h.timestamp || new Date().toISOString(),
+              isRecommendation: h.isRecommendation,
+              recommendedHomestays: h.recommendedHomestays,
             })));
           }
         })

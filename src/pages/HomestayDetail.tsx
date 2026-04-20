@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText, MapPin, ExternalLink } from 'lucide-react'
+import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText, MapPin, ExternalLink, Info, X, LogIn } from 'lucide-react'
 import MainLayout from '../layouts/MainLayout'
 import { publicHomestayService } from '../services/publicHomestayService'
 import { ImageWithFallback } from '../components/figma/ImageWithFallback'
@@ -47,6 +47,7 @@ export default function HomestayDetail() {
     const [experiences, setExperiences] = useState<LocalExperience[]>([])
     const [experiencesLoading, setExperiencesLoading] = useState(false)
     const [selectedExperienceQty, setSelectedExperienceQty] = useState<Record<string, number>>({})
+    const [previewExperience, setPreviewExperience] = useState<LocalExperience | null>(null)
     const [isCalculating, setIsCalculating] = useState(false)
     const [calcResult, setCalcResult] = useState<number | null>(null)
     const [pendingBooking, setPendingBooking] = useState<{
@@ -625,6 +626,18 @@ export default function HomestayDetail() {
                                         <h4 className="font-semibold">Phòng ngủ</h4>
                                         <p className="text-sm text-gray-600">{homestay.bedrooms ?? 0} phòng</p>
                                     </div>
+                                    {(homestay.bathrooms ?? 0) > 0 && (
+                                        <div>
+                                            <h4 className="font-semibold">Phòng tắm / WC</h4>
+                                            <p className="text-sm text-gray-600">{homestay.bathrooms} phòng</p>
+                                        </div>
+                                    )}
+                                    {(homestay.area ?? 0) > 0 && (
+                                        <div>
+                                            <h4 className="font-semibold">Diện tích</h4>
+                                            <p className="text-sm text-gray-600">{homestay.area} m²</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="mt-6">
@@ -861,7 +874,21 @@ export default function HomestayDetail() {
                                     </div>
                                 )}
 
-                                {/* Step 2: Số khách */}
+                                {/* Step 2: Số điện thoại liên hệ */}
+                                <div className="mt-4">
+                                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                        <Phone className="w-4 h-4 text-gray-500" />
+                                        Số điện thoại liên hệ <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        value={contactPhone}
+                                        onChange={(e) => setContactPhone(e.target.value)}
+                                        placeholder="VD: 0901234567"
+                                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    />
+                                </div>
+
+                                {/* Step 3: Số khách */}
                                 <div className="mt-4">
                                     <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                         <Users className="w-4 h-4 text-gray-500" />
@@ -875,7 +902,7 @@ export default function HomestayDetail() {
                                     </select>
                                 </div>
 
-                                {/* Step 3: Promotion */}
+                                {/* Step 4: Promotion */}
                                 <div className="mt-4">
                                     <PromotionPicker
                                         promotions={availablePromotions}
@@ -886,7 +913,7 @@ export default function HomestayDetail() {
                                     />
                                 </div>
 
-                                {/* Step 4: Dịch vụ địa phương */}
+                                        {/* Step 4: Dịch vụ địa phương */}
                                 <div className="mt-4">
                                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                                         <div className="flex items-center justify-between mb-2">
@@ -904,8 +931,8 @@ export default function HomestayDetail() {
                                                     const checked = qty > 0
                                                     return (
                                                         <div key={item.id} className="bg-white rounded-lg border border-gray-200 px-3 py-2">
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <label className="flex items-start gap-2 flex-1 cursor-pointer">
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <label className="flex items-start gap-2 flex-1 cursor-pointer min-w-0">
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={checked}
@@ -915,18 +942,27 @@ export default function HomestayDetail() {
                                                                                 [item.id]: e.target.checked ? Math.max(1, prev[item.id] ?? 1) : 0,
                                                                             }))
                                                                         }}
-                                                                        className="mt-1"
+                                                                        className="mt-1 flex-shrink-0"
                                                                     />
                                                                     <div className="min-w-0">
                                                                         <div className="text-sm font-medium text-gray-900 truncate">{item.name}</div>
                                                                         <div className="text-xs text-gray-500">
-                                                                            {item.categoryName ? `${item.categoryName} • ` : item.categoryId ? `${item.categoryId} • ` : ''}
+                                                                            {item.categoryName ? `${item.categoryName} • ` : ''}
                                                                             {typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : 'Liên hệ'}
+                                                                            {item.unit ? `/${item.unit}` : ''}
                                                                         </div>
                                                                     </div>
                                                                 </label>
 
-                                                                <div className="flex items-center gap-2">
+                                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setPreviewExperience(item)}
+                                                                        className="p-1 rounded text-cyan-500 hover:bg-cyan-50 transition-colors"
+                                                                        title="Xem chi tiết"
+                                                                    >
+                                                                        <Info className="w-4 h-4" />
+                                                                    </button>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => {
@@ -1029,20 +1065,8 @@ export default function HomestayDetail() {
                                     )}
                                 </div>
 
-                                {/* Step 5: Thông tin liên hệ */}
+                                {/* Step 5: Yêu cầu đặc biệt */}
                                 <div className="mt-4 grid grid-cols-1 gap-3">
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                            <Phone className="w-4 h-4 text-gray-500" />
-                                            Số điện thoại liên hệ <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            value={contactPhone}
-                                            onChange={(e) => setContactPhone(e.target.value)}
-                                            placeholder="VD: 0901234567"
-                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                                        />
-                                    </div>
                                     <div>
                                         <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                             <MessageSquareText className="w-4 h-4 text-gray-500" />
@@ -1058,11 +1082,10 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
+                                {authService.isAuthenticated() ? (
                                 <button onClick={async () => {
-                                    if (!authService.isAuthenticated() || !authService.isTokenValid()) {
-                                        if (authService.isAuthenticated() && !authService.isTokenValid()) {
-                                            toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
-                                        }
+                                    if (!authService.isTokenValid()) {
+                                        toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
                                         navigate('/auth/login')
                                         return
                                     }
@@ -1127,7 +1150,6 @@ export default function HomestayDetail() {
                                         if (res && res.success && res.data?.id) {
                                             const bookingData = res.data
                                             const bookingTotal = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
-                                            // depositAmount và remainingAmount từ BE — không tính lại FE
                                             const depositRate = (homestay!.depositPercentage ?? 20) / 100
                                             const depositAmount = bookingData.depositAmount ?? bookingTotal * depositRate
                                             const remainingAmount = bookingData.remainingAmount ?? bookingTotal - depositAmount
@@ -1140,7 +1162,7 @@ export default function HomestayDetail() {
                                                 guestsCount: guests,
                                                 pricePerNight: effectivePricePerNight ?? homestay!.pricePerNight,
                                                 bookingTotal,
-                                                amountDue: depositAmount,  // lần đầu luôn là cọc
+                                                amountDue: depositAmount,
                                                 depositAmount,
                                                 remainingAmount,
                                                 paymentLabel: 'Đặt cọc',
@@ -1167,12 +1189,87 @@ export default function HomestayDetail() {
                                         </>
                                     ) : isCalculating ? 'Đang tính giá...' : 'Xác nhận đặt phòng'}
                                 </button>
-
-                                <div className="mt-4 text-xs text-gray-500">Phí dịch vụ và thuế sẽ được tính khi thanh toán.</div>
+                                ) : (
+                                <button
+                                    onClick={() => navigate('/auth/login')}
+                                    className="w-full mt-5 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <LogIn className="w-4 h-4" />
+                                    Đăng nhập để đặt phòng
+                                </button>
+                                )}
                             </div>
                         </div>
                     </div>
                 )}
+
+                {previewExperience && (
+                    <div
+                        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setPreviewExperience(null)}
+                    >
+                        <div
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {previewExperience.imageUrl && (
+                                <div className="h-48 overflow-hidden">
+                                    <img
+                                        src={previewExperience.imageUrl}
+                                        alt={previewExperience.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                            )}
+                            <div className="p-5">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-900">{previewExperience.name}</h3>
+                                        {previewExperience.categoryName && (
+                                            <span className="inline-block mt-1 text-xs bg-cyan-50 text-cyan-700 border border-cyan-100 rounded-full px-2.5 py-0.5 font-medium">
+                                                {previewExperience.categoryName}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => setPreviewExperience(null)}
+                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+                                    >
+                                        <X className="w-5 h-5 text-gray-500" />
+                                    </button>
+                                </div>
+                                {previewExperience.description && (
+                                    <p className="mt-3 text-sm text-gray-600 leading-relaxed">{previewExperience.description}</p>
+                                )}
+                                <div className="mt-4 flex items-center justify-between">
+                                    <div>
+                                        <span className="text-xl font-bold text-gray-900">
+                                            {typeof previewExperience.price === 'number'
+                                                ? `${previewExperience.price.toLocaleString('vi-VN')}đ`
+                                                : 'Liên hệ'}
+                                        </span>
+                                        {previewExperience.unit && (
+                                            <span className="text-sm text-gray-500 ml-1">/ {previewExperience.unit}</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setSelectedExperienceQty((prev) => ({
+                                                ...prev,
+                                                [previewExperience.id]: Math.max(1, prev[previewExperience.id] ?? 1),
+                                            }))
+                                            setPreviewExperience(null)
+                                        }}
+                                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg text-sm font-medium hover:from-blue-600 hover:to-cyan-600 transition-all"
+                                    >
+                                        Thêm vào đơn
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {lightboxSrc && (
                     <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxSrc(null)}>
                         <img src={lightboxSrc} alt="Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />

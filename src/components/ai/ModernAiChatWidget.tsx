@@ -25,6 +25,7 @@ import {
 import { useChat } from "../../hooks/useChat";
 import { authService } from "../../services/authService";
 import type { ChatMessage } from "../../services/aiService";
+import AiBubbleContent from "./AiBubbleContent";
 
 // Quick suggestions to show when chat is empty
 const QUICK_SUGGESTIONS = [
@@ -66,37 +67,12 @@ interface BubbleProps {
     sender: "User" | "AI";
     message: string;
     timestamp: string;
+    isRecommendation?: boolean;
+    recommendedHomestays?: any[];
 }
 
-function MessageBubble({ sender, message, timestamp }: BubbleProps) {
+function MessageBubble({ sender, message, timestamp, isRecommendation, recommendedHomestays }: BubbleProps) {
     const isUser = sender === "User";
-
-    // Parse AI message: bold **text**, bullet lines starting with - or *
-    const renderAiMessage = (text: string) => {
-        const lines = text.split('\n').filter((l) => l.trim() !== '')
-        return (
-            <div className="space-y-1.5">
-                {lines.map((line, i) => {
-                    const isBullet = /^[-*•]\s+/.test(line.trim())
-                    const content = line.replace(/^[-*•]\s+/, '').trim()
-                    // parse **bold**
-                    const parts = content.split(/\*\*(.*?)\*\*/g)
-                    const rendered = parts.map((part, j) =>
-                        j % 2 === 1 ? <strong key={j} className="font-semibold text-gray-900">{part}</strong> : part
-                    )
-                    if (isBullet) {
-                        return (
-                            <div key={i} className="flex items-start gap-2">
-                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
-                                <span>{rendered}</span>
-                            </div>
-                        )
-                    }
-                    return <p key={i}>{rendered}</p>
-                })}
-            </div>
-        )
-    }
 
     return (
         <div className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
@@ -106,25 +82,31 @@ function MessageBubble({ sender, message, timestamp }: BubbleProps) {
                 </div>
             )}
             <div
-                className={`max-w-[76%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm
+                className={`max-w-[76%] rounded-2xl text-sm shadow-sm
         ${isUser
-                        ? "bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-br-sm"
-                        : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
+                        ? "bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-br-sm px-3.5 py-2.5"
+                        : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm p-3"
                     }`}
             >
-                {isUser
-                    ? <p className="whitespace-pre-wrap break-words">{message}</p>
-                    : renderAiMessage(message)
-                }
-                <p
-                    className={`text-[10px] mt-1.5 ${isUser ? "text-blue-100 text-right" : "text-gray-400"
-                        }`}
-                >
-                    {new Date(timestamp).toLocaleTimeString("vi-VN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })}
-                </p>
+                {isUser ? (
+                    <>
+                        <p className="whitespace-pre-wrap break-words">{message}</p>
+                        <p className="text-[10px] mt-1 text-blue-100 text-right">
+                            {new Date(timestamp).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <AiBubbleContent
+                            message={message}
+                            recommendedHomestays={recommendedHomestays}
+                            isRecommendation={isRecommendation}
+                        />
+                        <p className="text-[10px] mt-3 text-gray-400">
+                            {new Date(timestamp).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -497,6 +479,8 @@ export default function ModernAiChatWidget() {
                             sender={msg.sender as "User" | "AI"}
                             message={msg.message}
                             timestamp={msg.timestamp}
+                            isRecommendation={msg.isRecommendation}
+                            recommendedHomestays={msg.recommendedHomestays}
                         />
                     ))}
 
