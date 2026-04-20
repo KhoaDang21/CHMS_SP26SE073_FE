@@ -1,0 +1,576 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Bike, CheckCircle2, Gauge, Loader2, MapPinned, ShieldAlert } from 'lucide-react';
+import { toast } from 'sonner';
+import { authService } from '../../services/authService';
+import { publicHomestayService } from '../../services/publicHomestayService';
+import type { Homestay } from '../../types/homestay.types';
+import {
+  bicycleGamificationService,
+  type HiddenGemPayload,
+} from '../../services/bicycleGamificationService';
+
+const tabs = [
+  { key: 'operation', label: 'Bàn giao & Thu hồi', icon: Bike },
+  { key: 'bicycles', label: 'Kho xe đạp', icon: Gauge },
+  { key: 'damage', label: 'Bảng phạt hư hỏng', icon: ShieldAlert },
+  { key: 'routes', label: 'Lộ trình & Hidden Gems', icon: MapPinned },
+] as const;
+
+type TabKey = (typeof tabs)[number]['key'];
+
+const getText = (value: unknown, fallback = '') => {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+};
+
+const toNumber = (value: string) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export default function BicycleGamificationPage() {
+  const navigate = useNavigate();
+  const user = authService.getUser();
+  const role = user?.role;
+  const canManage = role === 'admin' || role === 'manager';
+  const isAllowed = role === 'admin' || role === 'manager' || role === 'staff';
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [homestays, setHomestays] = useState<Homestay[]>([]);
+  const [selectedHomestayId, setSelectedHomestayId] = useState('');
+
+  const [activeTab, setActiveTab] = useState<TabKey>('operation');
+
+  const [bicycles, setBicycles] = useState<any[]>([]);
+  const [damageCatalogs, setDamageCatalogs] = useState<any[]>([]);
+  const [localRoutes, setLocalRoutes] = useState<any[]>([]);
+
+  const [rentBookingId, setRentBookingId] = useState('');
+  const [rentBicycleId, setRentBicycleId] = useState('');
+  const [returnRentalId, setReturnRentalId] = useState('');
+  const [returnDamageIds, setReturnDamageIds] = useState('');
+
+  const [bicycleCode, setBicycleCode] = useState('');
+  const [bicycleType, setBicycleType] = useState('CITY');
+  const [pricePerDay, setPricePerDay] = useState('100000');
+
+  const [damageName, setDamageName] = useState('');
+  const [fineAmount, setFineAmount] = useState('50000');
+
+  const [routeName, setRouteName] = useState('');
+  const [polylineMap, setPolylineMap] = useState('');
+  const [distanceKm, setDistanceKm] = useState('2');
+  const [hiddenGemsJson, setHiddenGemsJson] = useState('[\n  {"name": "Quán cà phê ven biển", "latitude": 16.0678, "longitude": 108.2208, "rewardPoints": 10}\n]');
+
+  const visibleTabs = useMemo(() => {
+    if (canManage) return tabs;
+    return tabs.filter((tab) => tab.key === 'operation');
+  }, [canManage]);
+
+  useEffect(() => {
+    if (!isAllowed) {
+      toast.error('Bạn không có quyền truy cập chức năng này');
+      navigate('/', { replace: true });
+      return;
+    }
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const paged = await publicHomestayService.list({ page: 1, pageSize: 300 });
+        const list = paged.Items || [];
+        setHomestays(list);
+        if (list.length > 0) {
+          setSelectedHomestayId((prev) => prev || list[0].id);
+        }
+      } catch (error) {
+        console.error('Load homestays error:', error);
+        toast.error('Không thể tải danh sách homestay');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [isAllowed, navigate]);
+
+  const refreshManagerData = async () => {
+    if (!canManage || !selectedHomestayId) {
+      setBicycles([]);
+      setDamageCatalogs([]);
+      setLocalRoutes([]);
+      return;
+    }
+
+    try {
+      const [bicycleList, damageList, routeList] = await Promise.all([
+        bicycleGamificationService.listBicycles(selectedHomestayId),
+        bicycleGamificationService.listDamageCatalogs(selectedHomestayId),
+        bicycleGamificationService.listLocalRoutes(selectedHomestayId),
+      ]);
+      setBicycles(bicycleList);
+      setDamageCatalogs(damageList);
+      setLocalRoutes(routeList);
+    } catch (error) {
+      console.error('Refresh manager bicycle data error:', error);
+      toast.error('Không thể tải dữ liệu quản lý xe đạp');
+    }
+  };
+
+  useEffect(() => {
+    void refreshManagerData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedHomestayId, canManage]);
+
+  const handleRent = async () => {
+    if (!rentBookingId.trim() || !rentBicycleId.trim()) {
+      toast.error('Vui lòng nhập bookingId và bicycleId');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await bicycleGamificationService.rent({
+        bookingId: rentBookingId.trim(),
+        bicycleId: rentBicycleId.trim(),
+      });
+
+      if (!result.success) {
+        toast.error(result.message || 'Không thể bàn giao xe');
+        return;
+      }
+
+      toast.success(result.message || 'Bàn giao xe thành công');
+      setRentBookingId('');
+      setRentBicycleId('');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReturn = async () => {
+    if (!returnRentalId.trim()) {
+      toast.error('Vui lòng nhập rentalId');
+      return;
+    }
+
+    const damageIds = returnDamageIds
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    setSubmitting(true);
+    try {
+      const result = await bicycleGamificationService.returnBicycle({
+        rentalId: returnRentalId.trim(),
+        damageCatalogIds: damageIds,
+      });
+
+      if (!result.success) {
+        toast.error(result.message || 'Không thể thu hồi xe');
+        return;
+      }
+
+      toast.success(result.message || 'Thu hồi xe thành công');
+      setReturnRentalId('');
+      setReturnDamageIds('');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateBicycle = async () => {
+    if (!bicycleCode.trim()) {
+      toast.error('Vui lòng nhập mã xe');
+      return;
+    }
+
+    if (!selectedHomestayId) {
+      toast.error('Vui lòng chọn homestay');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await bicycleGamificationService.createBicycle({
+        homestayId: selectedHomestayId,
+        bicycleCode: bicycleCode.trim(),
+        type: bicycleType.trim(),
+        pricePerDay: toNumber(pricePerDay),
+      });
+
+      if (!result.success) {
+        toast.error(result.message || 'Không thể thêm xe');
+        return;
+      }
+
+      toast.success(result.message || 'Thêm xe thành công');
+      setBicycleCode('');
+      await refreshManagerData();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateDamage = async () => {
+    if (!damageName.trim()) {
+      toast.error('Vui lòng nhập tên lỗi');
+      return;
+    }
+
+    if (!selectedHomestayId) {
+      toast.error('Vui lòng chọn homestay');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await bicycleGamificationService.createDamageCatalog({
+        homestayId: selectedHomestayId,
+        damageName: damageName.trim(),
+        fineAmount: toNumber(fineAmount),
+      });
+
+      if (!result.success) {
+        toast.error(result.message || 'Không thể thêm lỗi hư hỏng');
+        return;
+      }
+
+      toast.success(result.message || 'Đã thêm lỗi hư hỏng');
+      setDamageName('');
+      await refreshManagerData();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const parseHiddenGems = (): HiddenGemPayload[] => {
+    const parsed = JSON.parse(hiddenGemsJson) as unknown;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((item) => ({
+        name: getText((item as any)?.name),
+        latitude: Number((item as any)?.latitude),
+        longitude: Number((item as any)?.longitude),
+        rewardPoints: Number((item as any)?.rewardPoints || 0),
+      }))
+      .filter((item) => item.name && Number.isFinite(item.latitude) && Number.isFinite(item.longitude));
+  };
+
+  const handleCreateRoute = async () => {
+    if (!selectedHomestayId) {
+      toast.error('Vui lòng chọn homestay');
+      return;
+    }
+
+    if (!routeName.trim() || !polylineMap.trim()) {
+      toast.error('Vui lòng nhập tên lộ trình và polylineMap');
+      return;
+    }
+
+    let hiddenGems: HiddenGemPayload[] = [];
+    try {
+      hiddenGems = parseHiddenGems();
+    } catch {
+      toast.error('JSON Hidden Gems không hợp lệ');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await bicycleGamificationService.createLocalRoute({
+        homestayId: selectedHomestayId,
+        routeName: routeName.trim(),
+        polylineMap: polylineMap.trim(),
+        distanceKm: toNumber(distanceKm),
+        hiddenGems,
+      });
+
+      if (!result.success) {
+        toast.error(result.message || 'Không thể tạo lộ trình');
+        return;
+      }
+
+      toast.success(result.message || 'Tạo lộ trình thành công');
+      setRouteName('');
+      setPolylineMap('');
+      await refreshManagerData();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!isAllowed) return null;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-blue-50 p-6 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-semibold text-cyan-700">
+                <Bike className="h-4 w-4" />
+                Bicycle Gamification
+              </p>
+              <h1 className="mt-3 text-2xl font-black text-gray-900 sm:text-3xl">Vận hành xe đạp mini-game</h1>
+              <p className="mt-2 text-sm text-gray-600">
+                Phân quyền web: Admin, Manager, Staff. Customer chỉ dùng trên mobile app.
+              </p>
+            </div>
+            <div className="rounded-xl border border-cyan-200 bg-white px-4 py-3 text-sm text-gray-700">
+              <p>
+                Role hiện tại: <span className="font-semibold uppercase text-cyan-700">{role}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {visibleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const active = tab.key === activeTab;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                    active
+                      ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'
+                  }`}
+                >
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Homestay</label>
+            <select
+              value={selectedHomestayId}
+              onChange={(e) => setSelectedHomestayId(e.target.value)}
+              className="min-w-[260px] rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200"
+            >
+              {homestays.map((homestay) => (
+                <option key={homestay.id} value={homestay.id}>
+                  {homestay.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+
+        {loading ? (
+          <div className="mt-8 flex flex-col items-center justify-center py-12 text-gray-500">
+            <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
+            <p className="mt-2">Đang tải dữ liệu...</p>
+          </div>
+        ) : (
+          <div className="mt-6 space-y-6">
+            {activeTab === 'operation' && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div className="rounded-2xl border border-gray-200 p-5">
+                  <h2 className="text-lg font-bold text-gray-900">Bàn giao xe cho khách</h2>
+                  <p className="mt-1 text-sm text-gray-500">POST /api/gamification-bicycles/rent</p>
+                  <div className="mt-4 space-y-3">
+                    <input
+                      value={rentBookingId}
+                      onChange={(e) => setRentBookingId(e.target.value)}
+                      placeholder="bookingId"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={rentBicycleId}
+                      onChange={(e) => setRentBicycleId(e.target.value)}
+                      placeholder="bicycleId"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRent}
+                      disabled={submitting}
+                      className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-60"
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> Bàn giao xe
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 p-5">
+                  <h2 className="text-lg font-bold text-gray-900">Thu hồi xe & phạt hư hỏng</h2>
+                  <p className="mt-1 text-sm text-gray-500">POST /api/gamification-bicycles/return</p>
+                  <div className="mt-4 space-y-3">
+                    <input
+                      value={returnRentalId}
+                      onChange={(e) => setReturnRentalId(e.target.value)}
+                      placeholder="rentalId"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={returnDamageIds}
+                      onChange={(e) => setReturnDamageIds(e.target.value)}
+                      placeholder="damageCatalogIds (cách nhau bằng dấu phẩy)"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleReturn}
+                      disabled={submitting}
+                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> Thu hồi xe
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {canManage && activeTab === 'bicycles' && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div className="rounded-2xl border border-gray-200 p-5">
+                  <h2 className="text-lg font-bold text-gray-900">Thêm xe mới</h2>
+                  <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles</p>
+                  <div className="mt-4 space-y-3">
+                    <input
+                      value={bicycleCode}
+                      onChange={(e) => setBicycleCode(e.target.value)}
+                      placeholder="bicycleCode"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={bicycleType}
+                      onChange={(e) => setBicycleType(e.target.value)}
+                      placeholder="type"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={pricePerDay}
+                      onChange={(e) => setPricePerDay(e.target.value)}
+                      placeholder="pricePerDay"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateBicycle}
+                      disabled={submitting}
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      Thêm xe
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 p-5">
+                  <h3 className="text-base font-bold text-gray-900">Danh sách xe</h3>
+                  <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/{'{homestayId}'}</p>
+                  <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
+                    {JSON.stringify(bicycles, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {canManage && activeTab === 'damage' && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div className="rounded-2xl border border-gray-200 p-5">
+                  <h2 className="text-lg font-bold text-gray-900">Thêm lỗi hư hỏng</h2>
+                  <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles/damage-catalogs</p>
+                  <div className="mt-4 space-y-3">
+                    <input
+                      value={damageName}
+                      onChange={(e) => setDamageName(e.target.value)}
+                      placeholder="damageName"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={fineAmount}
+                      onChange={(e) => setFineAmount(e.target.value)}
+                      placeholder="fineAmount"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateDamage}
+                      disabled={submitting}
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      Thêm lỗi
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 p-5">
+                  <h3 className="text-base font-bold text-gray-900">Danh sách bảng phạt</h3>
+                  <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/damage-catalogs/{'{homestayId}'}</p>
+                  <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
+                    {JSON.stringify(damageCatalogs, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {canManage && activeTab === 'routes' && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div className="rounded-2xl border border-gray-200 p-5">
+                  <h2 className="text-lg font-bold text-gray-900">Tạo lộ trình mới</h2>
+                  <p className="mt-1 text-sm text-gray-500">POST /api/manager/bicycles/local-routes</p>
+                  <div className="mt-4 space-y-3">
+                    <input
+                      value={routeName}
+                      onChange={(e) => setRouteName(e.target.value)}
+                      placeholder="routeName"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={polylineMap}
+                      onChange={(e) => setPolylineMap(e.target.value)}
+                      placeholder="polylineMap"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={distanceKm}
+                      onChange={(e) => setDistanceKm(e.target.value)}
+                      placeholder="distanceKm"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <textarea
+                      value={hiddenGemsJson}
+                      onChange={(e) => setHiddenGemsJson(e.target.value)}
+                      rows={6}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateRoute}
+                      disabled={submitting}
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      Tạo lộ trình
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 p-5">
+                  <h3 className="text-base font-bold text-gray-900">Danh sách lộ trình</h3>
+                  <p className="mt-1 text-sm text-gray-500">GET /api/manager/bicycles/local-routes/{'{homestayId}'}</p>
+                  <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
+                    {JSON.stringify(localRoutes, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

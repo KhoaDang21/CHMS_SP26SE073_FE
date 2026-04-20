@@ -42,6 +42,7 @@ import TravelGuidesPage from '../pages/TravelGuidesPage';
 import { authService } from '../services/authService';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ExperienceManagement from '../pages/shared/ExperienceManagement';
+import BicycleGamificationPage from '../pages/shared/BicycleGamificationPage';
 
 // Protected Route Component
 function ProtectedRoute({
@@ -243,6 +244,14 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/manager/bicycles"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <BicycleGamificationPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected Routes - Staff */}
       <Route
@@ -274,6 +283,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <StaffTickets />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/bicycles"
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <BicycleGamificationPage />
           </ProtectedRoute>
         }
       />
@@ -316,6 +333,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <ExperienceManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/bicycles"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <BicycleGamificationPage />
           </ProtectedRoute>
         }
       />
