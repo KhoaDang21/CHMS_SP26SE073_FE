@@ -617,35 +617,50 @@ export default function HomestayDetail() {
                                     )}
                                 </div>
 
-                                <div className="mt-6 grid grid-cols-2 gap-4">
-                                    <div>
-                                        <h4 className="font-semibold">Số khách</h4>
-                                        <p className="text-sm text-gray-600">{homestay.maxGuests} khách</p>
+                                <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                        <span className="text-2xl">👥</span>
+                                        <div>
+                                            <p className="text-xs text-gray-500">Số khách</p>
+                                            <p className="font-semibold text-gray-900">{homestay.maxGuests} khách</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="font-semibold">Phòng ngủ</h4>
-                                        <p className="text-sm text-gray-600">{homestay.bedrooms ?? 0} phòng</p>
+                                    <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                        <span className="text-2xl">🛏️</span>
+                                        <div>
+                                            <p className="text-xs text-gray-500">Phòng ngủ</p>
+                                            <p className="font-semibold text-gray-900">{homestay.bedrooms ?? 0} phòng</p>
+                                        </div>
                                     </div>
                                     {(homestay.bathrooms ?? 0) > 0 && (
-                                        <div>
-                                            <h4 className="font-semibold">Phòng tắm / WC</h4>
-                                            <p className="text-sm text-gray-600">{homestay.bathrooms} phòng</p>
+                                        <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                            <span className="text-2xl">🚿</span>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Phòng tắm</p>
+                                                <p className="font-semibold text-gray-900">{homestay.bathrooms} phòng</p>
+                                            </div>
                                         </div>
                                     )}
                                     {(homestay.area ?? 0) > 0 && (
-                                        <div>
-                                            <h4 className="font-semibold">Diện tích</h4>
-                                            <p className="text-sm text-gray-600">{homestay.area} m²</p>
+                                        <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                            <span className="text-2xl">📐</span>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Diện tích</p>
+                                                <p className="font-semibold text-gray-900">{homestay.area} m²</p>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="mt-6">
-                                    <h4 className="font-semibold mb-2">Tiện nghi</h4>
+                                    <h4 className="font-semibold mb-3">Tiện nghi</h4>
                                     {homestay.amenities && homestay.amenities.length > 0 ? (
                                         <div className="flex flex-wrap gap-2">
                                             {homestay.amenities.map((a, i) => (
-                                                <div key={i} className="text-sm bg-gray-100 px-3 py-1 rounded">{a}</div>
+                                                <div key={i} className="flex items-center gap-1.5 text-sm bg-cyan-50 text-cyan-800 border border-cyan-100 px-3 py-1.5 rounded-lg font-medium">
+                                                    <span className="text-base">✓</span>
+                                                    {a}
+                                                </div>
                                             ))}
                                         </div>
                                     ) : (
