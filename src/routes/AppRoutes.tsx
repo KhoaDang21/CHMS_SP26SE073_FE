@@ -47,6 +47,29 @@ import ManagerBicycleGamificationPage from '../pages/manager/ManagerBicycleGamif
 import CancellationPoliciesPage from '../pages/admin/CancellationPoliciesPage';
 import AdminRefundsPage from '../pages/admin/AdminRefundsPage';
 
+const ROLE_HOME_PATHS: Record<'customer' | 'manager' | 'staff' | 'admin', string> = {
+  customer: '/customer/dashboard',
+  manager: '/manager/dashboard',
+  staff: '/staff/dashboard',
+  admin: '/admin/dashboard',
+};
+
+function HomeRoute() {
+  if (!authService.isAuthenticated()) {
+    return <HomePage />;
+  }
+
+  const user = authService.getUser();
+  const role = user?.role as 'customer' | 'manager' | 'staff' | 'admin' | undefined;
+  const redirectPath = role ? ROLE_HOME_PATHS[role] : '/';
+
+  if (!redirectPath || redirectPath === '/') {
+    return <HomePage />;
+  }
+
+  return <Navigate to={redirectPath} replace />;
+}
+
 
 // Protected Route Component
 function ProtectedRoute({
@@ -82,7 +105,7 @@ export function AppRoutes() {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<HomeRoute />} />
       <Route path="/experiences" element={<LocalExperiencesPage />} />
       <Route path="/travel-guides" element={<TravelGuidesPage />} />
       <Route path="/homestays/:id" element={<HomestayDetail />} />
