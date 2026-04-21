@@ -55,6 +55,7 @@ export default function TravelGuidesPage() {
   const currentUser = authService.getUser();
   const isAuthenticated = authService.isAuthenticated();
   const role = currentUser?.role;
+  const isAdmin = role === 'admin';
   const isBackofficeRole = role === 'admin' || role === 'manager' || role === 'staff';
 
   const canCreate = isAuthenticated && (role === 'customer' || role === 'admin' || role === 'staff' || role === 'manager');
@@ -63,7 +64,7 @@ export default function TravelGuidesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [guides, setGuides] = useState<CulturalGuide[]>([]);
   const [allHomestays, setAllHomestays] = useState<Homestay[]>([]);
-  const [expandedGuideIds, setExpandedGuideIds] = useState<Set<string>>(new Set());
+  const [selectedGuideDetail, setSelectedGuideDetail] = useState<CulturalGuide | null>(null);
 
   const [selectedHomestayId, setSelectedHomestayId] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -124,23 +125,31 @@ export default function TravelGuidesPage() {
     ));
   }, [guides, searchQuery]);
 
-  const toggleGuideExpanded = (guideId: string) => {
-    setExpandedGuideIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(guideId)) {
-        next.delete(guideId);
-      } else {
-        next.add(guideId);
-      }
-      return next;
-    });
+  const openGuideDetail = (guide: CulturalGuide) => {
+    setSelectedGuideDetail(guide);
   };
 
-  const isGuideExpanded = (guideId: string) => expandedGuideIds.has(guideId);
+  const closeGuideDetail = () => {
+    setSelectedGuideDetail(null);
+  };
 
-  const shouldShowExpandButton = (guide: CulturalGuide) => {
-    const text = String(guide.content || guide.description || '');
-    return text.length > 260 || splitContentBlocks(text).length > 3 || getGuideImages(guide).length > 1;
+  const handleDeleteGuide = async (guide: CulturalGuide) => {
+    if (!isAdmin) return;
+
+    const confirmed = window.confirm(`Bạn có chắc muốn xoá bài "${guide.title}" không?`);
+    if (!confirmed) return;
+
+    const result = await culturalGuidesService.adminDeleteGuide(guide.id);
+    if (!result.success) {
+      toast.error(result.message || 'Không thể xoá bài viết');
+      return;
+    }
+
+    toast.success(result.message || 'Xoá bài viết thành công');
+    if (selectedGuideDetail?.id === guide.id) {
+      setSelectedGuideDetail(null);
+    }
+    await loadData();
   };
 
   const handleSelectImages = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -365,23 +374,32 @@ export default function TravelGuidesPage() {
                         </div>
                       </div>
 
-                      <div className={`space-y-3 text-sm leading-7 text-gray-700 ${isGuideExpanded(guide.id) ? '' : 'max-h-32 overflow-hidden'}`}>
-                        {splitContentBlocks(guide.content || guide.description).map((block, index) => (
+                      <div className="space-y-3 text-sm leading-7 text-gray-700 max-h-32 overflow-hidden">
+                        {splitContentBlocks(guide.content || guide.description).slice(0, 3).map((block, index) => (
                           <p key={`${guide.id}-block-${index}`} className="whitespace-pre-line">
                             {block}
                           </p>
                         ))}
                       </div>
 
-                      {shouldShowExpandButton(guide) && (
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => toggleGuideExpanded(guide.id)}
+                          onClick={() => openGuideDetail(guide)}
                           className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-100 transition-colors"
                         >
-                          {isGuideExpanded(guide.id) ? 'Thu gọn' : 'Xem thêm'}
+                          Xem chi tiết
                         </button>
-                      )}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGuide(guide)}
+                            className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
+                          >
+                            Xoá
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -488,6 +506,86 @@ export default function TravelGuidesPage() {
                   Đăng bài
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {selectedGuideDetail && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
+            <div className="absolute inset-0 bg-black/55" onClick={closeGuideDetail} />
+            <div className="relative z-10 w-full max-w-4xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200 font-medium">
+                      {selectedGuideDetail.type || 'Guide'}
+                    </span>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusClass(selectedGuideDetail.status)}`}>
+                      {normalizeStatus(selectedGuideDetail.status)}
+                    </span>
+                  </div>
+                  <h3 className="mt-2 text-xl sm:text-2xl font-black text-gray-900 leading-tight">{selectedGuideDetail.title}</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Tác giả: {selectedGuideDetail.author || 'Ẩn danh'}
+                    {' • '}
+                    {selectedGuideDetail.createdAt ? vndDate.format(new Date(selectedGuideDetail.createdAt)) : 'Không rõ thời gian'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeGuideDetail}
+                  className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="max-h-[78vh] overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
+                {getGuideImages(selectedGuideDetail).length > 0 && (
+                  <div className="mb-4 space-y-3">
+                    <div className="overflow-hidden rounded-xl border border-gray-200">
+                      <img
+                        src={getGuideImages(selectedGuideDetail)[0]}
+                        alt={selectedGuideDetail.title}
+                        className="h-64 sm:h-80 w-full object-cover"
+                      />
+                    </div>
+                    {getGuideImages(selectedGuideDetail).length > 1 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {getGuideImages(selectedGuideDetail).slice(1).map((url, index) => (
+                          <div key={`${selectedGuideDetail.id}-img-${index}`} className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                            <img
+                              src={url}
+                              alt={`${selectedGuideDetail.title} ${index + 2}`}
+                              className="h-24 w-full object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-4 text-sm sm:text-base leading-7 text-gray-700">
+                  {splitContentBlocks(selectedGuideDetail.content || selectedGuideDetail.description).map((block, index) => (
+                    <p key={`${selectedGuideDetail.id}-detail-${index}`} className="whitespace-pre-line">
+                      {block}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              {isAdmin && (
+                <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteGuide(selectedGuideDetail)}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                  >
+                    Xoá bài viết
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

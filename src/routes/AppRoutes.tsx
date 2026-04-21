@@ -43,8 +43,10 @@ import { authService } from '../services/authService';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import ExperienceManagement from '../pages/shared/ExperienceManagement';
 import BicycleGamificationPage from '../pages/shared/BicycleGamificationPage';
+import ManagerBicycleGamificationPage from '../pages/manager/ManagerBicycleGamificationPage';
 import CancellationPoliciesPage from '../pages/admin/CancellationPoliciesPage';
 import AdminRefundsPage from '../pages/admin/AdminRefundsPage';
+
 
 // Protected Route Component
 function ProtectedRoute({
@@ -250,7 +252,7 @@ export function AppRoutes() {
         path="/manager/bicycles"
         element={
           <ProtectedRoute allowedRoles={['manager']}>
-            <BicycleGamificationPage />
+            <ManagerBicycleGamificationPage />
           </ProtectedRoute>
         }
       />
@@ -342,7 +344,7 @@ export function AppRoutes() {
         path="/admin/bicycles"
         element={
           <ProtectedRoute allowedRoles={['admin']}>
-            <BicycleGamificationPage />
+            <ManagerBicycleGamificationPage />
           </ProtectedRoute>
         }
       />

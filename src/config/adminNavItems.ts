@@ -33,13 +33,6 @@ export const adminNavItems = [
     icon: CalendarDays,
     path: "/admin/bookings",
   },
-
-  {
-    id: "amenities",
-    label: "Quản lý tiện ích",
-    icon: Sparkles,
-    path: "/admin/amenities",
-  },
   {
     id: "experiences",
     label: "Dịch vụ địa phương",
@@ -47,16 +40,22 @@ export const adminNavItems = [
     path: "/admin/experiences",
   },
   {
-    id: "bicycles",
-    label: "Mini-game xe đạp",
-    icon: Bike,
-    path: "/admin/bicycles",
-  },
-  {
     id: "travel-guides",
     label: "Cẩm nang du lịch",
     icon: BookOpen,
     path: "/travel-guides",
+  },
+  {
+    id: "amenities",
+    label: "Quản lý tiện ích",
+    icon: Sparkles,
+    path: "/admin/amenities",
+  },
+  {
+    id: "bicycles",
+    label: "Mini-game xe đạp",
+    icon: Bike,
+    path: "/admin/bicycles",
   },
   {
     id: "customers",
