@@ -14,6 +14,8 @@ import {
 } from '../../services/supportTicketService';
 import { authService } from '../../services/authService';
 import { bookingService, type Booking } from '../../services/bookingService';
+import { signalRService } from '../../services/signalRService';
+import { subscribeTicketRealtimeEvents } from '../../services/ticketRealtimeService';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; color: string; border: string; icon: React.ReactNode }> = {
@@ -388,6 +390,7 @@ function TicketDetailPanel({
   const [closing, setClosing] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const detailRealtimeTimerRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -404,6 +407,47 @@ function TicketDetailPanel({
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [detail?.replies, loading]);
+
+  useEffect(() => {
+    const token = authService.getToken();
+    if (!token) return;
+
+    let isMounted = true;
+    let unsubscribe = () => {};
+
+    signalRService.connect(token).then((conn) => {
+      if (!isMounted || !conn) return;
+
+      if (currentUserId) {
+        conn.invoke('JoinUserGroup', currentUserId).catch(() => {});
+      }
+      conn.invoke('JoinTicketGroup', ticketId).catch(() => {});
+      conn.invoke('JoinSupportTicketGroup', ticketId).catch(() => {});
+
+      unsubscribe = subscribeTicketRealtimeEvents(conn, (event) => {
+        if (!event.isTicketEvent) return;
+        if (event.ticketId && event.ticketId !== ticketId) return;
+
+        if (detailRealtimeTimerRef.current !== null) {
+          window.clearTimeout(detailRealtimeTimerRef.current);
+        }
+        detailRealtimeTimerRef.current = window.setTimeout(() => {
+          if (isMounted) {
+            void load();
+          }
+        }, 250);
+      });
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      if (detailRealtimeTimerRef.current !== null) {
+        window.clearTimeout(detailRealtimeTimerRef.current);
+        detailRealtimeTimerRef.current = null;
+      }
+    };
+  }, [currentUserId, load, ticketId]);
 
   const sendMessage = async () => {
     const msg = message.trim();
@@ -653,6 +697,7 @@ export default function SupportPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const listRealtimeTimerRef = useRef<number | null>(null);
 
   const currentUser = authService.getUser();
 
@@ -664,6 +709,45 @@ export default function SupportPage() {
   }, []);
 
   useEffect(() => { loadTickets(); }, [loadTickets]);
+
+  useEffect(() => {
+    const token = authService.getToken();
+    const currentUserId = authService.getUser()?.id;
+    if (!token) return;
+
+    let isMounted = true;
+    let unsubscribe = () => {};
+
+    signalRService.connect(token).then((conn) => {
+      if (!isMounted || !conn) return;
+
+      if (currentUserId) {
+        conn.invoke('JoinUserGroup', currentUserId).catch(() => {});
+      }
+
+      unsubscribe = subscribeTicketRealtimeEvents(conn, (event) => {
+        if (!event.isTicketEvent) return;
+
+        if (listRealtimeTimerRef.current !== null) {
+          window.clearTimeout(listRealtimeTimerRef.current);
+        }
+        listRealtimeTimerRef.current = window.setTimeout(() => {
+          if (isMounted) {
+            void loadTickets();
+          }
+        }, 250);
+      });
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      if (listRealtimeTimerRef.current !== null) {
+        window.clearTimeout(listRealtimeTimerRef.current);
+        listRealtimeTimerRef.current = null;
+      }
+    };
+  }, [loadTickets]);
 
   const filtered = filterStatus === 'ALL'
     ? tickets
