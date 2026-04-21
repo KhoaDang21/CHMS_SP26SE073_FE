@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,6 +25,7 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import { employeeService } from '../../services/employeeService';
 import { staffBookingService } from '../../services/staffBookingService';
+import { signalRService } from '../../services/signalRService';
 import {
   staffTicketService,
   type StaffTicketDetail,
@@ -32,6 +33,7 @@ import {
   type StaffTicketReply,
   type StaffTicketStatus,
 } from '../../services/staffTicketService';
+import { subscribeTicketRealtimeEvents } from '../../services/ticketRealtimeService';
 
 type FilterStatus = 'all' | StaffTicketStatus;
 
@@ -133,6 +135,7 @@ export default function StaffTickets() {
   const [replyMessage, setReplyMessage] = useState('');
   const [nextStatus, setNextStatus] = useState<StaffTicketStatus>('OPEN');
   const [assignedHomestayCount, setAssignedHomestayCount] = useState(0);
+  const realtimeRefreshTimerRef = useRef<number | null>(null);
 
   const navigationItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
@@ -316,6 +319,55 @@ export default function StaffTickets() {
       container.scrollTop = container.scrollHeight;
     }
   }, [activeReplies.length, selectedTicketId, detailLoading]);
+
+  useEffect(() => {
+    const token = authService.getToken();
+    if (!token) return;
+
+    let isMounted = true;
+    let unsubscribe = () => {};
+
+    signalRService.connect(token).then((conn) => {
+      if (!isMounted || !conn) return;
+
+      if (currentUser?.id) {
+        conn.invoke('JoinUserGroup', currentUser.id).catch(() => {});
+        conn.invoke('JoinStaffGroup', currentUser.id).catch(() => {});
+      }
+
+      if (selectedTicketId) {
+        conn.invoke('JoinTicketGroup', selectedTicketId).catch(() => {});
+        conn.invoke('JoinSupportTicketGroup', selectedTicketId).catch(() => {});
+      }
+
+      unsubscribe = subscribeTicketRealtimeEvents(conn, (event) => {
+        if (!event.isTicketEvent) return;
+
+        if (realtimeRefreshTimerRef.current !== null) {
+          window.clearTimeout(realtimeRefreshTimerRef.current);
+        }
+
+        realtimeRefreshTimerRef.current = window.setTimeout(() => {
+          if (!isMounted) return;
+
+          const shouldRefreshDetail = !!selectedTicketId && (!event.ticketId || event.ticketId === selectedTicketId);
+          void loadTickets();
+          if (shouldRefreshDetail && selectedTicketId) {
+            void loadDetail(selectedTicketId);
+          }
+        }, 250);
+      });
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      if (realtimeRefreshTimerRef.current !== null) {
+        window.clearTimeout(realtimeRefreshTimerRef.current);
+        realtimeRefreshTimerRef.current = null;
+      }
+    };
+  }, [currentUser?.id, loadDetail, loadTickets, selectedTicketId]);
 
   const stats = useMemo(() => {
     return {
