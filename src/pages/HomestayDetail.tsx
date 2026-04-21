@@ -238,6 +238,7 @@ export default function HomestayDetail() {
             const occupiedStart = parseYmdToDate(range.checkIn)
             const occupiedEnd = parseYmdToDate(range.checkOut)
             if (!occupiedStart || !occupiedEnd || occupiedEnd <= occupiedStart) return false
+            // Rule chuẩn lưu trú: ngày checkout là ngày có thể nhận khách mới.
             return date >= occupiedStart && date < occupiedEnd
         })
     }
@@ -263,12 +264,11 @@ export default function HomestayDetail() {
         return merged
     }, [occupiedDateRanges])
 
-    // Tính danh sách ngày bị disable cho DayPicker
-    const disabledDays = useMemo(() => {
+    // Lịch check-in: chỉ block các ngày lưu trú thực tế, không block ngày checkout.
+    const checkInDisabledDays = useMemo(() => {
         const today = startOfDay(new Date())
         const rules: any[] = [{ before: today }]
         mergedOccupiedRanges.forEach(({ from, to }) => {
-            // disable từ checkIn đến checkOut - 1 (ngày checkOut = ngày nhận được của booking tiếp theo)
             rules.push({ from, to: addDays(to, -1) })
         })
         return rules
@@ -276,6 +276,14 @@ export default function HomestayDetail() {
 
     const bookedDayModifiers = useMemo(() => {
         return mergedOccupiedRanges.map(({ from, to }) => ({ from, to: addDays(to, -1) }))
+    }, [mergedOccupiedRanges])
+
+    const checkOutBookedDayModifiers = useMemo(() => {
+        // Lịch checkout chỉ tô mờ các ngày thực sự không thể checkout.
+        // Ngày bắt đầu block (from) có thể là checkout hợp lệ cho booking trước đó.
+        return mergedOccupiedRanges
+            .map(({ from, to }) => ({ from: addDays(from, 1), to: addDays(to, -1) }))
+            .filter(({ from, to }) => from <= to)
     }, [mergedOccupiedRanges])
 
     // Tính ngày checkout tối đa: ngày bắt đầu của occupied range đầu tiên SAU check-in
@@ -297,7 +305,8 @@ export default function HomestayDetail() {
             }
         })
 
-        // Disable tất cả ngày từ nearestBlock trở đi (user không được checkout vượt qua occupied)
+        // Chỉ disable các ngày SAU nearestBlock.
+        // nearestBlock vẫn là ngày checkout hợp lệ (khách mới có thể check-in cùng ngày).
         if (nearestBlock) {
             rules.push({ after: nearestBlock as Date })
         }
@@ -813,7 +822,7 @@ export default function HomestayDetail() {
                                                         if (checkOut && checkOut <= val) setCheckOut('')
                                                         setShowCalendar(null)
                                                     }}
-                                                    disabled={disabledDays}
+                                                    disabled={checkInDisabledDays}
                                                     modifiers={{ booked: bookedDayModifiers }}
                                                     modifiersClassNames={{ today: 'rdp-today', booked: 'rdp-booked' }}
                                                 />
@@ -851,7 +860,7 @@ export default function HomestayDetail() {
                                                         setShowCalendar(null)
                                                     }}
                                                     disabled={checkOutDisabledDays}
-                                                    modifiers={{ booked: bookedDayModifiers }}
+                                                    modifiers={{ booked: checkOutBookedDayModifiers }}
                                                     modifiersClassNames={{ today: 'rdp-today', booked: 'rdp-booked' }}
                                                 />
                                                 {occupiedDateRanges.length > 0 && (
