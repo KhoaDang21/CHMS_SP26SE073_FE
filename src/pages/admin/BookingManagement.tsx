@@ -121,8 +121,8 @@ export default function BookingManagement() {
     }
   };
 
-  const handleCancelBooking = async (bookingId: string, reason: string) => {
-    const result = await adminBookingService.updateBooking(bookingId, { status: 'cancelled', cancellationReason: reason });
+  const handleCancelBooking = async (bookingId: string) => {
+    const result = await adminBookingService.updateBooking(bookingId, { status: 'cancelled' });
     if (result.success) {
       toast.success('Hủy đơn đặt phòng thành công!');
       loadBookings();
@@ -474,7 +474,7 @@ export default function BookingManagement() {
 
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {booking.status === 'pending' && (
-                              <button onClick={() => { const r = prompt('Lý do hủy:'); if (r) handleCancelBooking(booking.id, r); }}
+                              <button onClick={() => handleCancelBooking(booking.id)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
                                 <XCircle className="w-3.5 h-3.5" />
                                 <span>Hủy đơn</span>

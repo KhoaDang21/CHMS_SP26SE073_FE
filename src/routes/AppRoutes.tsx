@@ -44,6 +44,9 @@ import StaffDashboard from '../pages/staff/StaffDashboard';
 import ExperienceManagement from '../pages/shared/ExperienceManagement';
 import BicycleGamificationPage from '../pages/shared/BicycleGamificationPage';
 import ManagerBicycleGamificationPage from '../pages/manager/ManagerBicycleGamificationPage';
+import CancellationPoliciesPage from '../pages/admin/CancellationPoliciesPage';
+import AdminRefundsPage from '../pages/admin/AdminRefundsPage';
+
 
 // Protected Route Component
 function ProtectedRoute({
@@ -390,6 +393,22 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <TicketManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/cancellation-policies"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <CancellationPoliciesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/refunds"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminRefundsPage />
           </ProtectedRoute>
         }
       />

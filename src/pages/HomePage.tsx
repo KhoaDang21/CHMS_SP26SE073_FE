@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { publicHomestayService } from "../services/publicHomestayService";
 import { bookingService, type Booking } from "../services/bookingService";
 import { authService } from "../services/authService";
@@ -39,8 +39,8 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [checkInDate, setCheckInDate] = useState("");
-  const [checkOutDate, setCheckOutDate] = useState("");
+  const [checkInDate] = useState("");
+  const [checkOutDate] = useState("");
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
   const [showPriceFilter, setShowPriceFilter] = useState(false);
   const [activeHeroImage, setActiveHeroImage] = useState(0);
@@ -50,11 +50,6 @@ export default function HomePage() {
   const [filteredDistricts, setFilteredDistricts] = useState<District[]>([]);
 
   const today = new Date().toISOString().split('T')[0];
-  const addDays = (dateStr: string, days: number) => {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0];
-  };
 
   const [allHomestays, setAllHomestays] = useState<Homestay[]>([]);
   const [homestays, setHomestays] = useState<Homestay[]>([]);
@@ -98,7 +93,7 @@ export default function HomePage() {
   // Load bookings nếu đã login (để tính booked dates)
   useEffect(() => {
     if (authService.isAuthenticated() && authService.isTokenValid()) {
-      bookingService.getMyBookings().then(setMyBookings).catch(() => {});
+      bookingService.getMyBookings().then(setMyBookings).catch(() => { });
     }
   }, []);
 
@@ -249,7 +244,7 @@ export default function HomePage() {
             <h3 className="text-xl font-semibold text-gray-900">Tìm Kiếm Homestay</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Tỉnh/Thành */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Điểm đến</label>
@@ -287,51 +282,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Ngày Nhận Phòng */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày nhận</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="date"
-                  value={checkInDate}
-                  min={today}
-                  onChange={(e) => {
-                    const newCheckIn = e.target.value;
-                    setCheckInDate(newCheckIn);
-                    if (checkOutDate && new Date(checkOutDate) <= new Date(newCheckIn)) {
-                      setCheckOutDate(addDays(newCheckIn, 1));
-                    }
-                  }}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            {/* Ngày Trả Phòng */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ngày trả
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="date"
-                  value={checkOutDate}
-                  min={checkInDate ? addDays(checkInDate, 1) : addDays(today, 1)}
-                  onChange={(e) => {
-                    const newCheckOut = e.target.value;
-                    if (checkInDate && new Date(newCheckOut) <= new Date(checkInDate)) {
-                      setCheckOutDate(addDays(checkInDate, 1));
-                    } else {
-                      setCheckOutDate(newCheckOut);
-                    }
-                  }}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
+            {/* Mức giá */}
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">Mức giá (VNĐ/đêm)</label>
               <button
