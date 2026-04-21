@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, RefreshCcw, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X } from 'lucide-react';
+import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
 import { reviewService, type Review } from '../../services/reviewService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
+import { refundService, type PendingRefund } from '../../services/refundService';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { Pagination } from '../../components/common/Pagination';
 import { publicHomestayService } from '../../services/publicHomestayService';
 import PaymentModal from './PaymentModal';
 import ReviewModal from './ReviewModal';
+import CancelRefundModal from './CancelRefundModal';
 import type { Homestay } from '../../types/homestay.types';
 import {
   buildDisplaySpecialRequests,
@@ -34,7 +36,8 @@ export default function BookingsPage() {
 
   const [selected, setSelected] = useState<Booking | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [cancellationPolicy, setCancellationPolicy] = useState<any | null>(null);
+  const [refundPreview, setRefundPreview] = useState<{ estimatedRefund: number; message: string } | null>(null);
+  const [myRefundsMap, setMyRefundsMap] = useState<Record<string, PendingRefund>>({});
 
   const [editMode, setEditMode] = useState(false);
   const [editCheckIn, setEditCheckIn] = useState('');
@@ -62,6 +65,8 @@ export default function BookingsPage() {
   const [extraDetailCharges, setExtraDetailCharges] = useState<ExtraCharge[]>([]);
   const [extraChargeDetailLoading, setExtraChargeDetailLoading] = useState(false);
   const totalExtraDetailAmount = extraDetailCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+  const [cancelRefundBooking, setCancelRefundBooking] = useState<Booking | null>(null);
 
   const getHomestayById = (id?: string) => {
     const key = (id || '').trim();
@@ -116,6 +121,13 @@ export default function BookingsPage() {
 
   useEffect(() => {
     load();
+    refundService.getMyRefunds()
+      .then((list) => {
+        const map: Record<string, PendingRefund> = {};
+        list.forEach((r) => { if (r.bookingId) map[r.bookingId] = r; });
+        setMyRefundsMap(map);
+      })
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -147,23 +159,23 @@ export default function BookingsPage() {
   const openDetail = async (b: Booking) => {
     setSelected(b);
     setEditMode(false);
-    setCancellationPolicy(null);
+    setRefundPreview(null);
     setDetailLoading(true);
     try {
       const detail = await bookingService.getBookingDetail(b.id);
       if (detail) setSelected(detail);
-      // fetch homestay info to know maxGuests / price
       try {
         const hs = await publicHomestayService.getById(detail?.homestayId ?? b.homestayId);
         setDetailHomestay(hs);
       } catch (e) {
         setDetailHomestay(null);
       }
-      const policy = await bookingService.getCancellationPolicy(b.id);
-      if (!policy) {
-        toast.error('Không lấy được chính sách hủy');
+      // Load preview hoàn tiền: nếu chưa hủy thì tính dự kiến, nếu đã hủy thì lấy thực tế
+      if (!['REJECTED', 'COMPLETED', 'CHECKED_IN'].includes(b.status)) {
+        bookingService.previewRefund(b.id)
+          .then((r) => setRefundPreview(r))
+          .catch(() => { });
       }
-      setCancellationPolicy(policy);
     } catch (e) {
       console.error(e);
       toast.error('Không thể tải chi tiết booking');
@@ -262,13 +274,6 @@ export default function BookingsPage() {
               <p className="text-gray-600 mt-1">Quản lý các booking của bạn.</p>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={load}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-medium"
-              >
-                <RefreshCcw className="w-4 h-4" />
-                Tải lại
-              </button>
               <Link
                 to="/customer/dashboard"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold"
@@ -675,20 +680,104 @@ export default function BookingsPage() {
 
                       {/* Chính sách hủy */}
                       <div>
-                        <div className="text-sm font-semibold text-gray-900 mb-3">Chính sách hủy</div>
-                        <div className="text-sm text-gray-700 bg-gray-50 rounded-xl border border-gray-100 p-4">
-                          {cancellationPolicy ? (
-                            typeof cancellationPolicy === 'string' ? (
-                              <div className="whitespace-pre-wrap">{cancellationPolicy}</div>
-                            ) : cancellationPolicy.policy ? (
-                              <div className="whitespace-pre-wrap">{cancellationPolicy.policy}</div>
-                            ) : (
-                              <pre className="whitespace-pre-wrap text-xs text-gray-600">{JSON.stringify(cancellationPolicy, null, 2)}</pre>
-                            )
-                          ) : (
-                            <span className="text-gray-500">—</span>
-                          )}
+                        <div className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-blue-500" />
+                          {selected.status === 'CANCELLED' ? 'Thông tin hoàn tiền' : 'Chính sách hoàn tiền khi hủy'}
                         </div>
+
+                        {selected.status === 'CANCELLED' ? (
+                          /* Booking đã hủy — hiện trạng thái hoàn tiền thực tế */
+                          (() => {
+                            const refundInfo = myRefundsMap[selected.id];
+                            if (!refundInfo) {
+                              return (
+                                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <XCircle className="w-4 h-4 text-gray-400" />
+                                    Booking này không được hoàn tiền theo chính sách hệ thống.
+                                  </div>
+                                </div>
+                              );
+                            }
+                            if (refundInfo.refundStatus === 'COMPLETED') {
+                              return (
+                                <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-green-800 flex items-center gap-1.5">
+                                      <Check className="w-4 h-4" /> Đã hoàn tiền
+                                    </span>
+                                    <span className="text-xl font-black text-green-700">
+                                      {refundInfo.refundAmount.toLocaleString('vi-VN')}đ
+                                    </span>
+                                  </div>
+                                  {refundInfo.refundedAt && (
+                                    <p className="text-xs text-green-600">
+                                      Hoàn lúc: {new Date(refundInfo.refundedAt).toLocaleDateString('vi-VN')}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-green-600">
+                                    Tài khoản: {refundInfo.bankName} — {refundInfo.accountNumber}
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-semibold text-orange-800">Số tiền được hoàn</span>
+                                  <span className="text-xl font-black text-orange-700">
+                                    {refundInfo.refundAmount.toLocaleString('vi-VN')}đ
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 pt-2 border-t border-orange-200">
+                                  <Clock className="w-4 h-4 text-orange-500 shrink-0" />
+                                  <span className="text-xs text-orange-700 font-medium">
+                                    Đang chờ admin xử lý hoàn tiền. Bạn sẽ nhận được thông báo khi hoàn tất.
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    refundService.getMyRefunds()
+                                      .then((list) => {
+                                        const map: Record<string, PendingRefund> = {};
+                                        list.forEach((r) => { if (r.bookingId) map[r.bookingId] = r; });
+                                        setMyRefundsMap(map);
+                                      })
+                                      .catch(() => { });
+                                  }}
+                                  className="w-full text-xs text-orange-600 hover:text-orange-800 underline text-center"
+                                >
+                                  Làm mới trạng thái
+                                </button>
+                              </div>
+                            );
+                          })()
+                        ) : !['REJECTED', 'COMPLETED', 'CHECKED_IN'].includes(selected.status) ? (
+                          /* Booking chưa hủy — hiện preview dự kiến */
+                          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-blue-700">Hoàn tiền dự kiến nếu hủy ngay</span>
+                              <span className={`text-lg font-black ${refundPreview && refundPreview.estimatedRefund > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                {refundPreview
+                                  ? refundPreview.estimatedRefund > 0
+                                    ? `${refundPreview.estimatedRefund.toLocaleString('vi-VN')}đ`
+                                    : 'Không hoàn tiền'
+                                  : '—'}
+                              </span>
+                            </div>
+                            {refundPreview?.message && (
+                              <p className="text-xs text-blue-600">{refundPreview.message}</p>
+                            )}
+                            <p className="text-xs text-blue-500 border-t border-blue-100 pt-2">
+                              Hủy trong vòng 30 phút sau khi đặt → hoàn 100% bất kể chính sách
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500 bg-gray-50 rounded-xl border border-gray-100 p-4">
+                            Booking này không còn trong trạng thái có thể hủy.
+                          </div>
+                        )}
                       </div>
 
                       {/* Thao tác - Edit Mode */}
@@ -962,30 +1051,16 @@ export default function BookingsPage() {
                               Sửa booking
                             </button>
                             <button
-                              onClick={async () => {
-                                if (!selected) return;
-                                setSaving(true);
-                                try {
-                                  const res = await bookingService.cancelBooking(selected.id);
-                                  if (res?.success) {
-                                    toast.success(res.message || 'Đã hủy booking');
-                                    await load();
-                                    setSelected(null);
-                                  } else {
-                                    toast.error(res?.message || 'Hủy booking thất bại');
-                                  }
-                                } catch (e) {
-                                  console.error(e);
-                                  toast.error('Đã xảy ra lỗi khi hủy booking');
-                                } finally {
-                                  setSaving(false);
-                                }
-                              }}
-                              disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
-                              title={selected.status !== 'PENDING' ? 'Chỉ có thể hủy booking khi chưa thanh toán cọc' : ''}
-                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status !== 'PENDING'
-                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                : 'bg-red-600 hover:bg-red-700 text-white'
+                              onClick={() => { if (selected) setCancelRefundBooking(selected); }}
+                              disabled={saving || selected.status === 'CANCELLED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
+                              title={
+                                selected.status === 'CHECKED_IN' ? 'Không thể hủy khi đang lưu trú' :
+                                  selected.status === 'COMPLETED' ? 'Booking đã hoàn thành' :
+                                    selected.status === 'CANCELLED' ? 'Booking đã bị hủy' : ''
+                              }
+                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status === 'CANCELLED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'
+                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                  : 'bg-red-600 hover:bg-red-700 text-white'
                                 }`}
                             >
                               <XCircle className="w-4 h-4" />
@@ -1002,6 +1077,28 @@ export default function BookingsPage() {
           )}
         </div>
       </MainLayout>
+      {cancelRefundBooking && (
+        <CancelRefundModal
+          bookingId={cancelRefundBooking.id}
+          homestayName={cancelRefundBooking.homestayName || 'Homestay'}
+          totalPrice={cancelRefundBooking.totalPrice ?? 0}
+          onClose={() => setCancelRefundBooking(null)}
+          onSuccess={async (refundAmount, message) => {
+            setCancelRefundBooking(null);
+            if (refundAmount >= 0) {
+              toast.success(
+                refundAmount > 0
+                  ? `${message} Hoàn tiền: ${refundAmount.toLocaleString('vi-VN')}đ`
+                  : message
+              );
+              await load();
+              setSelected(null);
+            } else {
+              toast.error(message);
+            }
+          }}
+        />
+      )}
       {payingBooking && (
         <PaymentModal
           booking={payingBooking}

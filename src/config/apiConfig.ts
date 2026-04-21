@@ -66,6 +66,15 @@ export const apiConfig = {
         `/api/bookings/experiences/${experienceBookingId}/status`,
       occupiedDates: (homestayId: string) =>
         `/api/bookings/homestays/${homestayId}/occupied-dates`,
+      cancelAndRefund: "/api/bookings/cancel",
+      previewRefund: (id: string) => `/api/bookings/${id}/preview-refund`,
+    },
+    cancellationPolicies: {
+      list: "/api/admin/cancellation-policies",
+      publicList: "/api/admin/cancellation-policies", // customer dùng cùng endpoint, BE không restrict
+      create: "/api/admin/cancellation-policies",
+      update: (id: string) => `/api/admin/cancellation-policies/${id}`,
+      delete: (id: string) => `/api/admin/cancellation-policies/${id}`,
     },
     experienceBooking: {
       availableSchedules: (bookingId: string) =>
