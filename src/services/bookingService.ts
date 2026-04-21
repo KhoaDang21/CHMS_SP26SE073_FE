@@ -1,20 +1,7 @@
 import { apiService } from "./apiService";
 import { apiConfig } from "../config/apiConfig";
 
-// BE BookingResponseDTO fields (exact match):
-// id, homestayId, homestayName, customerId, customerName,
-// checkIn, checkOut, totalNights, guestsCount,
-// pricePerNight, subTotal, discountAmount, totalPrice,
-// status ("PENDING"|"CONFIRMED"|"CANCELLED"|"COMPLETED"|"REJECTED"),
-// specialRequests, contactPhone, createdAt
-
-export type BookingStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "CANCELLED"
-  | "COMPLETED"
-  | "REJECTED"
-  | "CHECKED_IN";
+export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "REJECTED" | "CHECKED_IN";
 export type PaymentStatus = "UNPAID" | "DEPOSIT_PAID" | "FULLY_PAID";
 
 export interface Booking {
@@ -34,7 +21,7 @@ export interface Booking {
   totalPrice?: number;
   depositAmount?: number;
   remainingAmount?: number;
-  depositPercentage?: number; // Deposit percentage from homestay (e.g., 50 for 50%)
+  depositPercentage?: number;
   paymentStatus?: PaymentStatus;
   status: BookingStatus;
   specialRequests?: string;
@@ -44,8 +31,8 @@ export interface Booking {
 
 export interface CreateBookingRequest {
   homestayId: string;
-  checkIn: string; // "YYYY-MM-DD"
-  checkOut: string; // "YYYY-MM-DD"
+  checkIn: string;
+  checkOut: string;
   guestsCount: number;
   specialRequests?: string;
   contactPhone?: string;
@@ -74,7 +61,6 @@ export interface CancellationPolicyResponse {
   [key: string]: any;
 }
 
-// Normalize status về uppercase chuẩn BE
 const normalizeStatus = (raw: any): BookingStatus => {
   const v = String(raw || "").toUpperCase();
   if (v === "CONFIRMED") return "CONFIRMED";
@@ -99,54 +85,39 @@ const mapBooking = (item: any): Booking => {
     }
     return undefined;
   };
-
   return {
-    id: String(get('id', 'Id') ?? ''),
-    homestayId: String(get('homestayId', 'HomestayId') ?? ''),
-    homestayName: cleanLoadingText(get('homestayName', 'HomestayName')),
+    id: String(get("id", "Id") ?? ""),
+    homestayId: String(get("homestayId", "HomestayId") ?? ""),
+    homestayName: cleanLoadingText(get("homestayName", "HomestayName")),
     homestayImage: cleanLoadingText(
-      get(
-        'homestayImage',
-        'HomestayImage',
-        'homestayImageUrl',
-        'HomestayImageUrl',
-        'imageUrl',
-        'ImageUrl',
-      ),
+      get("homestayImage", "HomestayImage", "homestayImageUrl", "HomestayImageUrl", "imageUrl", "ImageUrl"),
     ),
-    customerId: get('customerId', 'CustomerId'),
-    customerName: cleanLoadingText(get('customerName', 'CustomerName')),
-    checkIn: String(get('checkIn', 'CheckIn') ?? ''),
-    checkOut: String(get('checkOut', 'CheckOut') ?? ''),
-    totalNights: get('totalNights', 'TotalNights'),
-    guestsCount: Number(get('guestsCount', 'GuestsCount') ?? 0),
-    pricePerNight: get('pricePerNight', 'PricePerNight'),
-    subTotal: get('subTotal', 'SubTotal'),
-    discountAmount: get('discountAmount', 'DiscountAmount'),
-    totalPrice: get('totalPrice', 'TotalPrice'),
-    depositAmount: get('depositAmount', 'DepositAmount'),
-    remainingAmount: get('remainingAmount', 'RemainingAmount'),
-    depositPercentage: get('depositPercentage', 'DepositPercentage') ?? 20,
-    paymentStatus: get('paymentStatus', 'PaymentStatus') ?? undefined,
-    status: normalizeStatus(get('status', 'Status')),
-    specialRequests: get('specialRequests', 'SpecialRequests') ?? undefined,
-    contactPhone: get('contactPhone', 'ContactPhone') ?? undefined,
-    createdAt: get('createdAt', 'CreatedAt'),
+    customerId: get("customerId", "CustomerId"),
+    customerName: cleanLoadingText(get("customerName", "CustomerName")),
+    checkIn: String(get("checkIn", "CheckIn") ?? ""),
+    checkOut: String(get("checkOut", "CheckOut") ?? ""),
+    totalNights: get("totalNights", "TotalNights"),
+    guestsCount: Number(get("guestsCount", "GuestsCount") ?? 0),
+    pricePerNight: get("pricePerNight", "PricePerNight"),
+    subTotal: get("subTotal", "SubTotal"),
+    discountAmount: get("discountAmount", "DiscountAmount"),
+    totalPrice: get("totalPrice", "TotalPrice"),
+    depositAmount: get("depositAmount", "DepositAmount"),
+    remainingAmount: get("remainingAmount", "RemainingAmount"),
+    depositPercentage: get("depositPercentage", "DepositPercentage") ?? 20,
+    paymentStatus: get("paymentStatus", "PaymentStatus") ?? undefined,
+    status: normalizeStatus(get("status", "Status")),
+    specialRequests: get("specialRequests", "SpecialRequests") ?? undefined,
+    contactPhone: get("contactPhone", "ContactPhone") ?? undefined,
+    createdAt: get("createdAt", "CreatedAt"),
   };
 };
 
 export const bookingService = {
-  /** GET /api/bookings — danh sách booking của user */
   async getMyBookings(): Promise<Booking[]> {
     try {
-      const response = await apiService.get<any>(
-        apiConfig.endpoints.bookings.list,
-      );
-      const rawList: any[] = Array.isArray(response?.data)
-        ? response.data
-        : Array.isArray(response)
-          ? response
-          : [];
+      const response = await apiService.get<any>(apiConfig.endpoints.bookings.list);
+      const rawList: any[] = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
       return rawList.map(mapBooking);
     } catch (error) {
       console.error("Get my bookings error:", error);
@@ -154,12 +125,9 @@ export const bookingService = {
     }
   },
 
-  /** GET /api/bookings/:id — chi tiết booking */
   async getBookingDetail(id: string): Promise<Booking | null> {
     try {
-      const response = await apiService.get<any>(
-        apiConfig.endpoints.bookings.detail(id),
-      );
+      const response = await apiService.get<any>(apiConfig.endpoints.bookings.detail(id));
       const raw = response?.data ?? response;
       if (!raw) return null;
       if (raw?.success && raw?.data) {
@@ -167,107 +135,51 @@ export const bookingService = {
         return booking.id ? booking : null;
       }
       const booking = mapBooking(raw);
-      if (!booking.id) return null;
-      return booking;
+      return booking.id ? booking : null;
     } catch (error) {
       console.error("Get booking detail error:", error);
       return null;
     }
   },
 
-  /** POST /api/bookings — tạo booking mới */
-  async createBooking(
-    data: CreateBookingRequest,
-  ): Promise<{ success: boolean; message: string; data?: Booking }> {
+  async createBooking(data: CreateBookingRequest): Promise<{ success: boolean; message: string; data?: Booking }> {
     try {
-      const response = await apiService.post<any>(
-        apiConfig.endpoints.bookings.create,
-        data,
-      );
-      // BE: ApiResponse<object>.SuccessResult(bookingResponseDTO, "Đặt phòng thành công!")
+      const response = await apiService.post<any>(apiConfig.endpoints.bookings.create, data);
       const bookingData = response?.data ?? null;
       return {
         success: response?.success ?? true,
-        message: response?.message ?? "Đặt phòng thành công!",
+        message: response?.message ?? "Dat phong thanh cong!",
         data: bookingData ? mapBooking(bookingData) : undefined,
       };
     } catch (error) {
       console.error("Create booking error:", error);
-      return {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Đã xảy ra lỗi khi đặt phòng",
-      };
+      return { success: false, message: error instanceof Error ? error.message : "Da xay ra loi khi dat phong" };
     }
   },
 
-  /** POST /api/bookings/:id/cancel — hủy booking */
-  async cancelBooking(
-    id: string,
-  ): Promise<{ success: boolean; message: string }> {
+  async cancelBooking(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiService.post<any>(
-        apiConfig.endpoints.bookings.cancel(id),
-      );
-      return {
-        success: response?.success ?? true,
-        message: response?.message ?? "Đã hủy đơn đặt phòng thành công.",
-      };
+      const response = await apiService.post<any>(apiConfig.endpoints.bookings.cancel(id));
+      return { success: response?.success ?? true, message: response?.message ?? "Da huy don dat phong thanh cong." };
     } catch (error) {
       console.error("Cancel booking error:", error);
-      return {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Đã xảy ra lỗi khi hủy booking",
-      };
+      return { success: false, message: error instanceof Error ? error.message : "Da xay ra loi khi huy booking" };
     }
   },
 
-  /** POST /api/bookings/calculate — tính giá trước khi đặt */
   async calculate(data: CalculateBookingRequest): Promise<number | null> {
     try {
-      const response = await apiService.post<any>(
-        apiConfig.endpoints.bookings.calculate,
-        data,
-      );
-      // API có thể trả nhiều shape:
-      // 1) { success, data: 9000 }
-      // 2) { success, data: { totalPrice: 9000 } }
-      // 3) trực tiếp number/object
-      const candidates = [
-        response,
-        response?.data,
-        response?.data?.data,
-      ];
-
+      const response = await apiService.post<any>(apiConfig.endpoints.bookings.calculate, data);
+      const candidates = [response, response?.data, response?.data?.data];
       for (const candidate of candidates) {
-        if (typeof candidate === "number" && Number.isFinite(candidate)) {
-          return candidate;
-        }
-
+        if (typeof candidate === "number" && Number.isFinite(candidate)) return candidate;
         if (candidate && typeof candidate === "object") {
-          const obj = candidate as Record<string, unknown>;
-          const possibleKeys = [
-            "totalPrice",
-            "finalPrice",
-            "price",
-            "amount",
-            "value",
-          ];
-
-          for (const key of possibleKeys) {
-            const value = obj[key];
-            if (typeof value === "number" && Number.isFinite(value)) {
-              return value;
-            }
+          for (const key of ["totalPrice", "finalPrice", "price", "amount", "value"]) {
+            const value = (candidate as any)[key];
+            if (typeof value === "number" && Number.isFinite(value)) return value;
           }
         }
       }
-
       return null;
     } catch (error) {
       console.error("Calculate booking error:", error);
@@ -275,41 +187,19 @@ export const bookingService = {
     }
   },
 
-  /** PUT /api/bookings/:id/modify — sửa booking (chỉ khi PENDING) */
-  async modifyBooking(
-    id: string,
-    data: ModifyBookingRequest,
-  ): Promise<{ success: boolean; message: string }> {
+  async modifyBooking(id: string, data: ModifyBookingRequest): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiService.put<any>(
-        apiConfig.endpoints.bookings.modify(id),
-        data,
-      );
-      return {
-        success: response?.success ?? true,
-        message: response?.message ?? "Cập nhật booking thành công!",
-      };
+      const response = await apiService.put<any>(apiConfig.endpoints.bookings.modify(id), data);
+      return { success: response?.success ?? true, message: response?.message ?? "Cap nhat booking thanh cong!" };
     } catch (error) {
       console.error("Modify booking error:", error);
-      return {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Đã xảy ra lỗi khi sửa booking",
-      };
+      return { success: false, message: error instanceof Error ? error.message : "Da xay ra loi khi sua booking" };
     }
   },
 
-  /** GET /api/bookings/:id/cancellation-policy */
-  async getCancellationPolicy(
-    id: string,
-  ): Promise<CancellationPolicyResponse | null> {
+  async getCancellationPolicy(id: string): Promise<CancellationPolicyResponse | null> {
     try {
-      const response = await apiService.get<any>(
-        apiConfig.endpoints.bookings.cancellationPolicy(id),
-      );
-      // BE: ApiResponse<object>.SuccessResult(new { Policy = policy })
+      const response = await apiService.get<any>(apiConfig.endpoints.bookings.cancellationPolicy(id));
       return response?.data ?? response;
     } catch (error) {
       console.error("Get cancellation policy error:", error);
@@ -317,99 +207,47 @@ export const bookingService = {
     }
   },
 
-  /** POST /api/bookings/:id/special-requests — BE nhận raw string */
-  async updateSpecialRequests(
-    id: string,
-    specialRequests: string,
-  ): Promise<{ success: boolean; message: string }> {
+  async updateSpecialRequests(id: string, specialRequests: string): Promise<{ success: boolean; message: string }> {
     try {
-      // BE: [FromBody] string request — phải gửi raw JSON string
-      const response = await apiService.post<any>(
-        apiConfig.endpoints.bookings.specialRequests(id),
-        specialRequests,
-      );
-      return {
-        success: response?.success ?? true,
-        message: response?.message ?? "Đã ghi nhận yêu cầu đặc biệt.",
-      };
+      const response = await apiService.post<any>(apiConfig.endpoints.bookings.specialRequests(id), specialRequests);
+      return { success: response?.success ?? true, message: response?.message ?? "Da ghi nhan yeu cau dac biet." };
     } catch (error) {
       console.error("Update special requests error:", error);
-      return {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Đã xảy ra lỗi khi cập nhật yêu cầu đặc biệt",
-      };
+      return { success: false, message: error instanceof Error ? error.message : "Da xay ra loi khi cap nhat yeu cau dac biet" };
     }
   },
 
-  /** POST /api/bookings/{id}/confirm-cash-payment */
-  async confirmCashPayment(
-    id: string,
-  ): Promise<{ success: boolean; message?: string }> {
-    const response = await apiService.post<any>(
-      apiConfig.endpoints.bookings.confirmCashPayment(id),
-    );
-    return {
-      success: response?.success ?? true,
-      message: response?.message,
-    };
+  async confirmCashPayment(id: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiService.post<any>(apiConfig.endpoints.bookings.confirmCashPayment(id));
+    return { success: response?.success ?? true, message: response?.message };
   },
 
-  /** PUT /api/bookings/{id}/check-in */
   async checkIn(id: string): Promise<{ success: boolean; message?: string }> {
-    const response = await apiService.put<any>(
-      apiConfig.endpoints.bookings.checkIn(id),
-    );
-    return {
-      success: response?.success ?? true,
-      message: response?.message,
-    };
+    const response = await apiService.put<any>(apiConfig.endpoints.bookings.checkIn(id));
+    return { success: response?.success ?? true, message: response?.message };
   },
 
-  /** PUT /api/bookings/{id}/check-out */
   async checkOut(id: string): Promise<{ success: boolean; message?: string }> {
-    const response = await apiService.put<any>(
-      apiConfig.endpoints.bookings.checkOut(id),
-    );
-    return {
-      success: response?.success ?? true,
-      message: response?.message,
-    };
+    const response = await apiService.put<any>(apiConfig.endpoints.bookings.checkOut(id));
+    return { success: response?.success ?? true, message: response?.message };
   },
 
-  /** POST /api/bookings/{id}/experiences — AddBookingExperienceRequestDTO */
   async addExperienceToBooking(
     bookingId: string,
-    body: {
-      localExperienceScheduleId: string;
-      quantity?: number;
-      note?: string;
-    },
+    body: { localExperienceScheduleId: string; quantity?: number; note?: string },
   ): Promise<any> {
-    return apiService.post<any>(
-      apiConfig.endpoints.bookings.addExperiences(bookingId),
-      {
-        localExperienceScheduleId: body.localExperienceScheduleId,
-        quantity: body.quantity ?? 1,
-        note: body.note,
-      },
-    );
+    return apiService.post<any>(apiConfig.endpoints.bookings.addExperiences(bookingId), {
+      localExperienceScheduleId: body.localExperienceScheduleId,
+      quantity: body.quantity ?? 1,
+      note: body.note,
+    });
   },
 
-  /** PUT /api/bookings/my-experiences/{experienceBookingId}/cancel */
   async cancelMyExperienceBooking(experienceBookingId: string): Promise<any> {
-    return apiService.put<any>(
-      apiConfig.endpoints.bookings.cancelMyExperience(experienceBookingId),
-    );
+    return apiService.put<any>(apiConfig.endpoints.bookings.cancelMyExperience(experienceBookingId));
   },
 
-  /** PATCH /api/bookings/experiences/{experienceBookingId}/status?status= — Admin */
-  async updateExperienceBookingStatus(
-    experienceBookingId: string,
-    status: string,
-  ): Promise<any> {
+  async updateExperienceBookingStatus(experienceBookingId: string, status: string): Promise<any> {
     const q = new URLSearchParams({ status });
     return apiService.patch<any>(
       `${apiConfig.endpoints.bookings.updateExperienceBookingStatus(experienceBookingId)}?${q.toString()}`,
@@ -417,17 +255,59 @@ export const bookingService = {
     );
   },
 
-  /** GET /api/bookings/homestays/{homestayId}/occupied-dates */
   async getOccupiedDates(homestayId: string): Promise<any> {
-    return apiService.get<any>(
-      apiConfig.endpoints.bookings.occupiedDates(homestayId),
-    );
+    return apiService.get<any>(apiConfig.endpoints.bookings.occupiedDates(homestayId));
   },
 
-  /** GET /api/experiencebooking/available-schedules/{bookingId} */
+  async previewRefund(id: string): Promise<{ estimatedRefund: number; message: string } | null> {
+    try {
+      const response = await apiService.get<any>(apiConfig.endpoints.bookings.previewRefund(id));
+      const data = response?.data ?? response;
+      return {
+        estimatedRefund: data?.EstimatedRefund ?? data?.estimatedRefund ?? 0,
+        message: data?.Message ?? data?.message ?? "",
+      };
+    } catch (error) {
+      console.error("Preview refund error:", error);
+      return null;
+    }
+  },
+
+  async cancelAndRefund(
+    bookingId: string,
+    reason: string,
+    bankInfo: { bankName: string; accountNumber: string; accountHolderName: string },
+  ): Promise<{ isSuccess: boolean; refundAmount: number; message: string }> {
+    const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    const payload: Record<string, any> = {
+      bookingId,
+      reason,
+      bankName: bankInfo.bankName,
+      accountNumber: bankInfo.accountNumber,
+      accountHolderName: bankInfo.accountHolderName,
+    };
+    try {
+      const res = await fetch(`${apiConfig.baseURL}${apiConfig.endpoints.bookings.cancelAndRefund}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({}));
+      const data = body?.data ?? body;
+      const isSuccess: boolean = data?.isSuccess ?? data?.IsSuccess ?? body?.success ?? res.ok;
+      const refundAmount: number = data?.refundAmount ?? data?.RefundAmount ?? 0;
+      const message: string = data?.message ?? data?.Message ?? body?.message ?? (res.ok ? "Huy phong thanh cong." : `Loi ${res.status}`);
+      return { isSuccess, refundAmount, message };
+    } catch (error) {
+      console.error("Cancel and refund error:", error);
+      return { isSuccess: false, refundAmount: 0, message: error instanceof Error ? error.message : "Da xay ra loi khi huy booking" };
+    }
+  },
+
   async getAvailableExperienceSchedules(bookingId: string): Promise<any> {
-    return apiService.get<any>(
-      apiConfig.endpoints.experienceBooking.availableSchedules(bookingId),
-    );
+    return apiService.get<any>(apiConfig.endpoints.experienceBooking.availableSchedules(bookingId));
   },
 };

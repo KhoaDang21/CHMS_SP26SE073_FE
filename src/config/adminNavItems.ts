@@ -10,6 +10,8 @@ import {
   TrendingUp,
   Gift,
   MessageSquare,
+  ShieldCheck,
+  DollarSign,
 } from "lucide-react";
 
 export const adminNavItems = [
@@ -80,5 +82,17 @@ export const adminNavItems = [
     label: "Tickets",
     icon: MessageSquare,
     path: "/admin/tickets",
+  },
+  {
+    id: "cancellation-policies",
+    label: "Chính sách hoàn tiền",
+    icon: ShieldCheck,
+    path: "/admin/cancellation-policies",
+  },
+  {
+    id: "refunds",
+    label: "Quản lý Hoàn Tiền",
+    icon: DollarSign,
+    path: "/admin/refunds",
   },
 ] as const;
