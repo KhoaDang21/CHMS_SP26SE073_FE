@@ -9,6 +9,9 @@ import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import { employeeService } from '../../services/employeeService';
 import { publicHomestayService } from '../../services/publicHomestayService';
+import { managerBookingService } from '../../services/managerBookingService';
+import { adminBookingService } from '../../services/adminBookingService';
+import type { Booking } from '../../types/booking.types';
 import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { adminNavItems } from '../../config/adminNavItems';
@@ -46,7 +49,7 @@ const formatCurrencyVnd = (value: unknown): string => {
 const getStatusLabel = (status: unknown): string => {
   const value = String(status ?? '').toUpperCase();
   if (value === 'AVAILABLE') return 'Sẵn sàng';
-  if (value === 'RENTED') return 'Đang cho thuê';
+  if (value === 'IN_USE' || value === 'RENTED') return 'Đang sử dụng';
   if (value === 'MAINTENANCE') return 'Bảo trì';
   if (value === 'INACTIVE') return 'Ngừng hoạt động';
   return value || 'Không rõ';
@@ -55,7 +58,7 @@ const getStatusLabel = (status: unknown): string => {
 const getStatusClassName = (status: unknown): string => {
   const value = String(status ?? '').toUpperCase();
   if (value === 'AVAILABLE') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-  if (value === 'RENTED') return 'bg-amber-100 text-amber-700 border-amber-200';
+  if (value === 'IN_USE' || value === 'RENTED') return 'bg-amber-100 text-amber-700 border-amber-200';
   if (value === 'MAINTENANCE') return 'bg-orange-100 text-orange-700 border-orange-200';
   if (value === 'INACTIVE') return 'bg-gray-100 text-gray-700 border-gray-200';
   return 'bg-slate-100 text-slate-700 border-slate-200';
@@ -210,10 +213,10 @@ const normalizeText = (value: unknown): string => String(value ?? '').trim().toL
 const getHomestayProvinceId = (homestay: any): string => {
   return String(
     homestay?.provinceId ||
-      homestay?.ProvinceId ||
-      homestay?.province?.id ||
-      homestay?.Province?.Id ||
-      '',
+    homestay?.ProvinceId ||
+    homestay?.province?.id ||
+    homestay?.Province?.Id ||
+    '',
   );
 };
 
@@ -284,7 +287,9 @@ export default function ManagerBicycleGamificationPage() {
   const [rentBookingId, setRentBookingId] = useState('');
   const [rentBicycleId, setRentBicycleId] = useState('');
   const [returnRentalId, setReturnRentalId] = useState('');
-  const [returnDamageIds, setReturnDamageIds] = useState('');
+  const [returnDamageIds, setReturnDamageIds] = useState<string[]>([]);
+  const [staffBookings, setStaffBookings] = useState<Booking[]>([]);
+  const [loadingOperationData, setLoadingOperationData] = useState(false);
 
   const [bicycleCode, setBicycleCode] = useState('');
   const [bicycleType, setBicycleType] = useState('CITY');
@@ -338,32 +343,40 @@ export default function ManagerBicycleGamificationPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const userId = String(user?.id || '').trim();
-        const provinceSource = userId ? await employeeService.getEmployeeById(userId) : null;
-        const assignedProvince = provinceSource ? pickProvinceValue(provinceSource) : { id: null, name: null };
-
-        if (!assignedProvince.id && !assignedProvince.name) {
-          setHomestays([]);
-          setSelectedHomestayId('');
-          toast.warning('Bạn chưa được phân công tỉnh quản lý.');
-          return;
-        }
-
         const paged = await publicHomestayService.list({ page: 1, pageSize: 300 });
         const list = paged.Items || [];
-        const filtered = list.filter((homestay) => homestayMatchesProvince(homestay, assignedProvince));
+
+        let filtered = list;
+
+        // Manager: chỉ hiện homestay thuộc tỉnh được phân công
+        // Admin: hiện tất cả
+        if (!isAdmin) {
+          const userId = String(user?.id || '').trim();
+          const provinceSource = userId ? await employeeService.getEmployeeById(userId) : null;
+          const assignedProvince = provinceSource ? pickProvinceValue(provinceSource) : { id: null, name: null };
+
+          if (!assignedProvince.id && !assignedProvince.name) {
+            setHomestays([]);
+            setSelectedHomestayId('');
+            toast.warning('Bạn chưa được phân công tỉnh quản lý.');
+            return;
+          }
+
+          filtered = list.filter((homestay) => homestayMatchesProvince(homestay, assignedProvince));
+
+          if (filtered.length === 0) {
+            setHomestays([]);
+            setSelectedHomestayId('');
+            toast.warning('Không có homestay nào thuộc tỉnh bạn được phân công.');
+            return;
+          }
+        }
 
         setHomestays(filtered);
-
-        if (filtered.length > 0) {
-          setSelectedHomestayId((prev) => {
-            const stillValid = filtered.some((homestay) => homestay.id === prev);
-            return stillValid ? prev : filtered[0].id;
-          });
-        } else {
-          setSelectedHomestayId('');
-          toast.warning('Không có homestay nào thuộc tỉnh bạn được phân công.');
-        }
+        setSelectedHomestayId((prev) => {
+          const stillValid = filtered.some((h) => h.id === prev);
+          return stillValid ? prev : (filtered[0]?.id ?? '');
+        });
       } catch (error) {
         console.error('Load homestays error:', error);
         toast.error('Không thể tải danh sách homestay');
@@ -398,8 +411,40 @@ export default function ManagerBicycleGamificationPage() {
     }
   };
 
+  const refreshOperationData = async () => {
+    if (!selectedHomestayId) {
+      setStaffBookings([]);
+      return;
+    }
+    setLoadingOperationData(true);
+    try {
+      let bookingList: Booking[] = [];
+      if (isAdmin) {
+        bookingList = await adminBookingService.getAllBookings();
+      } else {
+        // manager
+        const raw = await managerBookingService.getBookings(1, 300);
+        bookingList = raw as unknown as Booking[];
+      }
+      const filtered = bookingList.filter(
+        (booking) => {
+          const hId = String(booking.homestayId ?? '');
+          const status = String(booking.status ?? '').toLowerCase();
+          return hId === selectedHomestayId &&
+            (status === 'confirmed' || status === 'checked_in');
+        },
+      );
+      setStaffBookings(filtered);
+    } catch (error) {
+      console.error('Refresh operation data error:', error);
+    } finally {
+      setLoadingOperationData(false);
+    }
+  };
+
   useEffect(() => {
     void refreshManagerData();
+    void refreshOperationData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedHomestayId]);
 
@@ -435,10 +480,7 @@ export default function ManagerBicycleGamificationPage() {
       return;
     }
 
-    const damageIds = returnDamageIds
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
+    const damageIds = returnDamageIds;
 
     setSubmitting(true);
     try {
@@ -454,7 +496,8 @@ export default function ManagerBicycleGamificationPage() {
 
       toast.success(result.message || 'Thu hồi xe thành công');
       setReturnRentalId('');
-      setReturnDamageIds('');
+      setReturnDamageIds([]);
+      await refreshManagerData();
     } finally {
       setSubmitting(false);
     }
@@ -854,7 +897,7 @@ export default function ManagerBicycleGamificationPage() {
               <Building2 className="w-8 h-8 text-blue-600" />
               <div>
                 <h1 className="font-bold text-gray-900">CHMS {isAdmin ? 'Admin' : 'Manager'}</h1>
-                <p className="text-xs text-gray-500">{isAdmin ? 'Management System' : 'Quản lý vận hành'}</p>
+                <p className="text-xs text-gray-500">{isAdmin ? 'Hệ thống quản trị' : 'Quản lý vận hành'}</p>
               </div>
             </div>
             <button
@@ -871,17 +914,16 @@ export default function ManagerBicycleGamificationPage() {
               const Icon = item.icon;
               const isActive = item.id === 'bicycles';
               return (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.path)}
-                type="button"
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </button>
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.path)}
+                  type="button"
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </button>
               );
             })}
           </nav>
@@ -920,7 +962,7 @@ export default function ManagerBicycleGamificationPage() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Mini-game Xe Đạp</h2>
+                <h2 className="text-xl font-bold text-gray-900">Mini-game xe đạp</h2>
                 <p className="text-sm text-gray-500">Vận hành gamification cho khách</p>
               </div>
             </div>
@@ -934,18 +976,14 @@ export default function ManagerBicycleGamificationPage() {
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-semibold text-cyan-700">
                   <Bike className="h-4 w-4" />
-                  Bicycle Gamification
+                  Trò chơi xe đạp
                 </p>
                 <h1 className="mt-3 text-2xl font-black text-gray-900 sm:text-3xl">Vận hành xe đạp mini-game</h1>
                 <p className="mt-2 text-sm text-gray-600">
                   Quản lý kho xe, bảng phạt, lộ trình và phục vụ bàn giao/thu hồi xe cho khách.
                 </p>
               </div>
-              <div className="rounded-xl border border-cyan-200 bg-white px-4 py-3 text-sm text-gray-700">
-                <p>
-                  Role hiện tại: <span className="font-semibold uppercase text-cyan-700">{role}</span>
-                </p>
-              </div>
+
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -957,11 +995,10 @@ export default function ManagerBicycleGamificationPage() {
                     key={tab.key}
                     type="button"
                     onClick={() => setActiveTab(tab.key)}
-                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                      active
+                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${active
                         ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'
-                    }`}
+                      }`}
                   >
                     <p className="flex items-center gap-2 text-sm font-semibold">
                       <Icon className="h-4 w-4" />
@@ -981,11 +1018,15 @@ export default function ManagerBicycleGamificationPage() {
                 onChange={(e) => setSelectedHomestayId(e.target.value)}
                 className="min-w-[260px] rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200"
               >
-                {homestays.map((homestay) => (
-                  <option key={homestay.id} value={homestay.id}>
-                    {homestay.name}
-                  </option>
-                ))}
+                {homestays.length === 0 ? (
+                  <option value="">-- Chưa có homestay --</option>
+                ) : (
+                  homestays.map((homestay) => (
+                    <option key={homestay.id} value={homestay.id}>
+                      {homestay.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </section>
@@ -1002,22 +1043,57 @@ export default function ManagerBicycleGamificationPage() {
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h2 className="text-lg font-bold text-gray-900">Bàn giao xe cho khách</h2>
                     <div className="mt-4 space-y-3">
-                      <input
-                        value={rentBookingId}
-                        onChange={(e) => setRentBookingId(e.target.value)}
-                        placeholder="bookingId"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      />
-                      <input
-                        value={rentBicycleId}
-                        onChange={(e) => setRentBicycleId(e.target.value)}
-                        placeholder="bicycleId"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      />
+                      <div className="rounded-lg border border-cyan-100 bg-cyan-50/50 p-3 text-xs text-cyan-800">
+                        💡 Chọn booking đang hoạt động và xe còn trống để bàn giao.
+                      </div>
+                      {loadingOperationData ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Đang tải danh sách booking...
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">Chọn Booking cần bàn giao xe</label>
+                            <select
+                              value={rentBookingId}
+                              onChange={(e) => setRentBookingId(e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            >
+                              <option value="">-- Chọn booking --</option>
+                              {staffBookings.map((booking) => (
+                                <option key={booking.id} value={booking.id}>
+                                  {booking.bookingCode} - {booking.customerName} ({booking.status === 'checked_in' ? 'Đã nhận phòng' : 'Đã xác nhận'})
+                                </option>
+                              ))}
+                            </select>
+                            {staffBookings.length === 0 && (
+                              <p className="text-xs text-gray-500">Không có booking đang hoạt động tại homestay này.</p>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">Chọn Xe đang sẵn sàng</label>
+                            <select
+                              value={rentBicycleId}
+                              onChange={(e) => setRentBicycleId(e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            >
+                              <option value="">-- Chọn xe --</option>
+                              {bicycles
+                                .filter((b: any) => String(b?.status || '').toUpperCase() === 'AVAILABLE')
+                                .map((bicycle: any) => (
+                                  <option key={String(bicycle.id)} value={String(bicycle.id)}>
+                                    {String(bicycle.bicycleCode || 'Xe chưa mã')} - {String(bicycle.type || 'N/A')}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        </>
+                      )}
                       <button
                         type="button"
                         onClick={handleRent}
-                        disabled={submitting}
+                        disabled={submitting || !rentBookingId || !rentBicycleId}
                         className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-60"
                       >
                         <CheckCircle2 className="h-4 w-4" /> Bàn giao xe
@@ -1028,18 +1104,46 @@ export default function ManagerBicycleGamificationPage() {
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h2 className="text-lg font-bold text-gray-900">Thu hồi xe & phạt hư hỏng</h2>
                     <div className="mt-4 space-y-3">
-                      <input
-                        value={returnRentalId}
-                        onChange={(e) => setReturnRentalId(e.target.value)}
-                        placeholder="rentalId"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      />
-                      <input
-                        value={returnDamageIds}
-                        onChange={(e) => setReturnDamageIds(e.target.value)}
-                        placeholder="damageCatalogIds (cách nhau bằng dấu phẩy)"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      />
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-700">Rental ID (bắt buộc)</label>
+                        <input
+                          value={returnRentalId}
+                          onChange={(e) => setReturnRentalId(e.target.value)}
+                          placeholder="Nhập Rental ID (UUID)"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <p className="mb-2 text-sm font-medium text-gray-700">Chọn lỗi hư hỏng (nếu có)</p>
+                        {damageCatalogs.length === 0 ? (
+                          <p className="text-xs text-gray-500">Homestay chưa có bảng lỗi. Hệ thống sẽ thu hồi xe không tính phạt.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-2">
+                            {damageCatalogs.map((damage: any) => {
+                              const damageId = String(damage?.id || '');
+                              const checked = returnDamageIds.includes(damageId);
+                              return (
+                                <label key={damageId} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setReturnDamageIds((prev) => [...prev, damageId]);
+                                      } else {
+                                        setReturnDamageIds((prev) => prev.filter((id) => id !== damageId));
+                                      }
+                                    }}
+                                  />
+                                  <span>
+                                    {String(damage?.damageName || 'Lỗi không tên')} — {Number(damage?.fineAmount || 0).toLocaleString('vi-VN')} VND
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={handleReturn}
@@ -1103,7 +1207,7 @@ export default function ManagerBicycleGamificationPage() {
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                         >
                           <option value="AVAILABLE">AVAILABLE</option>
-                          <option value="RENTED">RENTED</option>
+                          <option value="IN_USE">IN_USE</option>
                           <option value="MAINTENANCE">MAINTENANCE</option>
                           <option value="INACTIVE">INACTIVE</option>
                         </select>
@@ -1171,18 +1275,27 @@ export default function ManagerBicycleGamificationPage() {
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h2 className="text-lg font-bold text-gray-900">Thêm lỗi hư hỏng</h2>
                     <div className="mt-4 space-y-3">
-                      <input
-                        value={damageName}
-                        onChange={(e) => setDamageName(e.target.value)}
-                        placeholder="damageName"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      />
-                      <input
-                        value={fineAmount}
-                        onChange={(e) => setFineAmount(e.target.value)}
-                        placeholder="fineAmount"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      />
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-700">Tên lỗi hư hỏng</label>
+                        <input
+                          value={damageName}
+                          onChange={(e) => setDamageName(e.target.value)}
+                          placeholder="Ví dụ: Thủng lốp, Xước sơn, Lỗi phanh..."
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-700">Số tiền phạt (VND)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="10000"
+                          value={fineAmount}
+                          onChange={(e) => setFineAmount(e.target.value)}
+                          placeholder="Ví dụ: 100000"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={handleCreateDamage}
@@ -1196,9 +1309,27 @@ export default function ManagerBicycleGamificationPage() {
 
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h3 className="text-base font-bold text-gray-900">Danh sách bảng phạt</h3>
-                    <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">
-                      {JSON.stringify(damageCatalogs, null, 2)}
-                    </pre>
+                    {damageCatalogs.length === 0 ? (
+                      <div className="mt-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center">
+                        <p className="text-sm font-medium text-gray-700">Chưa có mục phạt nào</p>
+                        <p className="mt-1 text-xs text-gray-500">Thêm lỗi hư hỏng để xây dựng bảng phạt.</p>
+                      </div>
+                    ) : (
+                      <div className="mt-4 max-h-[420px] space-y-3 overflow-auto pr-1">
+                        {damageCatalogs.map((damage: any, index: number) => (
+                          <div key={String(damage?.id || index)} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-base font-semibold text-gray-900">{index + 1}. {String(damage?.damageName || 'Lỗi không tên')}</p>
+                              </div>
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                                {Number(damage?.fineAmount || 0).toLocaleString('vi-VN')} VND
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1395,33 +1526,30 @@ export default function ManagerBicycleGamificationPage() {
                               <button
                                 type="button"
                                 onClick={() => handleSelectMapTarget('start')}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                                  routePointTarget === 'start'
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${routePointTarget === 'start'
                                     ? 'bg-cyan-600 text-white'
                                     : 'bg-gray-100 text-gray-700'
-                                }`}
+                                  }`}
                               >
                                 Chọn điểm bắt đầu
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleSelectMapTarget('stop')}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                                  routePointTarget === 'stop'
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${routePointTarget === 'stop'
                                     ? 'bg-cyan-600 text-white'
                                     : 'bg-gray-100 text-gray-700'
-                                }`}
+                                  }`}
                               >
                                 Chọn điểm dừng
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleSelectMapTarget('end')}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                                  routePointTarget === 'end'
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${routePointTarget === 'end'
                                     ? 'bg-cyan-600 text-white'
                                     : 'bg-gray-100 text-gray-700'
-                                }`}
+                                  }`}
                               >
                                 Chọn điểm kết thúc
                               </button>
@@ -1492,11 +1620,10 @@ export default function ManagerBicycleGamificationPage() {
                                 return next;
                               });
                             }}
-                            className={`rounded-lg px-3 py-2 text-xs font-semibold ${
-                              enableHiddenGems
+                            className={`rounded-lg px-3 py-2 text-xs font-semibold ${enableHiddenGems
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-gray-100 text-gray-700'
-                            }`}
+                              }`}
                           >
                             {enableHiddenGems ? 'Đang bật' : 'Bật hidden gems'}
                           </button>
