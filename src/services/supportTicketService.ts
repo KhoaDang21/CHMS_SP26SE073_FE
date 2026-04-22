@@ -9,6 +9,7 @@ export interface Ticket {
   title: string;
   priority: string;   // HIGH | NORMAL | LOW
   status: string;     // OPEN | IN_PROGRESS | RESOLVED | CLOSED
+  attachmentUrl?: string;
   customerName: string;
   staffName?: string;
   createdAt: string;
@@ -29,6 +30,7 @@ export interface TicketReply {
   senderId: string;
   senderName: string;
   message: string;
+  attachmentUrl?: string;
   createdAt: string;
 }
 
@@ -39,6 +41,7 @@ export interface CreateTicketRequest {
   description: string;
   priority?: string;  // HIGH | NORMAL | LOW
   bookingId?: string; // Guid — optional per BE, but we enforce in UX
+  imageFile?: File | null;
 }
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
@@ -47,6 +50,7 @@ const mapTicket = (raw: any): Ticket => ({
   title: raw.title ?? '',
   priority: raw.priority ?? 'NORMAL',
   status: raw.status ?? 'OPEN',
+  attachmentUrl: raw.attachmentUrl ? String(raw.attachmentUrl) : undefined,
   customerName: raw.customerName ?? '',
   staffName: raw.staffName ?? undefined,
   createdAt: raw.createdAt ?? '',
@@ -62,6 +66,7 @@ const mapTicketDetail = (raw: any): TicketDetail => ({
         senderId: String(r.senderId ?? ''),
         senderName: r.senderName ?? '',
         message: r.message ?? '',
+        attachmentUrl: r.attachmentUrl ? String(r.attachmentUrl) : undefined,
         createdAt: r.createdAt ?? '',
       }))
     : [],
@@ -76,7 +81,18 @@ export const supportTicketService = {
    */
   async create(data: CreateTicketRequest): Promise<{ success: boolean; message: string }> {
     try {
-      const res = await apiService.post<any>(apiConfig.endpoints.supportTickets.create, data);
+      const formData = new FormData();
+      formData.append('Title', data.title);
+      formData.append('Description', data.description);
+      formData.append('Priority', data.priority ?? 'NORMAL');
+      if (data.bookingId) {
+        formData.append('BookingId', data.bookingId);
+      }
+      if (data.imageFile) {
+        formData.append('ImageFile', data.imageFile);
+      }
+
+      const res = await apiService.postForm<any>(apiConfig.endpoints.supportTickets.create, formData);
       return { success: res?.success ?? true, message: res?.message ?? 'Tạo yêu cầu thành công.' };
     } catch (e: any) {
       return { success: false, message: e?.message ?? 'Đã xảy ra lỗi.' };
@@ -125,11 +141,17 @@ export const supportTicketService = {
    * Body: { message }  ← BE ReplyTicketRequestDTO has only "Message"
    * Returns: ApiResponse (success/message only)
    */
-  async sendMessage(id: string, message: string): Promise<{ success: boolean; message: string }> {
+  async sendMessage(id: string, message: string, imageFile?: File | null): Promise<{ success: boolean; message: string }> {
     try {
-      const res = await apiService.post<any>(
+      const formData = new FormData();
+      // Keep lowercase keys to match backend form binders that are case-sensitive.
+      formData.append('message', message || '');
+      if (imageFile) {
+        formData.append('imageFile', imageFile);
+      }
+      const res = await apiService.postForm<any>(
         apiConfig.endpoints.supportTickets.sendMessage(id),
-        { message }  // matches ReplyTicketRequestDTO.Message
+        formData,
       );
       return { success: res?.success ?? true, message: res?.message ?? 'Gửi tin nhắn thành công.' };
     } catch (e: any) {
