@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bike, BookOpen, Building2, Calendar, ImagePlus, LayoutDashboard, Loader2, LogOut, Menu, MessageSquare, PlusCircle, Sparkles, Ticket, X } from 'lucide-react';
+import { BookOpen, Building2, Home, ImagePlus, Loader2, LogOut, Menu, MessageSquare, PlusCircle, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 import MainLayout from '../layouts/MainLayout';
 import { authService } from '../services/authService';
@@ -10,6 +10,7 @@ import type { Homestay } from '../types/homestay.types';
 import { RoleBadge } from '../components/common/RoleBadge';
 import { adminNavItems } from '../config/adminNavItems';
 import { managerNavItems } from '../config/managerNavItems';
+import { staffNavItems } from '../config/staffNavItems';
 
 const vndDate = new Intl.DateTimeFormat('vi-VN', {
   dateStyle: 'medium',
@@ -222,15 +223,6 @@ export default function TravelGuidesPage() {
     authService.logout();
     navigate('/auth/login');
   };
-
-  const staffNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard' },
-    { id: 'bookings', label: 'Bookings', icon: Calendar, path: '/staff/bookings' },
-    { id: 'reviews', label: 'Reviews', icon: MessageSquare, path: '/staff/reviews' },
-    { id: 'bicycles', label: 'Mini-game xe đạp', icon: Bike, path: '/staff/bicycles' },
-    { id: 'travel-guides', label: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides' },
-    { id: 'tickets', label: 'Tickets', icon: Ticket, path: '/staff/tickets' },
-  ];
 
   const backofficeNavItems = role === 'admin'
     ? adminNavItems
@@ -605,7 +597,7 @@ export default function TravelGuidesPage() {
               <div className="flex items-center justify-between p-6 border-b border-cyan-500/30">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-6 h-6" />
+                    <Home className="w-6 h-6" />
                   </div>
                   <div>
                     <h1 className="font-bold text-lg">CHMS</h1>
@@ -637,8 +629,8 @@ export default function TravelGuidesPage() {
                 })}
               </nav>
 
-              <div className="p-4 border-t border-cyan-500/30">
-                <div className="flex items-center gap-3 mb-3">
+              <div className="p-6 border-t border-cyan-500/30">
+                <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
                     {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
                   </div>
@@ -647,7 +639,9 @@ export default function TravelGuidesPage() {
                     <RoleBadge role={currentUser?.role || 'staff'} size="sm" />
                   </div>
                 </div>
+              </div>
 
+              <div className="p-4 border-t border-cyan-500/30">
                 <button
                   onClick={handleLogout}
                   type="button"

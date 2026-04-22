@@ -3,25 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Bell,
-  Bike,
-  BookOpen,
-  Calendar,
   CheckCircle2,
   Clock,
   Home,
-  LayoutDashboard,
   LogOut,
   Menu,
   MessageSquare,
   Loader2,
   Search,
   Send,
-  Ticket,
   UserCheck,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { staffNavItems } from '../../config/staffNavItems';
 import { authService } from '../../services/authService';
 import { employeeService } from '../../services/employeeService';
 import { staffBookingService } from '../../services/staffBookingService';
@@ -137,14 +133,12 @@ export default function StaffTickets() {
   const [assignedHomestayCount, setAssignedHomestayCount] = useState(0);
   const realtimeRefreshTimerRef = useRef<number | null>(null);
 
-  const navigationItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
-    { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: false },
-    { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: false },
-    { name: 'Mini-game xe đạp', icon: Bike, path: '/staff/bicycles', active: false },
-    { name: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides', active: false },
-    { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: true },
-  ];
+  const navigationItems = staffNavItems.map((item) => ({
+    name: item.label,
+    icon: item.icon,
+    path: item.path,
+    active: item.path === '/staff/tickets',
+  }));
 
   const resolveAssignedHomestayIds = useCallback(async () => {
     if (!currentUser?.id && !currentUser?.email) return [] as string[];
@@ -485,18 +479,6 @@ export default function StaffTickets() {
             </button>
           </div>
 
-          <div className="p-6 border-b border-cyan-500/30">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
-                <RoleBadge role={currentUser?.role || 'staff'} size="md" />
-              </div>
-            </div>
-          </div>
-
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigationItems.map((item) => {
               const Icon = item.icon;
@@ -515,6 +497,18 @@ export default function StaffTickets() {
               );
             })}
           </nav>
+
+          <div className="p-6 border-t border-cyan-500/30">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
+                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
+                <RoleBadge role={currentUser?.role || 'staff'} size="md" />
+              </div>
+            </div>
+          </div>
 
           <div className="p-4 border-t border-cyan-500/30">
             <button
@@ -736,6 +730,18 @@ export default function StaffTickets() {
                             <div className="rounded-xl border border-gray-100 bg-white p-3">
                               <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Mô tả vấn đề</p>
                               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{activeTicket.description || 'Không có mô tả'}</p>
+                              {activeTicket.attachmentUrl && (
+                                <div className="mt-3">
+                                  <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Ảnh đính kèm</p>
+                                  <a href={activeTicket.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block">
+                                    <img
+                                      src={activeTicket.attachmentUrl}
+                                      alt="Ảnh ticket"
+                                      className="h-24 w-24 rounded-lg object-cover border border-white shadow-sm hover:opacity-90 transition-opacity"
+                                    />
+                                  </a>
+                                </div>
+                              )}
                             </div>
 
                             <div className="rounded-xl border border-gray-100 bg-white p-3 space-y-3">

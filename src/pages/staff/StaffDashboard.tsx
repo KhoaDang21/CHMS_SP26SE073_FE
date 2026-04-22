@@ -5,17 +5,11 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Bell,
-  Bike,
-  BookOpen,
-  Calendar,
   CheckCircle,
   Clock,
   Home,
-  LayoutDashboard,
   LogOut,
   Menu,
-  MessageSquare,
-  Ticket,
   Users,
   X,
 } from 'lucide-react';
@@ -24,6 +18,7 @@ import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService } from '../../services/extraChargeService';
 import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { staffNavItems } from '../../config/staffNavItems';
 import { toast } from 'sonner';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
 
@@ -196,14 +191,12 @@ export default function StaffDashboard() {
     }
   };
 
-  const navigationItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: true },
-    { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: false },
-    { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: false },
-    { name: 'Mini-game xe đạp', icon: Bike, path: '/staff/bicycles', active: false },
-    { name: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides', active: false },
-    { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: false },
-  ];
+  const navigationItems = staffNavItems.map((item) => ({
+    name: item.label,
+    icon: item.icon,
+    path: item.path,
+    active: item.path === '/staff/dashboard',
+  }));
 
   const getTaskIcon = (type: TodayTask['type']) => {
     switch (type) {
@@ -267,18 +260,6 @@ export default function StaffDashboard() {
             </button>
           </div>
 
-          <div className="p-6 border-b border-cyan-500/30">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
-                <RoleBadge role={currentUser?.role || 'staff'} size="sm" />
-              </div>
-            </div>
-          </div>
-
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigationItems.map((item) => {
               const Icon = item.icon;
@@ -297,6 +278,18 @@ export default function StaffDashboard() {
               );
             })}
           </nav>
+
+          <div className="p-6 border-t border-cyan-500/30">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
+                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
+                <RoleBadge role={currentUser?.role || 'staff'} size="sm" />
+              </div>
+            </div>
+          </div>
 
           <div className="p-4 border-t border-cyan-500/30">
             <button

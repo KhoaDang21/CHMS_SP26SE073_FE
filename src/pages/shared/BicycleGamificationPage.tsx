@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bike, CheckCircle2, Gauge, Loader2, LogOut, MapPinned, Menu, ShieldAlert, X } from 'lucide-react';
+import { Bike, CheckCircle2, Gauge, Home, Loader2, LogOut, MapPinned, Menu, ShieldAlert, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import { employeeService } from '../../services/employeeService';
@@ -13,6 +13,7 @@ import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { adminNavItems } from '../../config/adminNavItems';
 import { managerNavItems } from '../../config/managerNavItems';
+import { staffNavItems } from '../../config/staffNavItems';
 import {
   bicycleGamificationService,
   type HiddenGemPayload,
@@ -23,15 +24,6 @@ const tabs = [
   { key: 'bicycles', label: 'Kho xe đạp', icon: Gauge },
   { key: 'damage', label: 'Bảng phạt hư hỏng', icon: ShieldAlert },
   { key: 'routes', label: 'Lộ trình & Hidden Gems', icon: MapPinned },
-] as const;
-
-const staffNavItems = [
-  { id: 'dashboard', label: 'Tổng quan', path: '/staff/dashboard' },
-  { id: 'bookings', label: 'Đặt phòng', path: '/staff/bookings' },
-  { id: 'reviews', label: 'Đánh giá', path: '/staff/reviews' },
-  { id: 'bicycles', label: 'Mini-game xe đạp', path: '/staff/bicycles' },
-  { id: 'travel-guides', label: 'Cẩm nang du lịch', path: '/travel-guides' },
-  { id: 'tickets', label: 'Yêu cầu hỗ trợ', path: '/staff/tickets' },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
@@ -474,12 +466,12 @@ export default function BicycleGamificationPage() {
           <div className={`flex items-center justify-between p-6 border-b ${styles.border}`}>
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 ${styles.headerBg} rounded-lg flex items-center justify-center`}>
-                <Bike className="w-6 h-6" />
+                {role === 'staff' ? <Home className="w-6 h-6" /> : <Bike className="w-6 h-6" />}
               </div>
               <div>
                 <h1 className="font-bold text-lg">CHMS</h1>
                 <p className={`text-xs ${role === 'staff' ? 'text-cyan-200' : 'text-gray-500'}`}>
-                  {role?.toUpperCase() === 'MANAGER' ? 'Quản lý vận hành' : role?.toUpperCase() === 'ADMIN' ? 'Hệ thống quản trị' : 'Cổng nhân viên'}
+                  {role?.toUpperCase() === 'MANAGER' ? 'Quản lý vận hành' : role?.toUpperCase() === 'ADMIN' ? 'Hệ thống quản trị' : 'Staff Portal'}
                 </p>
               </div>
             </div>
@@ -488,9 +480,27 @@ export default function BicycleGamificationPage() {
             </button>
           </div>
 
-          <div className={`p-6 border-b ${styles.border}`}>
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  type="button"
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${item.id === 'bicycles' ? styles.navActive : styles.navInactive
+                    }`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className={`p-6 border-t ${styles.border}`}>
             <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-full ${styles.userAvatarBg} flex items-center justify-center ${role === 'staff' ? 'text-white' : 'text-white'} font-bold text-lg`}>
+              <div className={`w-12 h-12 rounded-full ${styles.userAvatarBg} flex items-center justify-center text-white font-bold text-lg`}>
                 {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
               </div>
               <div className="flex-1 min-w-0">
@@ -501,20 +511,6 @@ export default function BicycleGamificationPage() {
               </div>
             </div>
           </div>
-
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                type="button"
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${item.id === 'bicycles' ? styles.navActive : styles.navInactive
-                  }`}
-              >
-                <span className="truncate">{item.label}</span>
-              </button>
-            ))}
-          </nav>
 
           <div className={`p-4 border-t ${styles.border}`}>
             <button
@@ -561,29 +557,6 @@ export default function BicycleGamificationPage() {
                 <h1 className="mt-3 text-2xl font-black text-gray-900 sm:text-3xl">Vận hành xe đạp mini-game</h1>
               </div>
 
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {visibleTabs.map((tab) => {
-                const Icon = tab.icon;
-                const active = tab.key === activeTab;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${active
-                        ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'
-                      }`}
-                  >
-                    <p className="flex items-center gap-2 text-sm font-semibold">
-                      <Icon className="h-4 w-4" />
-                      {tab.label}
-                    </p>
-                  </button>
-                );
-              })}
             </div>
           </section>
 
@@ -1001,6 +974,31 @@ export default function BicycleGamificationPage() {
               )}
             </div>
           )}
+
+          <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = tab.key === activeTab;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${active
+                        ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'
+                      }`}
+                  >
+                    <p className="flex items-center gap-2 text-sm font-semibold">
+                      <Icon className="h-4 w-4" />
+                      {tab.label}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         </div>
       </div>
     </div>

@@ -105,6 +105,8 @@ function StatusTimeline({ status }: { status: string }) {
 function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<CreateTicketRequest>({ title: '', description: '', priority: 'NORMAL' });
+  const [selectedImageName, setSelectedImageName] = useState('');
+  const [selectedImagePreviewUrl, setSelectedImagePreviewUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
@@ -116,12 +118,41 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     });
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (selectedImagePreviewUrl) {
+        URL.revokeObjectURL(selectedImagePreviewUrl);
+      }
+    };
+  }, [selectedImagePreviewUrl]);
+
   const selectedBooking = bookings.find(b => b.id === form.bookingId);
   const canSubmit = !!form.bookingId && form.title.trim() && form.description.trim();
 
   const handleSelectBooking = (id: string) => {
     setForm(f => ({ ...f, bookingId: id }));
     setStep(2);
+  };
+
+  const handleSelectImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (selectedImagePreviewUrl) {
+      URL.revokeObjectURL(selectedImagePreviewUrl);
+    }
+
+    setForm((f) => ({ ...f, imageFile: file }));
+    setSelectedImageName(file?.name ?? '');
+    setSelectedImagePreviewUrl(file ? URL.createObjectURL(file) : '');
+  };
+
+  const handleRemoveImage = () => {
+    if (selectedImagePreviewUrl) {
+      URL.revokeObjectURL(selectedImagePreviewUrl);
+    }
+
+    setForm((f) => ({ ...f, imageFile: null }));
+    setSelectedImageName('');
+    setSelectedImagePreviewUrl('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -351,6 +382,48 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
                   })}
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ảnh minh chứng (tuỳ chọn)</label>
+                <label className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-200 text-sm cursor-pointer hover:border-blue-300 transition-colors">
+                  <span className="truncate text-gray-600">{selectedImageName || 'Chọn 1 ảnh để đính kèm khiếu nại'}</span>
+                  <span className="text-blue-600 font-medium">Tải ảnh</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSelectImage}
+                  />
+                </label>
+                {form.imageFile && (
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                    <div className="flex items-start gap-3">
+                      {selectedImagePreviewUrl ? (
+                        <img
+                          src={selectedImagePreviewUrl}
+                          alt={selectedImageName || 'Ảnh minh chứng'}
+                          className="h-24 w-24 rounded-lg object-cover border border-white shadow-sm flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="h-24 w-24 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs flex-shrink-0">
+                          Preview
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-700 truncate">{selectedImageName}</p>
+                        <p className="mt-1 text-xs text-gray-500">Ảnh sẽ được gửi kèm trong ticket khiếu nại.</p>
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="mt-3 text-xs font-medium text-red-500 hover:text-red-600"
+                        >
+                          Xóa ảnh đã chọn
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Actions */}
@@ -386,8 +459,11 @@ function TicketDetailPanel({
   const [detail, setDetail] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [replyImageFile, setReplyImageFile] = useState<File | null>(null);
+  const [replyImagePreviewUrl, setReplyImagePreviewUrl] = useState('');
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const detailRealtimeTimerRef = useRef<number | null>(null);
@@ -407,6 +483,14 @@ function TicketDetailPanel({
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [detail?.replies, loading]);
+
+  useEffect(() => {
+    return () => {
+      if (replyImagePreviewUrl) {
+        URL.revokeObjectURL(replyImagePreviewUrl);
+      }
+    };
+  }, [replyImagePreviewUrl]);
 
   useEffect(() => {
     const token = authService.getToken();
@@ -451,15 +535,44 @@ function TicketDetailPanel({
 
   const sendMessage = async () => {
     const msg = message.trim();
-    if (!msg || sending) return;
+    if ((!msg && !replyImageFile) || sending) return;
     setSending(true);
-    const res = await supportTicketService.sendMessage(ticketId, msg);
+    const res = await supportTicketService.sendMessage(ticketId, msg, replyImageFile);
     setSending(false);
     if (res.success) {
       setMessage('');
+      if (replyImagePreviewUrl) {
+        URL.revokeObjectURL(replyImagePreviewUrl);
+      }
+      setReplyImageFile(null);
+      setReplyImagePreviewUrl('');
       load();
     } else {
       toast.error(res.message);
+    }
+  };
+
+  const handlePickReplyImage = () => {
+    replyFileInputRef.current?.click();
+  };
+
+  const handleReplyImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (replyImagePreviewUrl) {
+      URL.revokeObjectURL(replyImagePreviewUrl);
+    }
+    setReplyImageFile(file);
+    setReplyImagePreviewUrl(file ? URL.createObjectURL(file) : '');
+  };
+
+  const handleRemoveReplyImage = () => {
+    if (replyImagePreviewUrl) {
+      URL.revokeObjectURL(replyImagePreviewUrl);
+    }
+    setReplyImageFile(null);
+    setReplyImagePreviewUrl('');
+    if (replyFileInputRef.current) {
+      replyFileInputRef.current.value = '';
     }
   };
 
@@ -543,6 +656,18 @@ function TicketDetailPanel({
           <div className="px-5 py-3 bg-blue-50/40 border-b border-gray-100 flex-shrink-0">
             <p className="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">Mô tả vấn đề</p>
             <p className="text-sm text-gray-700 leading-relaxed">{detail.description}</p>
+            {detail.attachmentUrl && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">Ảnh đính kèm</p>
+                <a href={detail.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block">
+                  <img
+                    src={detail.attachmentUrl}
+                    alt="Ảnh khiếu nại"
+                    className="h-24 w-24 rounded-lg object-cover border border-white shadow-sm hover:opacity-90 transition-opacity"
+                  />
+                </a>
+              </div>
+            )}
             {detail.staffName && (
               <p className="text-xs text-gray-400 mt-1.5">
                 Nhân viên phụ trách: <span className="font-medium text-gray-600">{detail.staffName}</span>
@@ -573,6 +698,15 @@ function TicketDetailPanel({
                     {!isMe && <p className="text-xs font-medium mb-0.5 text-blue-600">{reply.senderName}</p>}
                     <p className="whitespace-pre-wrap break-words leading-relaxed">{reply.message}</p>
                     <p className={`text-[10px] mt-1 ${isMe ? 'text-blue-100 text-right' : 'text-gray-400'}`}>
+                    {reply.attachmentUrl && (
+                      <a href={reply.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block mt-2">
+                        <img
+                          src={reply.attachmentUrl}
+                          alt="Ảnh đính kèm"
+                          className="h-24 w-24 rounded-lg object-cover border border-white/70 shadow-sm"
+                        />
+                      </a>
+                    )}
                       {formatTime(reply.createdAt)}
                     </p>
                   </div>
@@ -587,8 +721,45 @@ function TicketDetailPanel({
             {isClosed ? (
               <p className="text-center text-sm text-gray-400 py-1">Ticket này đã đóng.</p>
             ) : (
-              <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-gray-200
-                px-3 py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+              <div className="space-y-2">
+                <input
+                  ref={replyFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleReplyImageChange}
+                />
+
+                {replyImageFile && (
+                  <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5">
+                    {replyImagePreviewUrl && (
+                      <img
+                        src={replyImagePreviewUrl}
+                        alt={replyImageFile.name}
+                        className="h-10 w-10 rounded-md object-cover border border-white"
+                      />
+                    )}
+                    <p className="text-xs text-gray-600 truncate flex-1">{replyImageFile.name}</p>
+                    <button
+                      type="button"
+                      onClick={handleRemoveReplyImage}
+                      className="text-xs text-red-500 hover:text-red-600"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-gray-200
+                  px-3 py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                <button
+                  type="button"
+                  onClick={handlePickReplyImage}
+                  className="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:bg-white hover:text-blue-600 transition-colors flex items-center justify-center flex-shrink-0"
+                  title="Đính kèm ảnh"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
                 <textarea
                   rows={1}
                   value={message}
@@ -600,13 +771,14 @@ function TicketDetailPanel({
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={!message.trim() || sending}
+                  disabled={(!message.trim() && !replyImageFile) || sending}
                   className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white
                     flex items-center justify-center flex-shrink-0
                     disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
                 >
                   {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 </button>
+                </div>
               </div>
             )}
           </div>
