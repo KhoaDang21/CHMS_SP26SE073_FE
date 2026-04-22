@@ -158,6 +158,7 @@ export interface CreateHomestayDTO {
   bathrooms: number;
   maxGuests: number;
   area: number;
+  depositPercentage: number;
   cancellationPolicy: string;
   houseRules: string;
   amenityIds: string[];
@@ -176,6 +177,7 @@ export interface UpdateHomestayDTO {
   bedrooms: number;
   bathrooms: number;
   area: number;
+  depositPercentage: number;
   cancellationPolicy: string;
   houseRules: string;
   districtId: string;
