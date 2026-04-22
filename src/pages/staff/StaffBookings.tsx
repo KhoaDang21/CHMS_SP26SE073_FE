@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownRight,
   ArrowUpRight,
   Bell,
-  Bike,
-  BookOpen,
   Calendar,
   ClipboardList,
   Download,
@@ -13,22 +11,22 @@ import {
   LogOut,
   Mail,
   Menu,
-  MessageSquare,
   Phone,
   Receipt,
   Search,
-  Ticket,
   Users,
   X,
-  LayoutDashboard,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
 import { invoiceService, type Invoice } from '../../services/invoiceService';
+import { signalRService } from '../../services/signalRService';
+import { notificationService, type Notification } from '../../services/notificationService';
 import { Pagination } from '../../components/common/Pagination';
 import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
+import { staffNavItems } from '../../config/staffNavItems';
 import { toast } from 'sonner';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/src/style.css';
@@ -89,6 +87,8 @@ export default function StaffBookings() {
   const [extendSubmitting, setExtendSubmitting] = useState(false);
   const [extendNotice, setExtendNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const shownRealtimeNotifIdsRef = useRef<Set<string>>(new Set());
 
   const loadBookings = async () => {
     try {
@@ -106,6 +106,63 @@ export default function StaffBookings() {
   useEffect(() => {
     loadBookings();
   }, []);
+
+  useEffect(() => {
+    const token = authService.getToken();
+    const userId = currentUser?.id;
+    if (!token) return;
+
+    let isMounted = true;
+    let receiveHandler: ((notif: Notification) => void) | null = null;
+    let newHandler: ((notif: Notification) => void) | null = null;
+
+    notificationService.getUnreadCount()
+      .then((count) => {
+        if (isMounted) {
+          setUnreadNotificationCount(count);
+        }
+      })
+      .catch(() => {});
+
+    signalRService.connect(token).then((conn) => {
+      if (!isMounted || !conn) return;
+
+      if (userId) {
+        conn.invoke('JoinUserGroup', userId).catch(() => {});
+      }
+
+      const handleRealtimeNotification = (notif: Notification) => {
+        if (!notif?.id) return;
+        if (shownRealtimeNotifIdsRef.current.has(notif.id)) return;
+
+        shownRealtimeNotifIdsRef.current.add(notif.id);
+        if (!notif.isRead) {
+          setUnreadNotificationCount((prev) => prev + 1);
+        }
+
+        toast.success(notif.title || 'Thông báo mới', {
+          description: notif.content,
+        });
+      };
+
+      receiveHandler = handleRealtimeNotification;
+      newHandler = handleRealtimeNotification;
+      conn.on('ReceiveNotification', receiveHandler);
+      conn.on('NewNotification', newHandler);
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+      shownRealtimeNotifIdsRef.current.clear();
+      const conn = signalRService.getConnection();
+      if (receiveHandler) {
+        conn?.off('ReceiveNotification', receiveHandler);
+      }
+      if (newHandler) {
+        conn?.off('NewNotification', newHandler);
+      }
+    };
+  }, [currentUser?.id]);
 
   const filteredBookings = useMemo(() => {
     let filtered = [...bookings];
@@ -406,14 +463,12 @@ export default function StaffBookings() {
     navigate('/auth/login');
   };
 
-  const navigationItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard', active: false },
-    { name: 'Bookings', icon: Calendar, path: '/staff/bookings', active: true },
-    { name: 'Reviews', icon: MessageSquare, path: '/staff/reviews', active: false },
-    { name: 'Mini-game xe đạp', icon: Bike, path: '/staff/bicycles', active: false },
-    { name: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides', active: false },
-    { name: 'Tickets', icon: Ticket, path: '/staff/tickets', active: false },
-  ];
+  const navigationItems = staffNavItems.map((item) => ({
+    name: item.label,
+    icon: item.icon,
+    path: item.path,
+    active: item.path === '/staff/bookings',
+  }));
 
   const filterOptions: { value: FilterStatus; label: string }[] = [
     { value: 'all',           label: 'Tất cả' },
@@ -551,18 +606,6 @@ export default function StaffBookings() {
             </button>
           </div>
 
-          <div className="p-6 border-b border-cyan-500/30">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
-                <RoleBadge role={currentUser?.role || 'staff'} size="sm" />
-              </div>
-            </div>
-          </div>
-
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigationItems.map((item) => {
               const Icon = item.icon;
@@ -581,6 +624,18 @@ export default function StaffBookings() {
               );
             })}
           </nav>
+
+          <div className="p-6 border-t border-cyan-500/30">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
+                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
+                <RoleBadge role={currentUser?.role || 'staff'} size="sm" />
+              </div>
+            </div>
+          </div>
 
           <div className="p-4 border-t border-cyan-500/30">
             <button
@@ -609,7 +664,11 @@ export default function StaffBookings() {
             </div>
             <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
               <Bell className="w-6 h-6 text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              {unreadNotificationCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold px-0.5">
+                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                </span>
+              )}
             </button>
           </div>
         </header>

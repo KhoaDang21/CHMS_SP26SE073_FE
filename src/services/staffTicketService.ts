@@ -8,6 +8,7 @@ export interface StaffTicketReply {
   senderId: string;
   senderName: string;
   message: string;
+  attachmentUrl?: string;
   createdAt: string;
 }
 
@@ -16,6 +17,7 @@ export interface StaffTicket {
   ticketNumber?: string;
   title: string;
   description?: string;
+  attachmentUrl?: string;
   bookingId?: string;
   homestayId?: string;
   homestayName?: string;
@@ -54,6 +56,7 @@ const mapTicket = (raw: any): StaffTicket => ({
   ticketNumber: raw?.ticketNumber ? String(raw.ticketNumber) : undefined,
   title: String(raw?.title || raw?.subject || ''),
   description: raw?.description ? String(raw.description) : undefined,
+  attachmentUrl: raw?.attachmentUrl ? String(raw.attachmentUrl) : undefined,
   bookingId: raw?.bookingId ? String(raw.bookingId) : undefined,
   homestayId: raw?.homestayId ? String(raw.homestayId) : undefined,
   homestayName: raw?.homestayName ? String(raw.homestayName) : undefined,
@@ -75,6 +78,7 @@ const mapTicketDetail = (raw: any): StaffTicketDetail => ({
         senderId: String(reply?.senderId || ''),
         senderName: String(reply?.senderName || ''),
         message: String(reply?.message || ''),
+        attachmentUrl: reply?.attachmentUrl ? String(reply.attachmentUrl) : undefined,
         createdAt: String(reply?.createdAt || new Date().toISOString()),
       }))
     : [],
@@ -113,9 +117,14 @@ export const staffTicketService = {
     }
   },
 
-  async reply(ticketId: string, message: string): Promise<{ success: boolean; message: string }> {
+  async reply(ticketId: string, message: string, imageFile?: File | null): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiService.post<any>(apiConfig.endpoints.staffTickets.reply(ticketId), { message });
+      const formData = new FormData();
+      formData.append('message', message || '');
+      if (imageFile) {
+        formData.append('imageFile', imageFile);
+      }
+      const response = await apiService.postForm<any>(apiConfig.endpoints.staffTickets.reply(ticketId), formData);
       return {
         success: response?.success ?? true,
         message: response?.message ?? 'Gửi phản hồi thành công',

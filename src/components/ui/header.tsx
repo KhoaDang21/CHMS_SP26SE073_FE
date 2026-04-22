@@ -114,6 +114,7 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const shownRealtimeNotifIdsRef = useRef<Set<string>>(new Set());
 
 
   const currentNavigationItems = isAuthenticated ? authenticatedNavigationItems : navigationItems;
@@ -177,23 +178,42 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
       // Join vào group của user để nhận notification riêng
       if (userId) conn.invoke('JoinUserGroup', userId).catch(() => { });
 
+      const handleRealtimeNotification = (notif: Notification) => {
+        if (!notif?.id) return;
+
+        if (shownRealtimeNotifIdsRef.current.has(notif.id)) {
+          return;
+        }
+        shownRealtimeNotifIdsRef.current.add(notif.id);
+
+        setNotifications(prev => {
+          if (prev.some(item => item.id === notif.id)) {
+            return prev;
+          }
+          return [notif, ...prev];
+        });
+
+        if (!notif.isRead) {
+          setUnreadCount(prev => prev + 1);
+        }
+
+        toast.success(notif.title || 'Thông báo mới', {
+          duration: 4000,
+        });
+      };
+
       // Lắng nghe event BE push xuống (tên event BE sẽ dùng)
-      conn.on('ReceiveNotification', (notif: Notification) => {
-        setNotifications(prev => [notif, ...prev]);
-        setUnreadCount(prev => prev + 1);
-      });
+      conn.on('ReceiveNotification', handleRealtimeNotification);
 
       // Fallback: BE có thể push event tên khác
-      conn.on('NewNotification', (notif: Notification) => {
-        setNotifications(prev => [notif, ...prev]);
-        setUnreadCount(prev => prev + 1);
-      });
+      conn.on('NewNotification', handleRealtimeNotification);
     }).catch(() => {
       // SignalR không kết nối được — vẫn hoạt động bình thường qua REST
       console.warn('SignalR connection error, app will work with REST API only');
     });
 
     return () => {
+      shownRealtimeNotifIdsRef.current.clear();
       signalRService.disconnect();
     };
   }, [isAuthenticated]);
