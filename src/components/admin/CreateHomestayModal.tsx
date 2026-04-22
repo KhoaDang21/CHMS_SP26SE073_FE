@@ -26,6 +26,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     bathrooms: 1,
     maxGuests: 2,
     area: 50,
+    depositPercentage: 20,
     cancellationPolicy: 'Miễn phí hủy trước 24h. Sau đó phí hủy 50%.',
     houseRules: 'Không hút thuốc. Không thú cưng. Giờ nhận phòng: 14:00. Giờ trả phòng: 12:00.',
     amenityIds: [],
@@ -86,6 +87,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       bathrooms: 1,
       maxGuests: 2,
       area: 50,
+      depositPercentage: 20,
       cancellationPolicy: 'Miễn phí hủy trước 24h. Sau đó phí hủy 50%.',
       houseRules: 'Không hút thuốc. Không thú cưng. Giờ nhận phòng: 14:00. Giờ trả phòng: 12:00.',
       amenityIds: [],
@@ -144,6 +146,7 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       bedrooms: formData.bedrooms!,
       bathrooms: formData.bathrooms!,
       area: formData.area || 50,
+      depositPercentage: Math.min(100, Math.max(0, Number(formData.depositPercentage ?? 20))),
       address: formData.address!,
       districtId: formData.districtId!,
       cancellationPolicy: formData.cancellationPolicy!,
@@ -197,7 +200,11 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       case 4:
         return true; // Amenities are optional
       case 5:
-        return true; // Policies are pre-filled
+        return (
+          Number(formData.depositPercentage ?? 0) >= 0 &&
+          Number(formData.depositPercentage ?? 0) <= 100 &&
+          Boolean(formData.cancellationPolicy?.trim())
+        );
       default:
         return false;
     }
@@ -522,7 +529,23 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chính sách hủy phòng
+                  Tỷ lệ cọc (%) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={formData.depositPercentage ?? 20}
+                  onChange={(e) => setFormData({ ...formData, depositPercentage: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">Giá trị từ 0 đến 100.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chính sách hủy phòng <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={formData.cancellationPolicy}
