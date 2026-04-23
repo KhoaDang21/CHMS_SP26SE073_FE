@@ -25,8 +25,8 @@ import type {
   LocalExperience,
   ServiceCategoryPayload,
 } from '../../types/experience.types';
-import { adminNavItems } from '../../config/adminNavItems';
-import { managerNavItems } from '../../config/managerNavItems';
+import { adminNavItemsGrouped, managerNavItemsGrouped } from '../../config/adminNavItemsGrouped';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 import { homestayService } from '../../services/homestayService';
 import type { Homestay } from '../../types/homestay.types';
 import { employeeService } from '../../services/employeeService';
@@ -138,7 +138,7 @@ export default function ExperienceManagement() {
   const [editingCategory, setEditingCategory] = useState<ExperienceCategory | null>(null);
   const [categoryForm, setCategoryForm] = useState<ServiceCategoryPayload>(initialCategoryForm);
 
-  const navItems = isAdmin ? adminNavItems : managerNavItems;
+  const groupedNavItems = isAdmin ? adminNavItemsGrouped : managerNavItemsGrouped;
 
   const loadData = async () => {
     setLoading(true);
@@ -409,21 +409,8 @@ export default function ExperienceManagement() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.id === 'experiences';
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.path)}
-                className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+          <AdminSidebar groupedItems={groupedNavItems} />
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">

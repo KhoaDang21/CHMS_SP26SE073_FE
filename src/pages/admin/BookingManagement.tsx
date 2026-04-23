@@ -11,7 +11,7 @@ import { Pagination } from '../../components/common/Pagination';
 import type { Booking, BookingStatus, BookingStats } from '../../types/booking.types';
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
-import { adminNavItems } from '../../config/adminNavItems';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 import { buildDisplaySpecialRequests } from '../../utils/bookingExperience';
 
 const initialStats: BookingStats = {
@@ -220,18 +220,8 @@ export default function BookingManagement() {
             <X className="w-6 h-6" />
           </button>
         </div>
-        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-          {adminNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.id === 'bookings';
-            return (
-              <button key={item.id} onClick={() => navigate(item.path)}
-                className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}>
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+          <AdminSidebar isAdminMode={true} />
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
           <div className="flex items-center gap-3 mb-3">

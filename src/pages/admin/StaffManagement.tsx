@@ -28,8 +28,7 @@ import { employeeService } from '../../services/employeeService';
 import { adminRoleService } from '../../services/adminRoleService';
 import { locationService } from '../../services/locationService';
 import { districtService } from '../../services/districtService';
-import { adminNavItems } from '../../config/adminNavItems';
-import { managerNavItems } from '../../config/managerNavItems';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 import { homestayService } from '../../services/homestayService';
 import type { Staff, StaffRole, StaffStatus } from '../../types/staff.types';
 import type { Role } from '../../types/role.types';
@@ -624,10 +623,6 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
     return <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[role]}`}>{labels[role]}</span>;
   };
 
-  const navItems = isAdminMode
-    ? adminNavItems
-    : managerNavItems;
-
   const managerAccounts = filteredStaff.filter((s) => s.role === 'manager' || s.role === 'admin');
   const staffAccounts = filteredStaff.filter((s) => s.role === 'staff');
   const staffForStats = isManagerMode ? getManagerScopedStaff(staff) : staff;
@@ -768,21 +763,8 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
           </button>
         </div>
 
-        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.id === 'staff';
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.path)}
-                className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+          <AdminSidebar isAdminMode={isAdminMode} />
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">

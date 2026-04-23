@@ -22,10 +22,7 @@ import type { Amenity, CreateAmenityDTO, UpdateAmenityDTO, AmenityCategory, Amen
 import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
-import { adminNavItems } from '../../config/adminNavItems';
-
-
-// Category labels
+import AdminSidebar from '../../components/admin/AdminSidebar';
 const categoryLabels: Record<AmenityCategory, { vi: string; en: string; color: string }> = {
   basic: { vi: 'Cơ bản', en: 'Basic', color: 'bg-blue-100 text-blue-700' },
   kitchen: { vi: 'Bếp', en: 'Kitchen', color: 'bg-orange-100 text-orange-700' },
@@ -281,8 +278,6 @@ export default function AmenityManagement() {
     navigate('/auth/login');
   };
 
-  const navItems = adminNavItems;
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50">
@@ -317,24 +312,8 @@ export default function AmenityManagement() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.id === 'amenities';
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.path)}
-                className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+          <AdminSidebar isAdminMode={true} />
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
