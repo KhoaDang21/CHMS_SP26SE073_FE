@@ -33,6 +33,41 @@ const toImageUrls = (value: unknown): string[] => {
     .filter(Boolean);
 };
 
+const normalizeText = (value: unknown): string => String(value ?? '').trim().toLowerCase();
+
+const resolveAmenityIds = (homestay: Homestay, allAmenities: Amenity[]): string[] => {
+  const directIds = Array.isArray(homestay.amenityIds)
+    ? homestay.amenityIds.map((id) => String(id ?? '').trim()).filter(Boolean)
+    : [];
+
+  const rawAmenities = Array.isArray(homestay.amenities) ? homestay.amenities : [];
+
+  const idsFromObjects = rawAmenities
+    .map((item) => {
+      if (!item || typeof item !== 'object') return '';
+      const source = item as { id?: unknown; amenityId?: unknown };
+      return String(source.id ?? source.amenityId ?? '').trim();
+    })
+    .filter(Boolean);
+
+  const namesFromHomestay = new Set<string>([
+    ...(Array.isArray(homestay.amenityNames) ? homestay.amenityNames : []),
+    ...rawAmenities.map((item) => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object' && 'name' in item) {
+        return String((item as { name?: unknown }).name ?? '');
+      }
+      return '';
+    }),
+  ].map(normalizeText).filter(Boolean));
+
+  const idsFromNames = allAmenities
+    .filter((amenity) => namesFromHomestay.has(normalizeText(amenity.name)))
+    .map((amenity) => amenity.id);
+
+  return Array.from(new Set([...directIds, ...idsFromObjects, ...idsFromNames]));
+};
+
 export default function EditHomestayModal({
   isOpen,
   homestay,
@@ -187,14 +222,14 @@ export default function EditHomestayModal({
       address: homestay.address || '',
       latitude: Number(homestay.latitude || 10.0),
       longitude: Number(homestay.longitude || 107.0),
-      amenityIds: homestay.amenityIds || [],
+      amenityIds: resolveAmenityIds(homestay, amenities),
       images: imageUrls.map((imageUrl, index) => ({
         imageUrl,
         caption: '',
         isPrimary: index === 0,
       })),
     });
-  }, [isOpen, homestay]);
+  }, [isOpen, homestay, amenities]);
 
   useEffect(() => {
     if (!isOpen || !homestay) return;

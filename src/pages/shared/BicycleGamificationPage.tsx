@@ -11,9 +11,8 @@ import { adminBookingService } from '../../services/adminBookingService';
 import type { Booking } from '../../types/booking.types';
 import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
-import { adminNavItems } from '../../config/adminNavItems';
-import { managerNavItems } from '../../config/managerNavItems';
-import { staffNavItems } from '../../config/staffNavItems';
+import { adminNavItemsGrouped, managerNavItemsGrouped, staffNavItemsGrouped } from '../../config/adminNavItemsGrouped';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 import {
   bicycleGamificationService,
   type HiddenGemPayload,
@@ -107,11 +106,11 @@ export default function BicycleGamificationPage() {
   const [estimatedMinutes, setEstimatedMinutes] = useState('20');
   const [hiddenGemsJson, setHiddenGemsJson] = useState('[\n  {"name": "Quán cà phê ven biển", "latitude": 16.0678, "longitude": 108.2208, "rewardPoints": 10}\n]');
 
-  const navItems = role === 'admin'
-    ? adminNavItems
+  const groupedNavItems = role === 'admin'
+    ? adminNavItemsGrouped
     : role === 'manager'
-      ? managerNavItems
-      : staffNavItems;
+      ? managerNavItemsGrouped
+      : staffNavItemsGrouped;
 
   const visibleTabs = useMemo(() => {
     if (canManage) return tabs;
@@ -480,28 +479,8 @@ export default function BicycleGamificationPage() {
             </button>
           </div>
 
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  type="button"
-                  className={`w-full min-w-0 flex items-center gap-3 overflow-hidden px-4 py-3 rounded-lg transition-colors text-left ${item.id === 'bicycles' ? styles.navActive : styles.navInactive
-                    }`}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span
-                    className="min-w-0 flex-1 text-left"
-                    style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
-                    title={item.label}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
+          <nav className="flex-1 p-4 overflow-y-auto">
+            <AdminSidebar groupedItems={groupedNavItems} />
           </nav>
 
           <div className={`p-6 border-t ${styles.border}`}>
