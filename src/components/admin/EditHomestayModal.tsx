@@ -252,31 +252,29 @@ export default function EditHomestayModal({
       .filter(Boolean)
       .map((imageUrl, index) => ({ imageUrl, caption: '', isPrimary: index === 0 }));
 
-    // Extract amenityIds and remove from main payload
-    const { amenityIds, ...homestayDataWithoutAmenities } = formData;
+    const amenityIds = formData.amenityIds;
 
-    // Call parent's onSubmit with homestay data (without amenities)
     onSubmit({
-      ...homestayDataWithoutAmenities,
+      ...formData,
       images: existingImageItems,
     }, selectedFiles);
 
     // Update amenities separately within the modal
     if (amenityIds && Array.isArray(amenityIds)) {
       try {
-        console.log('🛠️ Updating amenities within modal:', { homestayId: homestay.id, amenityIds });
+        console.log('Updating amenities within modal:', { homestayId: homestay.id, amenityIds });
         const amenityResult = await homestayService.updateAdminHomestayAmenities(homestay.id, amenityIds);
-        console.log('🛠️ Amenity update result:', amenityResult);
+        console.log('Amenity update result:', amenityResult);
         if (amenityResult === null || amenityResult?.success === false) {
-          toast.warning('⚠️ Cập nhật tiện ích có lỗi: ' + (amenityResult?.message || 'Lỗi API'));
+          toast.warning('Cập nhật tiện ích có lỗi: ' + (amenityResult?.message || 'Lỗi API'));
         } else {
-          console.log('✅ Amenities updated successfully');
+          console.log('Amenities updated successfully');
           if (onAmenitiesUpdated) {
             onAmenitiesUpdated();
           }
         }
       } catch (error: any) {
-        console.error('❌ Error updating amenities:', error);
+        console.error('Error updating amenities:', error);
         toast.error('Lỗi cập nhật tiện ích: ' + (error?.message || 'Không xác định'));
       }
     }

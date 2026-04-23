@@ -488,11 +488,17 @@ export default function BicycleGamificationPage() {
                   key={item.path}
                   onClick={() => navigate(item.path)}
                   type="button"
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${item.id === 'bicycles' ? styles.navActive : styles.navInactive
+                  className={`w-full min-w-0 flex items-center gap-3 overflow-hidden px-4 py-3 rounded-lg transition-colors text-left ${item.id === 'bicycles' ? styles.navActive : styles.navInactive
                     }`}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="truncate">{item.label}</span>
+                  <span
+                    className="min-w-0 flex-1 text-left"
+                    style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
+                    title={item.label}
+                  >
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
