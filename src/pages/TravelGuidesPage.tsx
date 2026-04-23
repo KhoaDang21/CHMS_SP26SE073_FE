@@ -618,12 +618,12 @@ export default function TravelGuidesPage() {
                       key={item.id}
                       onClick={() => navigate(item.path)}
                       type="button"
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                         isActive ? 'bg-white/20 text-white font-medium' : 'text-cyan-100 hover:bg-white/10'
                       }`}
                     >
                       <Icon className="w-5 h-5 flex-shrink-0" />
-                      <span>{item.label}</span>
+                      <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
                     </button>
                   );
                 })}
@@ -700,13 +700,13 @@ export default function TravelGuidesPage() {
                 <button
                   key={item.id}
                   onClick={() => navigate(item.path)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                   }`}
                   type="button"
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
                 </button>
               );
             })}

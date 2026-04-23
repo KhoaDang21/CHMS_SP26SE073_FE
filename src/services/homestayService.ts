@@ -172,12 +172,17 @@ export const homestayService = {
     amenityIds: string[],
   ): Promise<any> {
     try {
+      console.log('📤 Updating amenities - attempting both formats:', { id, amenityIds });
+      
+      // Try sending as direct array first (most common for PUT amenities)
       const res = await apiService.put<any>(
         apiConfig.endpoints.adminHomestays.updateAmenities(id),
         amenityIds,
       );
+      console.log('✅ Amenities update response (array format):', res);
       return res;
     } catch (error) {
+      console.error("❌ Error updating homestay amenities:", error);
       logDevError("Error updating homestay amenities:", error);
       return null;
     }
