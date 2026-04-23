@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import { adminTicketService } from '../../services/adminTicketService';
-import { adminNavItems } from '../../config/adminNavItems';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 
 type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 type FilterStatus = 'all' | TicketStatus;
@@ -102,8 +102,6 @@ export default function TicketManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
-  const navItems = adminNavItems;
-
   const loadData = async () => {
     setLoading(true);
     try {
@@ -186,22 +184,8 @@ export default function TicketManagement() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.id === 'tickets';
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.path)}
-                className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+          <AdminSidebar isAdminMode={true} />
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">

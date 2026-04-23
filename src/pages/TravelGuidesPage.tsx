@@ -8,9 +8,8 @@ import { culturalGuidesService, type CulturalGuide } from '../services/culturalG
 import { publicHomestayService } from '../services/publicHomestayService';
 import type { Homestay } from '../types/homestay.types';
 import { RoleBadge } from '../components/common/RoleBadge';
-import { adminNavItems } from '../config/adminNavItems';
-import { managerNavItems } from '../config/managerNavItems';
-import { staffNavItems } from '../config/staffNavItems';
+import { adminNavItemsGrouped, managerNavItemsGrouped, staffNavItemsGrouped } from '../config/adminNavItemsGrouped';
+import AdminSidebar from '../components/admin/AdminSidebar';
 
 const vndDate = new Intl.DateTimeFormat('vi-VN', {
   dateStyle: 'medium',
@@ -224,11 +223,11 @@ export default function TravelGuidesPage() {
     navigate('/auth/login');
   };
 
-  const backofficeNavItems = role === 'admin'
-    ? adminNavItems
+  const backofficeGroupedNavItems = role === 'admin'
+    ? adminNavItemsGrouped
     : role === 'manager'
-      ? managerNavItems
-      : staffNavItems;
+      ? managerNavItemsGrouped
+      : staffNavItemsGrouped;
 
   const pageContent = (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -609,24 +608,8 @@ export default function TravelGuidesPage() {
                 </button>
               </div>
 
-              <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                {backofficeNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = item.path === '/travel-guides';
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => navigate(item.path)}
-                      type="button"
-                      className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        isActive ? 'bg-white/20 text-white font-medium' : 'text-cyan-100 hover:bg-white/10'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
-                      <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
-                    </button>
-                  );
-                })}
+              <nav className="flex-1 p-4 overflow-y-auto">
+                <AdminSidebar groupedItems={backofficeGroupedNavItems} />
               </nav>
 
               <div className="p-6 border-t border-cyan-500/30">
@@ -692,24 +675,8 @@ export default function TravelGuidesPage() {
             </button>
           </div>
 
-          <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-            {backofficeNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.path === '/travel-guides';
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.path)}
-                  className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                  type="button"
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
-                </button>
-              );
-            })}
+          <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+            <AdminSidebar groupedItems={backofficeGroupedNavItems} />
           </nav>
 
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">

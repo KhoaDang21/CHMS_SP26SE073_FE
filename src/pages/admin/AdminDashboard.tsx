@@ -21,7 +21,7 @@ import type {
   OccupancyData,
   BookingsReportData,
 } from '../../types/homestay.types';
-import { adminNavItems } from '../../config/adminNavItems';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
@@ -31,7 +31,6 @@ import { toast } from 'sonner';
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [occupancyData, setOccupancyData] = useState<OccupancyData[]>([]);
@@ -161,12 +160,6 @@ export default function AdminDashboard() {
     navigate('/auth/login');
   };
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
-
-  const navItems = adminNavItems;
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50">
@@ -203,28 +196,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  if (item.path !== '/admin/dashboard') {
-                    handleNavigation(item.path);
-                  }
-                }}
-                className={`w-full min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === item.id
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="min-w-0 flex-1 text-left truncate" title={item.label}>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+          <AdminSidebar isAdminMode={true} />
         </nav>
 
         {/* User Info & Logout */}
