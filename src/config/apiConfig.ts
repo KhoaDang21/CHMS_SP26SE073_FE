@@ -303,6 +303,35 @@ export const apiConfig = {
       pending: "/api/manager/cultural-guides/pending",
       updateStatus: (id: string) => `/api/manager/cultural-guides/${id}/status`,
     },
+    dining: {
+      manager: {
+        combosByHomestay: (homestayId: string) =>
+          `/api/manager/dining/homestays/${homestayId}/combos`,
+        createCombo: "/api/manager/dining/combos",
+        uploadComboImage: (comboId: string) =>
+          `/api/manager/dining/combos/${comboId}/image`,
+        toggleCombo: (comboId: string) =>
+          `/api/manager/dining/combos/${comboId}/toggle`,
+        slotsByHomestay: (homestayId: string) =>
+          `/api/manager/dining/homestays/${homestayId}/slots`,
+        createSlot: "/api/manager/dining/slots",
+        deleteSlot: (slotId: string) => `/api/manager/dining/slots/${slotId}`,
+      },
+      customer: {
+        combosByHomestay: (homestayId: string) =>
+          `/api/customer/dining/homestays/${homestayId}/combos`,
+        availableSlots: (homestayId: string) =>
+          `/api/customer/dining/homestays/${homestayId}/slots`,
+        createOrder: "/api/customer/dining/order",
+        cancelOrder: (orderId: string) =>
+          `/api/customer/dining/orders/${orderId}/cancel`,
+      },
+      staff: {
+        orders: "/api/staff/dining/orders",
+        updateOrderStatus: (orderId: string) =>
+          `/api/staff/dining/orders/${orderId}/status`,
+      },
+    },
     gamificationBicycles: {
       rent: "/api/gamification-bicycles/rent",
       return: "/api/gamification-bicycles/return",

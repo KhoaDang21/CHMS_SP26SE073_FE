@@ -37,6 +37,7 @@ import ProfilePage from '../pages/customer/ProfilePage';
 import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import NotificationsPage from '../pages/customer/NotificationsPage';
 import BookingExperiencesPage from '../pages/customer/BookingExperiencesPage';
+import BookingDiningPage from '../pages/customer/BookingDiningPage';
 import LocalExperiencesPage from '../pages/customer/LocalExperiencesPage';
 import TravelGuidesPage from '../pages/TravelGuidesPage';
 import { authService } from '../services/authService';
@@ -44,8 +45,10 @@ import StaffDashboard from '../pages/staff/StaffDashboard';
 import ExperienceManagement from '../pages/shared/ExperienceManagement';
 import BicycleGamificationPage from '../pages/shared/BicycleGamificationPage';
 import ManagerBicycleGamificationPage from '../pages/manager/ManagerBicycleGamificationPage';
+import ManagerDiningPage from '../pages/manager/ManagerDiningPage';
 import CancellationPoliciesPage from '../pages/admin/CancellationPoliciesPage';
 import AdminRefundsPage from '../pages/admin/AdminRefundsPage';
+import StaffDiningOrdersPage from '../pages/staff/StaffDiningOrdersPage';
 
 const ROLE_HOME_PATHS: Record<'customer' | 'manager' | 'staff' | 'admin', string> = {
   customer: '/customer/dashboard',
@@ -154,6 +157,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <BookingExperiencesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/bookings/:bookingId/dining"
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <BookingDiningPage />
           </ProtectedRoute>
         }
       />
@@ -279,6 +290,14 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/manager/dining"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerDiningPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected Routes - Staff */}
       <Route
@@ -318,6 +337,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <BicycleGamificationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/dining/orders"
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <StaffDiningOrdersPage />
           </ProtectedRoute>
         }
       />

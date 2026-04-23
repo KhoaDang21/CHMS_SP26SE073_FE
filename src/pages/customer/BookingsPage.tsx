@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X, ShieldCheck } from 'lucide-react';
+import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X, ShieldCheck, UtensilsCrossed } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
@@ -456,6 +456,15 @@ export default function BookingsPage() {
                             >
                               <Plus className="w-4 h-4" />
                               Thêm dịch vụ
+                            </button>
+                          )}
+                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
+                            <button
+                              onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
+                            >
+                              <UtensilsCrossed className="w-4 h-4" />
+                              Đặt món
                             </button>
                           )}
                           {(() => {
@@ -936,6 +945,15 @@ export default function BookingsPage() {
                             >
                               <Plus className="w-4 h-4" />
                               Thêm dịch vụ cho booking này
+                            </button>
+                          )}
+                          {(selected.status === 'CONFIRMED' || selected.status === 'CHECKED_IN') && (
+                            <button
+                              onClick={() => navigate(`/customer/bookings/${selected.id}/dining`)}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700"
+                            >
+                              <UtensilsCrossed className="w-4 h-4" />
+                              Đặt món ăn cho booking này
                             </button>
                           )}
                           {/* Nút Thanh toán — PENDING (chưa cọc) hoặc CONFIRMED + DEPOSIT_PAID (còn lại) */}
