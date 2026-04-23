@@ -10,7 +10,6 @@ import {
   Star,
   MapPin,
   Users,
-  DollarSign,
   Menu,
   X,
   Building2,
@@ -113,7 +112,10 @@ export default function HomestayManagement() {
   const handleCreateHomestay = async (data: CreateHomestayDTO, imageFiles: File[] = []) => {
     setCreatingHomestay(true);
     try {
-      const result = await homestayService.createAdminHomestay(data);
+      // Remove amenityIds from main create payload and handle separately
+      const { amenityIds, ...homestayData } = data;
+
+      const result = await homestayService.createAdminHomestay(homestayData);
 
       if (result?.success ?? result) {
         let createdId = result?.data?.id || result?.id || result?.result?.id || null;
@@ -124,9 +126,9 @@ export default function HomestayManagement() {
 
           const matched = allHomestays
             .filter((h) =>
-              h.name === data.name &&
-              h.address === data.address &&
-              Number(h.pricePerNight) === Number(data.pricePerNight),
+              h.name === homestayData.name &&
+              h.address === homestayData.address &&
+              Number(h.pricePerNight) === Number(homestayData.pricePerNight),
             )
             .sort((a, b) => {
               const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
@@ -135,6 +137,14 @@ export default function HomestayManagement() {
             });
 
           createdId = matched[0]?.id || null;
+        }
+
+        // Update amenities for newly created homestay
+        if (createdId && amenityIds && amenityIds.length > 0) {
+          const amenityResult = await homestayService.updateAdminHomestayAmenities(createdId, amenityIds);
+          if (amenityResult?.success === false) {
+            toast.warning('Tạo homestay thành công, nhưng cập nhật tiện ích thất bại: ' + (amenityResult.message || 'Lỗi không xác định'));
+          }
         }
 
         if (createdId && imageFiles.length > 0) {
@@ -438,8 +448,8 @@ export default function HomestayManagement() {
                         <span>{homestay.maxGuests} khách</span>
                       </div>
                       <div className="flex items-center gap-1 text-gray-900 font-semibold">
-                        <DollarSign className="w-4 h-4 text-gray-500" />
-                        <span>{homestay.pricePerNight.toLocaleString('vi-VN')} ₫/đêm</span>
+                        <span className="text-gray-500">₫</span>
+                        <span>{homestay.pricePerNight.toLocaleString('vi-VN')}/đêm</span>
                       </div>
                     </div>
 
@@ -548,6 +558,7 @@ export default function HomestayManagement() {
           setEditingHomestay(null);
         }}
         onSubmit={handleUpdateHomestay}
+        onAmenitiesUpdated={loadHomestays}
       />
 
       {/* Sidebar Overlay */}

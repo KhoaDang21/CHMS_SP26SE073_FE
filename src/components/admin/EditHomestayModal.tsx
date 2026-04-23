@@ -4,6 +4,8 @@ import type { Amenity } from '../../types/amenity.types';
 import type { District, Homestay, HomestayImage, UpdateHomestayDTO } from '../../types/homestay.types';
 import { adminAmenityService } from '../../services/adminAmenityService';
 import { districtService } from '../../services/districtService';
+import { homestayService } from '../../services/homestayService';
+import { toast } from 'sonner';
 
 interface EditHomestayModalProps {
   isOpen: boolean;
@@ -11,6 +13,7 @@ interface EditHomestayModalProps {
   loading?: boolean;
   onClose: () => void;
   onSubmit: (data: UpdateHomestayDTO, imageFiles: File[]) => void;
+  onAmenitiesUpdated?: () => void;
 }
 
 const DEFAULT_CANCELLATION_POLICY = 'Miễn phí hủy trước 24h. Sau đó phí hủy 50%.';
@@ -36,6 +39,7 @@ export default function EditHomestayModal({
   loading,
   onClose,
   onSubmit,
+  onAmenitiesUpdated,
 }: EditHomestayModalProps) {
   const [districts, setDistricts] = useState<District[]>([]);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
@@ -240,16 +244,42 @@ export default function EditHomestayModal({
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!homestay) return;
+
     const existingImageItems: HomestayImage[] = existingImageUrls
       .map((imageUrl) => imageUrl.trim())
       .filter(Boolean)
       .map((imageUrl, index) => ({ imageUrl, caption: '', isPrimary: index === 0 }));
 
+    // Extract amenityIds and remove from main payload
+    const { amenityIds, ...homestayDataWithoutAmenities } = formData;
+
+    // Call parent's onSubmit with homestay data (without amenities)
     onSubmit({
-      ...formData,
+      ...homestayDataWithoutAmenities,
       images: existingImageItems,
     }, selectedFiles);
+
+    // Update amenities separately within the modal
+    if (amenityIds && Array.isArray(amenityIds)) {
+      try {
+        console.log('🛠️ Updating amenities within modal:', { homestayId: homestay.id, amenityIds });
+        const amenityResult = await homestayService.updateAdminHomestayAmenities(homestay.id, amenityIds);
+        console.log('🛠️ Amenity update result:', amenityResult);
+        if (amenityResult === null || amenityResult?.success === false) {
+          toast.warning('⚠️ Cập nhật tiện ích có lỗi: ' + (amenityResult?.message || 'Lỗi API'));
+        } else {
+          console.log('✅ Amenities updated successfully');
+          if (onAmenitiesUpdated) {
+            onAmenitiesUpdated();
+          }
+        }
+      } catch (error: any) {
+        console.error('❌ Error updating amenities:', error);
+        toast.error('Lỗi cập nhật tiện ích: ' + (error?.message || 'Không xác định'));
+      }
+    }
   };
 
   if (!isOpen || !homestay) return null;
