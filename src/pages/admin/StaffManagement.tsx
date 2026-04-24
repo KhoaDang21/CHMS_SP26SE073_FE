@@ -29,6 +29,7 @@ import { adminRoleService } from '../../services/adminRoleService';
 import { locationService } from '../../services/locationService';
 import { districtService } from '../../services/districtService';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import { managerNavItemsGrouped } from '../../config/adminNavItemsGrouped';
 import { homestayService } from '../../services/homestayService';
 import type { Staff, StaffRole, StaffStatus } from '../../types/staff.types';
 import type { Role } from '../../types/role.types';
@@ -195,6 +196,7 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
   const navigate = useNavigate();
   const isManagerMode = mode === 'manager';
   const isAdminMode = mode === 'admin';
+  const groupedNavItems = isManagerMode ? managerNavItemsGrouped : undefined;
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [filteredStaff, setFilteredStaff] = useState<Staff[]>([]);
@@ -764,7 +766,7 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
         </div>
 
         <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-          <AdminSidebar isAdminMode={isAdminMode} />
+          <AdminSidebar isAdminMode={isAdminMode} groupedItems={groupedNavItems} />
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
