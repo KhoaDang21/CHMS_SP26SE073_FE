@@ -14,8 +14,11 @@ import { adminBookingService } from '../../services/adminBookingService';
 import type { Booking } from '../../types/booking.types';
 import type { Homestay } from '../../types/homestay.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
-import { adminNavItems } from '../../config/adminNavItems';
-import { managerNavItems } from '../../config/managerNavItems';
+import {
+  adminNavItemsGrouped,
+  managerNavItemsGrouped,
+} from '../../config/adminNavItemsGrouped';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 import {
   bicycleGamificationService,
   type HiddenGemPayload,
@@ -331,7 +334,7 @@ export default function ManagerBicycleGamificationPage() {
   const [hiddenGemLongitude, setHiddenGemLongitude] = useState('');
   const [hiddenGemRewardPoints, setHiddenGemRewardPoints] = useState('10');
 
-  const navItems = isAdmin ? adminNavItems : managerNavItems;
+  const groupedNavItems = isAdmin ? adminNavItemsGrouped : managerNavItemsGrouped;
 
   useEffect(() => {
     if (!isAllowed) {
@@ -909,23 +912,8 @@ export default function ManagerBicycleGamificationPage() {
             </button>
           </div>
 
-          <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.id === 'bicycles';
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.path)}
-                  type="button"
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
+          <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+            <AdminSidebar groupedItems={groupedNavItems} />
           </nav>
 
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">

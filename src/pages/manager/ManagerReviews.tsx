@@ -17,7 +17,8 @@ import { authService } from '../../services/authService';
 import { reviewService } from '../../services/reviewService';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
-import { managerNavItems } from '../../config/managerNavItems';
+import { managerNavItemsGrouped } from '../../config/adminNavItemsGrouped';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 
 type FilterStatus = 'all' | 'responded' | 'pending';
 
@@ -97,7 +98,7 @@ export default function ManagerReviews() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
-  const navItems = managerNavItems;
+  const groupedNavItems = managerNavItemsGrouped;
 
   const loadReviews = async () => {
     try {
@@ -211,24 +212,8 @@ export default function ManagerReviews() {
           </button>
         </div>
 
-        <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.id === 'reviews';
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.path)}
-                type="button"
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+          <AdminSidebar groupedItems={groupedNavItems} />
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
