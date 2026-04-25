@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   DollarSign,
   Receipt,
+  UtensilsCrossed,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -141,7 +142,9 @@ export const adminNavItemsGrouped: AdminNavSection[] = [
 ];
 
 // Flat list for backward compatibility
-export const adminNavItems = adminNavItemsGrouped.flatMap(section => section.items);
+export const adminNavItems = adminNavItemsGrouped.flatMap(
+  (section) => section.items,
+);
 
 // Manager Navigation (Grouped)
 export const managerNavItemsGrouped: AdminNavSection[] = [
@@ -176,6 +179,12 @@ export const managerNavItemsGrouped: AdminNavSection[] = [
         label: "Dịch vụ địa phương",
         icon: Sparkles,
         path: "/manager/experiences",
+      },
+      {
+        id: "dining",
+        label: "Ăn uống",
+        icon: UtensilsCrossed,
+        path: "/manager/dining",
       },
       {
         id: "travel-guides",
@@ -237,6 +246,12 @@ export const staffNavItemsGrouped: AdminNavSection[] = [
         label: "Bookings",
         icon: CalendarDays,
         path: "/staff/bookings",
+      },
+      {
+        id: "dining",
+        label: "Bếp - Đơn món",
+        icon: UtensilsCrossed,
+        path: "/staff/dining/orders",
       },
       {
         id: "bicycles",
