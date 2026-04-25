@@ -60,9 +60,26 @@ export default function ReviewModal({ bookingId, homestayName, existing, onClose
   });
   const [comment, setComment] = useState(existing?.comment ?? '');
   const [saving, setSaving] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   const setRating = (key: keyof typeof ratings, val: number) =>
     setRatings(prev => ({ ...prev, [key]: val }));
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.currentTarget.files || []);
+    setSelectedFiles(files);
+    
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviews(newPreviews);
+  };
+
+  const removeImage = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newPreviews = previews.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+    setPreviews(newPreviews);
+  };
 
   const validate = () => {
     for (const key of RATING_KEYS) {
@@ -83,7 +100,7 @@ export default function ReviewModal({ bookingId, homestayName, existing, onClose
     setSaving(true);
     try {
       if (isEdit && existing) {
-        const payload: UpdateReviewPayload = { ...ratings, comment };
+        const payload: UpdateReviewPayload = { ...ratings, comment, imageFiles: selectedFiles };
         const res = await reviewService.update(existing.id, payload);
         if (res.success) {
           toast.success(res.message);
@@ -92,7 +109,7 @@ export default function ReviewModal({ bookingId, homestayName, existing, onClose
           toast.error(res.message);
         }
       } else {
-        const payload: CreateReviewPayload = { bookingId: bookingId!, ...ratings, comment };
+        const payload: CreateReviewPayload = { bookingId: bookingId!, ...ratings, comment, imageFiles: selectedFiles };
         const res = await reviewService.create(payload);
         if (res.success) {
           toast.success(res.message);
@@ -148,6 +165,49 @@ export default function ReviewModal({ bookingId, homestayName, existing, onClose
               placeholder="Chia sẻ trải nghiệm của bạn..."
               className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
             />
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Hình ảnh (Tùy chọn)</label>
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-cyan-500 transition-colors cursor-pointer">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="image-input"
+              />
+              <label htmlFor="image-input" className="cursor-pointer block">
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium text-cyan-600">Chọn ảnh</span> hoặc kéo thả
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Tối đa 5 ảnh, định dạng PNG/JPG/WebP</p>
+              </label>
+            </div>
+
+            {/* Image Previews */}
+            {previews.length > 0 && (
+              <div className="grid grid-cols-4 gap-2 mt-3">
+                {previews.map((preview, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-20 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {isEdit && (
