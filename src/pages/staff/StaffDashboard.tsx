@@ -4,7 +4,6 @@ import {
   AlertCircle,
   ArrowDownRight,
   ArrowUpRight,
-  Bell,
   CheckCircle,
   Clock,
   Home,
@@ -21,6 +20,7 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { staffNavItems } from '../../config/staffNavItems';
 import { toast } from 'sonner';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
+import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
 
 interface DashboardStats {
   todayCheckIns: number;
@@ -320,10 +320,7 @@ export default function StaffDashboard() {
                 <p className="text-sm text-gray-500">Quản lý công việc hàng ngày</p>
               </div>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
-              <Bell className="w-6 h-6 text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <BackofficeNotificationBell />
           </div>
         </header>
 
