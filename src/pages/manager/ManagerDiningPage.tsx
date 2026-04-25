@@ -322,39 +322,52 @@ export default function ManagerDiningPage() {
                     <Plus className="w-4 h-4" /> Tạo món mới
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      value={comboName}
-                      onChange={(e) => setComboName(e.target.value)}
-                      placeholder="Tên món"
-                      className="px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    />
-                    <input
-                      value={comboPrice}
-                      onChange={(e) => setComboPrice(Number(e.target.value))}
-                      type="number"
-                      min={0}
-                      placeholder="Giá (VND)"
-                      className="px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    />
-                    <input
-                      value={comboMaxPeople}
-                      onChange={(e) => setComboMaxPeople(Number(e.target.value))}
-                      type="number"
-                      min={1}
-                      placeholder="Số người tối đa"
-                      className="px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    />
-                    <input
-                      value={comboDesc}
-                      onChange={(e) => setComboDesc(e.target.value)}
-                      placeholder="Mô tả"
-                      className="px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                    />
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Tên món <span className="text-red-500">*</span></label>
+                      <input
+                        value={comboName}
+                        onChange={(e) => setComboName(e.target.value)}
+                        placeholder="VD: Cơm gà xối mỡ"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Giá (VNĐ) <span className="text-red-500">*</span></label>
+                      <input
+                        value={comboPrice}
+                        onChange={(e) => setComboPrice(Number(e.target.value))}
+                        type="number"
+                        min={0}
+                        placeholder="VD: 150000"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Phục vụ tối đa (người) <span className="text-red-500">*</span></label>
+                      <input
+                        value={comboMaxPeople}
+                        onChange={(e) => setComboMaxPeople(Number(e.target.value))}
+                        type="number"
+                        min={1}
+                        placeholder="VD: 4"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Mô tả</label>
+                      <input
+                        value={comboDesc}
+                        onChange={(e) => setComboDesc(e.target.value)}
+                        placeholder="VD: Gà ta, cơm trắng, rau sống"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                      />
+                    </div>
                     <div className="md:col-span-2">
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Ảnh món ăn</label>
                       <label className="flex items-center gap-3 px-3 py-2 border border-dashed border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50">
                         <ImageIcon className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-700">
-                          {comboImage ? comboImage.name : "Chọn ảnh (multipart/form-data, key ImageFile)"}
+                          {comboImage ? comboImage.name : "Nhấn để chọn ảnh (JPG, PNG...)"}
                         </span>
                         <input
                           type="file"
@@ -397,22 +410,27 @@ export default function ManagerDiningPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <div className="font-bold text-gray-900 truncate">{c.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className="font-bold text-gray-900 truncate">{c.name}</div>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${c.isActive ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>
+                                  {c.isActive ? "Đang hiển thị" : "Đã ẩn"}
+                                </span>
+                              </div>
                               <div className="text-sm text-gray-600 mt-1 line-clamp-2">{c.description}</div>
-                              <div className="text-sm text-gray-700 mt-2">
+                              <div className="text-sm text-gray-700 mt-2 flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
                                   {Number(c.price || 0).toLocaleString("vi-VN")}đ
                                 </span>
-                                <span className="text-gray-400"> • </span>
-                                <span>Tối đa {c.maxPeople} người</span>
+                                <span className="text-gray-400">•</span>
+                                <span>Phục vụ tối đa {c.maxPeople} người</span>
                               </div>
                             </div>
                             <div className="flex flex-col items-end gap-3">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-500">Hiển thị</span>
+                                <span className="text-xs text-gray-500">Hiển thị cho khách</span>
                                 <Switch checked={c.isActive} onCheckedChange={() => toggleCombo(c.id)} />
                               </div>
-                              <label className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">
+                              <label className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer underline underline-offset-2">
                                 Đổi ảnh
                                 <input
                                   type="file"
@@ -438,17 +456,17 @@ export default function ManagerDiningPage() {
                 <div className="mb-4">
                   <h2 className="text-lg font-bold text-gray-900">Khung giờ phục vụ</h2>
                   <p className="text-sm text-gray-500">
-                    CutoffHours = khách phải đặt trước bao nhiêu giờ.
+                    Mỗi khung giờ có sức chứa tối đa và thời gian chốt đặt trước.
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-gray-200 p-4 bg-gray-50 mb-5">
                   <div className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Plus className="w-4 h-4" /> Tạo khung giờ
+                    <Plus className="w-4 h-4" /> Tạo khung giờ mới
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                      <div className="text-xs text-gray-600 mb-1">Giờ</div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Giờ phục vụ <span className="text-red-500">*</span></label>
                       <input
                         value={slotStartTime}
                         onChange={(e) => setSlotStartTime(e.target.value)}
@@ -457,7 +475,7 @@ export default function ManagerDiningPage() {
                       />
                     </div>
                     <div>
-                      <div className="text-xs text-gray-600 mb-1">Sức chứa</div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Sức chứa tối đa (đơn) <span className="text-red-500">*</span></label>
                       <input
                         value={slotMaxCapacity}
                         onChange={(e) => setSlotMaxCapacity(Number(e.target.value))}
@@ -467,7 +485,7 @@ export default function ManagerDiningPage() {
                       />
                     </div>
                     <div>
-                      <div className="text-xs text-gray-600 mb-1">Cutoff (giờ)</div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Đặt trước tối thiểu (giờ) <span className="text-red-500">*</span></label>
                       <input
                         value={slotCutoffHours}
                         onChange={(e) => setSlotCutoffHours(Number(e.target.value))}
@@ -475,6 +493,7 @@ export default function ManagerDiningPage() {
                         min={0}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
                       />
+                      <p className="text-xs text-gray-400 mt-1">VD: 2 = khách phải đặt trước 2 tiếng</p>
                     </div>
                   </div>
                   <button
@@ -494,17 +513,16 @@ export default function ManagerDiningPage() {
                   ) : (
                     slots.map((s: any) => {
                       const id = String(s?.id ?? s?.Id ?? "");
-                      const startTime = String(s?.startTime ?? s?.StartTime ?? "");
+                      const startTime = String(s?.startTime ?? s?.StartTime ?? "").slice(0, 5);
                       const maxCapacity = Number(s?.maxCapacity ?? s?.MaxCapacity ?? 0);
                       const cutoffHours = Number(s?.cutoffHours ?? s?.CutoffHours ?? 0);
                       return (
                         <div key={id} className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-4">
                           <div>
-                            <div className="font-bold text-gray-900">{startTime}</div>
-                            <div className="text-sm text-gray-600 mt-1">
-                              Sức chứa: <span className="font-semibold">{maxCapacity}</span>
-                              <span className="text-gray-400"> • </span>
-                              Cutoff: <span className="font-semibold">{cutoffHours}h</span>
+                            <div className="font-bold text-gray-900 text-lg">{startTime}</div>
+                            <div className="text-sm text-gray-600 mt-1 space-y-0.5">
+                              <div>Tối đa <span className="font-semibold">{maxCapacity}</span> đơn / khung giờ</div>
+                              <div>Khách phải đặt trước <span className="font-semibold">{cutoffHours} tiếng</span></div>
                             </div>
                           </div>
                           <button

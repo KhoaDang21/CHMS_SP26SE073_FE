@@ -185,7 +185,7 @@ export default function BookingDiningPage() {
                       Đặt món ăn
                     </h1>
                     <p className="text-sm text-gray-600 mt-1">
-                      Không cần thanh toán. Hệ thống sẽ ghi nợ vào hóa đơn phòng (CHARGE_TO_ROOM).
+                      Không cần thanh toán ngay. Tiền sẽ được cộng vào hóa đơn phòng khi checkout.
                     </p>
                   </div>
                   <div className="text-right text-sm text-gray-500">
@@ -240,7 +240,7 @@ export default function BookingDiningPage() {
                         className={`px-4 py-2 rounded-xl font-semibold border ${serveLocation === "ROOM"
                           ? "bg-cyan-50 text-cyan-800 border-cyan-200"
                           : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                        }`}
+                          }`}
                       >
                         Phòng
                       </button>
@@ -250,7 +250,7 @@ export default function BookingDiningPage() {
                         className={`px-4 py-2 rounded-xl font-semibold border ${serveLocation === "BEACH"
                           ? "bg-cyan-50 text-cyan-800 border-cyan-200"
                           : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                        }`}
+                          }`}
                       >
                         Bãi biển
                       </button>
@@ -276,7 +276,7 @@ export default function BookingDiningPage() {
                             className={`text-left rounded-2xl border p-4 transition-all ${active
                               ? "border-cyan-300 bg-cyan-50 shadow-sm"
                               : "border-gray-200 bg-white hover:bg-gray-50"
-                            }`}
+                              }`}
                           >
                             <div className="flex gap-4">
                               <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
@@ -330,13 +330,12 @@ export default function BookingDiningPage() {
                             disabled={disabled}
                             onClick={() => setSelectedSlotId(s.id)}
                             title={disabled ? (s.disableReason || "Không khả dụng") : `Còn ${s.remainingCapacity} suất`}
-                            className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-all ${
-                              disabled
-                                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                : active
-                                  ? "bg-cyan-50 text-cyan-800 border-cyan-200"
-                                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                            }`}
+                            className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-all ${disabled
+                              ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                              : active
+                                ? "bg-cyan-50 text-cyan-800 border-cyan-200"
+                                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                              }`}
                           >
                             <div>{timeLabel(s.startTime)}</div>
                             <div className={`text-xs mt-1 ${disabled ? "text-gray-400" : "text-gray-500"}`}>
@@ -433,28 +432,26 @@ export default function BookingDiningPage() {
                               </div>
                               <div className="flex flex-col items-end gap-2">
                                 <span
-                                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                                    status === "SERVED"
-                                      ? "bg-green-100 text-green-700 border-green-200"
-                                      : status === "PREPARING"
-                                        ? "bg-blue-100 text-blue-700 border-blue-200"
-                                        : status === "CANCELLED"
-                                          ? "bg-gray-100 text-gray-600 border-gray-200"
-                                          : "bg-yellow-100 text-yellow-700 border-yellow-200"
-                                  }`}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${status === "SERVED"
+                                    ? "bg-green-100 text-green-700 border-green-200"
+                                    : status === "PREPARING"
+                                      ? "bg-blue-100 text-blue-700 border-blue-200"
+                                      : status === "CANCELLED"
+                                        ? "bg-gray-100 text-gray-600 border-gray-200"
+                                        : "bg-yellow-100 text-yellow-700 border-yellow-200"
+                                    }`}
                                 >
-                                  {status || "—"}
+                                  {status === "SERVED" ? "Đã phục vụ" : status === "PREPARING" ? "Đang làm" : status === "CANCELLED" ? "Đã hủy" : "Chờ xác nhận"}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => cancelOrder(id)}
                                   disabled={!canCancel}
-                                  title={!canCancel ? "Chỉ hủy được khi đang PENDING" : ""}
-                                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
-                                    canCancel
-                                      ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                                      : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                  }`}
+                                  title={!canCancel ? "Chỉ hủy được khi đang chờ xác nhận" : "Hủy đơn và hoàn tiền vào hóa đơn phòng"}
+                                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${canCancel
+                                    ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                    : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                    }`}
                                 >
                                   <XCircle className="w-4 h-4" />
                                   Hủy
@@ -470,15 +467,11 @@ export default function BookingDiningPage() {
 
               <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
                 <div className="text-sm text-gray-600">
-                  <div className="font-semibold text-gray-900 mb-2">Gợi ý</div>
+                  <div className="font-semibold text-gray-900 mb-2">Lưu ý</div>
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
-                      <span className="mt-1 w-2 h-2 rounded-full bg-cyan-500" />
-                      <span>Khung giờ bị mờ là do hết chỗ hoặc quá giờ đặt (tooltip sẽ hiện lý do).</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 w-2 h-2 rounded-full bg-cyan-500" />
-                      <span>Hủy món sau Cutoff sẽ bị BE trả lỗi HTTP 400.</span>
+                      <span className="mt-1 w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0" />
+                      <span>Chỉ hủy được khi đơn đang "Chờ xác nhận" và chưa quá giờ chốt.</span>
                     </li>
                   </ul>
                 </div>
