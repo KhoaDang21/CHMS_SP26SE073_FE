@@ -12,7 +12,6 @@ import {
   MessageSquare,
   ShieldCheck,
   DollarSign,
-  UtensilsCrossed,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -107,6 +106,12 @@ export const adminNavItemsGrouped: AdminNavSection[] = [
         icon: DollarSign,
         path: "/admin/refunds",
       },
+      {
+        id: "invoices",
+        label: "Quản lý Hoá đơn",
+        icon: Receipt,
+        path: "/admin/invoices",
+      },
     ],
   },
   {
@@ -135,7 +140,9 @@ export const adminNavItemsGrouped: AdminNavSection[] = [
 ];
 
 // Flat list for backward compatibility
-export const adminNavItems = adminNavItemsGrouped.flatMap(section => section.items);
+export const adminNavItems = adminNavItemsGrouped.flatMap(
+  (section) => section.items,
+);
 
 // Manager Navigation (Grouped)
 export const managerNavItemsGrouped: AdminNavSection[] = [

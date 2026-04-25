@@ -23,6 +23,7 @@ import CustomerManagement from '../pages/admin/CustomerManagement';
 import RevenueReport from '../pages/admin/RevenueReport';
 import TicketManagement from '../pages/admin/TicketManagement';
 import PromotionManagement from '../pages/admin/PromotionManagement';
+import InvoiceManagement from '../pages/admin/InvoiceManagement';
 import StaffBookings from '../pages/staff/StaffBookings';
 import StaffReviews from '../pages/staff/StaffReviews';
 import StaffTickets from '../pages/staff/StaffTickets';
@@ -451,6 +452,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <CancellationPoliciesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/invoices"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <InvoiceManagement />
           </ProtectedRoute>
         }
       />

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  Bell,
   CheckCircle2,
   Clock,
   Home,
@@ -30,6 +29,7 @@ import {
   type StaffTicketStatus,
 } from '../../services/staffTicketService';
 import { subscribeTicketRealtimeEvents } from '../../services/ticketRealtimeService';
+import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
 
 type FilterStatus = 'all' | StaffTicketStatus;
 
@@ -535,10 +535,7 @@ export default function StaffTickets() {
                 <p className="text-sm text-gray-500">Xử lý ticket hỗ trợ theo dạng chat giữa 2 vai trò</p>
               </div>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
-              <Bell className="w-6 h-6 text-gray-600" />
-              {stats.open > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
-            </button>
+            <BackofficeNotificationBell />
           </div>
         </header>
 

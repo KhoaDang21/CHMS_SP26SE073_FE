@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bell,
   Building2,
   Calendar,
   CheckCircle2,
@@ -19,6 +18,7 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
 import { managerNavItemsGrouped } from '../../config/adminNavItemsGrouped';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
 
 type FilterStatus = 'all' | 'responded' | 'pending';
 
@@ -249,10 +249,7 @@ export default function ManagerReviews() {
                 <p className="text-gray-600 text-sm">Xem review và phản hồi khách hàng</p>
               </div>
             </div>
-            <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg" type="button">
-              <Bell className="w-6 h-6" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <BackofficeNotificationBell iconClassName="w-6 h-6 text-gray-600" buttonClassName="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg" />
           </div>
         </header>
 

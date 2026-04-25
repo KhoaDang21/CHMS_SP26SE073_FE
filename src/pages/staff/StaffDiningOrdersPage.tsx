@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Bell,
   CheckCircle2,
   Clock,
   LogOut,
@@ -16,6 +15,7 @@ import { RoleBadge } from "../../components/common/RoleBadge";
 import { staffNavItems } from "../../config/staffNavItems";
 import { diningService } from "../../services/diningService";
 import type { DiningOrder } from "../../types/dining.types";
+import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
 
 const dateISO = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -181,10 +181,7 @@ export default function StaffDiningOrdersPage() {
                 <p className="text-sm text-gray-500">Chờ xác nhận → Đang làm → Đã phục vụ</p>
               </div>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
-              <Bell className="w-6 h-6 text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <BackofficeNotificationBell />
           </div>
         </header>
 

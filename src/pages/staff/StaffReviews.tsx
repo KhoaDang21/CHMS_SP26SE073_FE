@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bell,
   Calendar,
   CheckCircle2,
   Home,
@@ -19,6 +18,7 @@ import { reviewService } from '../../services/reviewService';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { staffNavItems } from '../../config/staffNavItems';
 import { toast } from 'sonner';
+import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
 
 type ReviewModerationStatus = 'pending' | 'approved' | 'rejected';
 type FilterStatus = 'all' | ReviewModerationStatus;
@@ -288,10 +288,7 @@ export default function StaffReviews() {
                 <p className="text-sm text-gray-500">Staff xem và xử lý review khách hàng</p>
               </div>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
-              <Bell className="w-6 h-6 text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <BackofficeNotificationBell />
           </div>
         </header>
 

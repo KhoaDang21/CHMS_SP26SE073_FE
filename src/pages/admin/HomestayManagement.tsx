@@ -493,8 +493,8 @@ export default function HomestayManagement() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedHomestay && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-xl mb-4">Xác nhận xóa</h3>
             <p className="text-gray-600 mb-6">
               Bạn có chắc chắn muốn xóa homestay <strong>{selectedHomestay.name}</strong>? 
