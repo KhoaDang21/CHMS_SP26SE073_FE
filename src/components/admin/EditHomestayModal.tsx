@@ -318,8 +318,11 @@ export default function EditHomestayModal({
   if (!isOpen || !homestay) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-sm p-4">
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Chỉnh sửa Homestay</h2>

@@ -12,7 +12,6 @@ import {
   AlertCircle,
   DollarSign,
   Building2,
-  Bell,
   MessageSquare,
   TrendingUp,
   ClipboardList,
@@ -28,6 +27,7 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { toast } from 'sonner';
 import { managerNavItemsGrouped } from '../../config/adminNavItemsGrouped';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
 
 interface DashboardStats {
   totalBookings: number;
@@ -437,10 +437,7 @@ export default function ManagerDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                <Bell className="w-6 h-6" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              <BackofficeNotificationBell iconClassName="w-6 h-6 text-gray-600" buttonClassName="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg" />
               <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                 <MessageSquare className="w-6 h-6" />
               </button>

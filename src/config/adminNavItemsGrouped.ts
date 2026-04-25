@@ -12,6 +12,7 @@ import {
   MessageSquare,
   ShieldCheck,
   DollarSign,
+  Receipt,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -105,6 +106,12 @@ export const adminNavItemsGrouped: AdminNavSection[] = [
         label: "Quản lý Hoàn Tiền",
         icon: DollarSign,
         path: "/admin/refunds",
+      },
+      {
+        id: "invoices",
+        label: "Quản lý Hoá đơn",
+        icon: Receipt,
+        path: "/admin/invoices",
       },
     ],
   },
