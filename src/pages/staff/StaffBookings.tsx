@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownRight,
   ArrowUpRight,
-  Bell,
   Calendar,
   ClipboardList,
   Download,
@@ -21,8 +20,6 @@ import { authService } from '../../services/authService';
 import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
 import { invoiceService, type Invoice } from '../../services/invoiceService';
-import { signalRService } from '../../services/signalRService';
-import { notificationService, type Notification } from '../../services/notificationService';
 import { Pagination } from '../../components/common/Pagination';
 import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
@@ -32,6 +29,7 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/src/style.css';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
 import { buildDisplaySpecialRequests } from '../../utils/bookingExperience';
+import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
 
 type FilterStatus = 'all' | 'checkin-today' | 'checkout-today' | 'confirmed' | 'completed';
 
@@ -87,8 +85,6 @@ export default function StaffBookings() {
   const [extendSubmitting, setExtendSubmitting] = useState(false);
   const [extendNotice, setExtendNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
-  const shownRealtimeNotifIdsRef = useRef<Set<string>>(new Set());
 
   const loadBookings = async () => {
     try {
@@ -106,63 +102,6 @@ export default function StaffBookings() {
   useEffect(() => {
     loadBookings();
   }, []);
-
-  useEffect(() => {
-    const token = authService.getToken();
-    const userId = currentUser?.id;
-    if (!token) return;
-
-    let isMounted = true;
-    let receiveHandler: ((notif: Notification) => void) | null = null;
-    let newHandler: ((notif: Notification) => void) | null = null;
-
-    notificationService.getUnreadCount()
-      .then((count) => {
-        if (isMounted) {
-          setUnreadNotificationCount(count);
-        }
-      })
-      .catch(() => {});
-
-    signalRService.connect(token).then((conn) => {
-      if (!isMounted || !conn) return;
-
-      if (userId) {
-        conn.invoke('JoinUserGroup', userId).catch(() => {});
-      }
-
-      const handleRealtimeNotification = (notif: Notification) => {
-        if (!notif?.id) return;
-        if (shownRealtimeNotifIdsRef.current.has(notif.id)) return;
-
-        shownRealtimeNotifIdsRef.current.add(notif.id);
-        if (!notif.isRead) {
-          setUnreadNotificationCount((prev) => prev + 1);
-        }
-
-        toast.success(notif.title || 'Thông báo mới', {
-          description: notif.content,
-        });
-      };
-
-      receiveHandler = handleRealtimeNotification;
-      newHandler = handleRealtimeNotification;
-      conn.on('ReceiveNotification', receiveHandler);
-      conn.on('NewNotification', newHandler);
-    }).catch(() => {});
-
-    return () => {
-      isMounted = false;
-      shownRealtimeNotifIdsRef.current.clear();
-      const conn = signalRService.getConnection();
-      if (receiveHandler) {
-        conn?.off('ReceiveNotification', receiveHandler);
-      }
-      if (newHandler) {
-        conn?.off('NewNotification', newHandler);
-      }
-    };
-  }, [currentUser?.id]);
 
   const filteredBookings = useMemo(() => {
     let filtered = [...bookings];
@@ -662,14 +601,7 @@ export default function StaffBookings() {
                 <p className="text-sm text-gray-500">Nhận phòng/Trả phòng khách hàng</p>
               </div>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
-              <Bell className="w-6 h-6 text-gray-600" />
-              {unreadNotificationCount > 0 && (
-                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold px-0.5">
-                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                </span>
-              )}
-            </button>
+            <BackofficeNotificationBell />
           </div>
         </header>
 

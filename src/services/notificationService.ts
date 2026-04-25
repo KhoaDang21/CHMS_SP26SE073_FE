@@ -28,7 +28,16 @@ export const notificationService = {
   async getAll(): Promise<Notification[]> {
     try {
       const res = await apiService.get<any>(apiConfig.endpoints.notifications.list);
-      const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      const list: any[] =
+        Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.result?.data)
+            ? res.result.data
+            : Array.isArray(res?.result)
+              ? res.result
+              : Array.isArray(res)
+                ? res
+                : [];
       return list.map(mapNotification);
     } catch (e) {
       console.error('getAll notifications error:', e);
@@ -40,7 +49,14 @@ export const notificationService = {
   async getUnreadCount(): Promise<number> {
     try {
       const res = await apiService.get<any>(apiConfig.endpoints.notifications.unreadCount);
-      return res?.data ?? res ?? 0;
+      const rawCount =
+        res?.data?.count ??
+        res?.data ??
+        res?.result?.count ??
+        res?.result ??
+        res;
+      const count = Number(rawCount);
+      return Number.isFinite(count) ? count : 0;
     } catch (e) {
       console.error('getUnreadCount error:', e);
       return 0;

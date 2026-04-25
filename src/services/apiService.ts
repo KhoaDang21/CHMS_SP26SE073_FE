@@ -115,6 +115,10 @@ class ApiService {
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {
+    // Nếu là FormData, dùng upload method để tránh JSON.stringify
+    if (data instanceof FormData) {
+      return this.upload<T>(endpoint, data);
+    }
     return this.request<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -122,6 +126,28 @@ class ApiService {
   }
 
   async put<T>(endpoint: string, data?: any): Promise<T> {
+    // Nếu là FormData, xử lý như POST nhưng với method PUT
+    if (data instanceof FormData) {
+      const token = this.getToken();
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'PUT',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: data,
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          authService.clearAuthData();
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `HTTP Error: ${response.status}`);
+      }
+
+      return await response.json();
+    }
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data),
