@@ -4,9 +4,9 @@ import {
   Bell,
   CheckCircle2,
   Clock,
-  Home,
   LogOut,
   Menu,
+  RefreshCw,
   UtensilsCrossed,
   X,
 } from "lucide-react";
@@ -178,7 +178,7 @@ export default function StaffDiningOrdersPage() {
                   <UtensilsCrossed className="w-5 h-5 text-cyan-700" />
                   Đơn món trong ngày
                 </h2>
-                <p className="text-sm text-gray-500">PENDING → PREPARING → SERVED</p>
+                <p className="text-sm text-gray-500">Chờ xác nhận → Đang làm → Đã phục vụ</p>
               </div>
             </div>
             <button className="p-2 hover:bg-gray-100 rounded-lg relative" type="button">
@@ -204,7 +204,7 @@ export default function StaffDiningOrdersPage() {
               type="button"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black font-semibold"
             >
-              <Home className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4" />
               Làm mới
             </button>
           </div>
@@ -265,7 +265,7 @@ export default function StaffDiningOrdersPage() {
                                       : "bg-yellow-100 text-yellow-700 border-yellow-200"
                                 }`}
                               >
-                                {isServed ? "SERVED" : isPreparing ? "PREPARING" : "PENDING"}
+                                {isServed ? "Đã phục vụ" : isPreparing ? "Đang làm" : "Chờ xác nhận"}
                               </span>
                             </div>
 
@@ -281,9 +281,9 @@ export default function StaffDiningOrdersPage() {
                                       ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                                 }`}
-                                title={!canGoToPending(st) ? "BE cấm lùi về PENDING sau PREPARING" : ""}
+                                title={!canGoToPending(st) ? "Không thể lùi về chờ sau khi đã bắt đầu làm" : ""}
                               >
-                                PENDING
+                                Chờ xác nhận
                               </button>
                               <button
                                 onClick={() => setStatus(o, "PREPARING")}
@@ -297,7 +297,7 @@ export default function StaffDiningOrdersPage() {
                                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                                 }`}
                               >
-                                PREPARING
+                                Đang làm
                               </button>
                               <button
                                 onClick={() => setStatus(o, "SERVED")}
@@ -309,7 +309,7 @@ export default function StaffDiningOrdersPage() {
                                     : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                                 }`}
                               >
-                                SERVED
+                                Đã phục vụ
                               </button>
                             </div>
                           </div>

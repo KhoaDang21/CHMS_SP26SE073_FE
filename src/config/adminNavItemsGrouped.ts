@@ -12,6 +12,7 @@ import {
   MessageSquare,
   ShieldCheck,
   DollarSign,
+  UtensilsCrossed,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -171,6 +172,12 @@ export const managerNavItemsGrouped: AdminNavSection[] = [
         path: "/manager/experiences",
       },
       {
+        id: "dining",
+        label: "Ăn uống",
+        icon: UtensilsCrossed,
+        path: "/manager/dining",
+      },
+      {
         id: "travel-guides",
         label: "Cẩm nang du lịch",
         icon: BookOpen,
@@ -230,6 +237,12 @@ export const staffNavItemsGrouped: AdminNavSection[] = [
         label: "Bookings",
         icon: CalendarDays,
         path: "/staff/bookings",
+      },
+      {
+        id: "dining",
+        label: "Bếp - Đơn món",
+        icon: UtensilsCrossed,
+        path: "/staff/dining/orders",
       },
       {
         id: "bicycles",
