@@ -12,6 +12,8 @@ import {
   MessageSquare,
   ShieldCheck,
   DollarSign,
+  Receipt,
+  UtensilsCrossed,
 } from "lucide-react";
 
 export interface AdminNavItem {
