@@ -9,6 +9,7 @@ import {
   UserCog,
   Users,
   Bike,
+  Package,
 } from 'lucide-react';
 
 export const managerNavItems = [
@@ -16,6 +17,7 @@ export const managerNavItems = [
   { id: 'bookings', label: 'Đơn đặt phòng', icon: Calendar, path: '/manager/bookings' },
   { id: 'experiences', label: 'Dịch vụ địa phương', icon: Sparkles, path: '/manager/experiences' },
   { id: 'dining', label: 'Ăn uống', icon: UtensilsCrossed, path: '/manager/dining' },
+  { id: 'equipment', label: 'Đồ dùng & mượn', icon: Package, path: '/manager/equipment' },
   { id: 'travel-guides', label: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides' },
   { id: 'customers', label: 'Khách hàng', icon: Users, path: '/manager/customers' },
   { id: 'staff', label: 'Nhân viên', icon: UserCog, path: '/manager/staff' },
