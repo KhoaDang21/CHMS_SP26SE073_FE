@@ -14,6 +14,7 @@ import {
   DollarSign,
   Receipt,
   UtensilsCrossed,
+  Package,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -185,6 +186,12 @@ export const managerNavItemsGrouped: AdminNavSection[] = [
         label: "Ăn uống",
         icon: UtensilsCrossed,
         path: "/manager/dining",
+      },
+      {
+        id: "equipment",
+        label: "Đồ dùng",
+        icon: Package,
+        path: "/manager/equipment",
       },
       {
         id: "travel-guides",

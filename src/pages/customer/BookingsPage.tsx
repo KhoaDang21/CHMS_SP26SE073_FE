@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X, ShieldCheck, UtensilsCrossed } from 'lucide-react';
+import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X, ShieldCheck, UtensilsCrossed, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
@@ -465,6 +465,15 @@ export default function BookingsPage() {
                             >
                               <UtensilsCrossed className="w-4 h-4" />
                               Đặt món
+                            </button>
+                          )}
+                          {b.status === 'CHECKED_IN' && (
+                            <button
+                              onClick={() => navigate('/customer/equipment')}
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
+                            >
+                              <Package className="w-4 h-4" />
+                              Mượn đồ dùng
                             </button>
                           )}
                           {(() => {
