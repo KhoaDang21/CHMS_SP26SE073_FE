@@ -399,5 +399,25 @@ export const apiConfig = {
       deleteSeasonalPricing: (homestayId: string, priceId: string) =>
         `/api/admin/homestays/${homestayId}/seasonal-pricing/${priceId}`,
     },
+    equipment: {
+      manager: {
+        list: (homestayId: string) => `/api/manager/equipment/${homestayId}`,
+        create: '/api/manager/equipment',
+        update: (equipmentId: string) => `/api/manager/equipment/${equipmentId}`,
+        delete: (equipmentId: string) => `/api/manager/equipment/${equipmentId}`,
+      },
+      customer: {
+        list: (homestayId: string) => `/api/customer/equipment/${homestayId}`,
+        borrow: '/api/customer/equipment/borrow',
+        cancelBorrow: (borrowId: string) => `/api/customer/equipment/borrow/${borrowId}/cancel`,
+        borrowHistory: (bookingId: string) => `/api/customer/equipment/borrow-history/${bookingId}`,
+      },
+      staff: {
+        requests: (homestayId: string) => `/api/staff/equipment/requests/${homestayId}`,
+        confirmBorrow: (borrowId: string) => `/api/staff/equipment/borrow/${borrowId}/confirm`,
+        recordReturn: (borrowId: string) => `/api/staff/equipment/borrow/${borrowId}/return`,
+        activeBorrows: (homestayId: string) => `/api/staff/equipment/active-borrows/${homestayId}`,
+      },
+    },
   },
 };

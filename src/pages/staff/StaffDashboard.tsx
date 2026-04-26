@@ -17,7 +17,7 @@ import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService } from '../../services/extraChargeService';
 import type { Booking } from '../../types/booking.types';
 import { RoleBadge } from '../../components/common/RoleBadge';
-import { staffNavItems } from '../../config/staffNavItems';
+import { staffNavItemsGrouped } from '../../config/staffNavItems';
 import { toast } from 'sonner';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
 import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
@@ -191,11 +191,12 @@ export default function StaffDashboard() {
     }
   };
 
-  const navigationItems = staffNavItems.map((item) => ({
-    name: item.label,
-    icon: item.icon,
-    path: item.path,
-    active: item.path === '/staff/dashboard',
+  const navigationSections = staffNavItemsGrouped.map((section) => ({
+    section: section.section,
+    items: section.items.map((item) => ({
+      ...item,
+      active: item.path === '/staff/dashboard',
+    })),
   }));
 
   const getTaskIcon = (type: TodayTask['type']) => {
@@ -260,23 +261,30 @@ export default function StaffDashboard() {
             </button>
           </div>
 
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => navigate(item.path)}
-                  type="button"
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    item.active ? 'bg-white/20 text-white font-medium' : 'text-cyan-100 hover:bg-white/10'
-                  }`}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span>{item.name}</span>
-                </button>
-              );
-            })}
+          <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+            {navigationSections.map((section) => (
+              <div key={section.section} className="space-y-1">
+                <h3 className="px-4 text-xs font-bold text-cyan-200 uppercase tracking-wider">
+                  {section.section}
+                </h3>
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => navigate(item.path)}
+                      type="button"
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                        item.active ? 'bg-white/20 text-white font-medium' : 'text-cyan-100 hover:bg-white/10'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
           <div className="p-6 border-t border-cyan-500/30">
