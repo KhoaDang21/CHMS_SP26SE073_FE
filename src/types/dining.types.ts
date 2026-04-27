@@ -17,6 +17,7 @@ export interface DiningTimeSlot {
   id: string;
   homestayId: string;
   startTime: string; // "18:00:00"
+  endTime: string; // "19:00:00"
   maxCapacity: number;
   cutoffHours: number;
 }
@@ -35,6 +36,7 @@ export interface DiningOrder {
   imageUrl?: string;
   orderDate: string; // ISO
   startTime: string; // "18:00:00"
+  endTime?: string; // "19:00:00"
   serveLocation: string;
   status: string;
   price: number;
