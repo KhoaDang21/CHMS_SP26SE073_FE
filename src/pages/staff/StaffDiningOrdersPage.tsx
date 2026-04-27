@@ -25,7 +25,28 @@ const timeLabel = (startTime: string) => {
   return v.slice(0, 5);
 };
 
-const canGoToPending = (current: string) => String(current || "").toUpperCase() !== "PREPARING";
+// Check if can transition to a given status
+const canTransition = (current: string, target: string): boolean => {
+  const st = String(current || "").toUpperCase();
+  const tgt = String(target || "").toUpperCase();
+
+  // Cannot transition to same status
+  if (st === tgt) return false;
+
+  // Once SERVED (final state), cannot transition
+  if (st === "SERVED") return false;
+
+  // Cannot go back to PENDING from any other status
+  if (tgt === "PENDING") return false;
+
+  // PENDING can go to PREPARING or SERVED
+  if (st === "PENDING" && (tgt === "PREPARING" || tgt === "SERVED")) return true;
+
+  // PREPARING can only go to SERVED
+  if (st === "PREPARING" && tgt === "SERVED") return true;
+
+  return false;
+};
 
 export default function StaffDiningOrdersPage() {
   const navigate = useNavigate();
@@ -74,8 +95,13 @@ export default function StaffDiningOrdersPage() {
 
   const setStatus = async (order: DiningOrder, status: "PENDING" | "PREPARING" | "SERVED") => {
     const current = String(order.status || "").toUpperCase();
-    if (status === "PENDING" && !canGoToPending(current)) {
-      toast.error("Đã PREPARING thì không được lùi về PENDING");
+    if (!canTransition(current, status)) {
+      const reason = current === "SERVED"
+        ? "Đơn đã phục vụ, không thể thay đổi"
+        : status === "PENDING"
+          ? "Không thể lùi về chờ xác nhận"
+          : "Thao tác này không hợp lệ";
+      toast.error(reason);
       return;
     }
     try {
@@ -99,9 +125,8 @@ export default function StaffDiningOrdersPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-br from-cyan-600 to-blue-700 text-white transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-br from-cyan-600 to-blue-700 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } lg:translate-x-0`}
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-cyan-500/30">
@@ -132,9 +157,8 @@ export default function StaffDiningOrdersPage() {
                       key={item.id}
                       onClick={() => navigate(item.path)}
                       type="button"
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        item.active ? "bg-white/20 text-white font-medium" : "text-cyan-100 hover:bg-white/10"
-                      }`}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${item.active ? "bg-white/20 text-white font-medium" : "text-cyan-100 hover:bg-white/10"
+                        }`}
                     >
                       <Icon className="w-5 h-5 flex-shrink-0" />
                       <span>{item.label}</span>
@@ -262,13 +286,12 @@ export default function StaffDiningOrdersPage() {
                                 {!!o.note && <div className="text-xs text-gray-500 mt-1 line-clamp-2">Ghi chú: {o.note}</div>}
                               </div>
                               <span
-                                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                                  isServed
-                                    ? "bg-green-100 text-green-700 border-green-200"
-                                    : isPreparing
-                                      ? "bg-blue-100 text-blue-700 border-blue-200"
-                                      : "bg-yellow-100 text-yellow-700 border-yellow-200"
-                                }`}
+                                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${isServed
+                                  ? "bg-green-100 text-green-700 border-green-200"
+                                  : isPreparing
+                                    ? "bg-blue-100 text-blue-700 border-blue-200"
+                                    : "bg-yellow-100 text-yellow-700 border-yellow-200"
+                                  }`}
                               >
                                 {isServed ? "Đã phục vụ" : isPreparing ? "Đang làm" : "Chờ xác nhận"}
                               </span>
@@ -277,42 +300,41 @@ export default function StaffDiningOrdersPage() {
                             <div className="mt-4 flex flex-wrap gap-2">
                               <button
                                 onClick={() => setStatus(o, "PENDING")}
-                                disabled={!isPending && !canGoToPending(st)}
+                                disabled={!canTransition(st, "PENDING")}
                                 type="button"
-                                className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
-                                  isPending
-                                    ? "bg-yellow-50 text-yellow-800 border-yellow-200"
-                                    : !canGoToPending(st)
-                                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                                }`}
-                                title={!canGoToPending(st) ? "Không thể lùi về chờ sau khi đã bắt đầu làm" : ""}
+                                className={`px-3 py-2 rounded-lg text-sm font-semibold border ${isPending
+                                  ? "bg-yellow-50 text-yellow-800 border-yellow-200"
+                                  : !canTransition(st, "PENDING")
+                                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                  }`}
+                                title={!canTransition(st, "PENDING") ? "Không thể lùi về chờ sau khi đã tiến hành" : ""}
                               >
                                 Chờ xác nhận
                               </button>
                               <button
                                 onClick={() => setStatus(o, "PREPARING")}
-                                disabled={isPreparing || isServed}
+                                disabled={!canTransition(st, "PREPARING")}
                                 type="button"
-                                className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
-                                  isPreparing
-                                    ? "bg-blue-50 text-blue-800 border-blue-200"
-                                    : isServed
-                                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                                }`}
+                                className={`px-3 py-2 rounded-lg text-sm font-semibold border ${isPreparing
+                                  ? "bg-blue-50 text-blue-800 border-blue-200"
+                                  : !canTransition(st, "PREPARING")
+                                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                  }`}
                               >
                                 Đang làm
                               </button>
                               <button
                                 onClick={() => setStatus(o, "SERVED")}
-                                disabled={isServed}
+                                disabled={!canTransition(st, "SERVED")}
                                 type="button"
-                                className={`px-3 py-2 rounded-lg text-sm font-semibold border ${
-                                  isServed
-                                    ? "bg-green-50 text-green-800 border-green-200"
+                                className={`px-3 py-2 rounded-lg text-sm font-semibold border ${isServed
+                                  ? "bg-green-50 text-green-800 border-green-200"
+                                  : !canTransition(st, "SERVED")
+                                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                     : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                                }`}
+                                  }`}
                               >
                                 Đã phục vụ
                               </button>

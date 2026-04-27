@@ -458,7 +458,7 @@ export default function BookingsPage() {
                               Thêm dịch vụ
                             </button>
                           )}
-                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
+                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && new Date(b.checkOut) > new Date() && (
                             <button
                               onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
