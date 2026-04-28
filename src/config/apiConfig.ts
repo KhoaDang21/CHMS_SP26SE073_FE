@@ -69,6 +69,13 @@ export const apiConfig = {
       cancelAndRefund: "/api/bookings/cancel",
       previewRefund: (id: string) => `/api/bookings/${id}/preview-refund`,
     },
+    groupBooking: {
+      searchCombination: "/api/customer/group-booking/search-combination",
+      create: "/api/customer/group-booking/create",
+      detail: (id: string) => `/api/customer/group-booking/${id}`,
+      calculate: "/api/customer/group-booking/calculate",
+      cancel: (id: string) => `/api/customer/group-booking/${id}/cancel`,
+    },
     cancellationPolicies: {
       list: "/api/admin/cancellation-policies",
       publicList: "/api/admin/cancellation-policies", // customer dùng cùng endpoint, BE không restrict

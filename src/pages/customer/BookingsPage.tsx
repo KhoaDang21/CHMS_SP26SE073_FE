@@ -4,6 +4,7 @@ import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, Che
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
+import { groupBookingService, type GroupBooking } from '../../services/groupBookingService';
 import { reviewService, type Review } from '../../services/reviewService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
 import { refundService, type PendingRefund } from '../../services/refundService';
@@ -26,6 +27,14 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
   return value;
 };
 
+type BookingListItem = {
+  key: string;
+  kind: 'single' | 'group';
+  representative: Booking;
+  bookings: Booking[];
+  groupBookingId?: string | null;
+};
+
 export default function BookingsPage() {
   const navigate = useNavigate();
   const pageSize = 10;
@@ -38,6 +47,9 @@ export default function BookingsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [refundPreview, setRefundPreview] = useState<{ estimatedRefund: number; message: string } | null>(null);
   const [myRefundsMap, setMyRefundsMap] = useState<Record<string, PendingRefund>>({});
+  const [selectedGroupBooking, setSelectedGroupBooking] = useState<{ groupBookingId: string; bookings: Booking[] } | null>(null);
+  const [groupBookingDetail, setGroupBookingDetail] = useState<GroupBooking | null>(null);
+  const [groupDetailLoading, setGroupDetailLoading] = useState(false);
 
   const [editMode, setEditMode] = useState(false);
   const [editCheckIn, setEditCheckIn] = useState('');
@@ -73,6 +85,46 @@ export default function BookingsPage() {
     if (!key) return undefined;
     return homestayMap[key] || homestayMap[key.toLowerCase()];
   };
+
+  const bookingItems = useMemo<BookingListItem[]>(() => {
+    const groupedMap = new Map<string, Booking[]>();
+    const items: BookingListItem[] = [];
+
+    bookings.forEach((booking) => {
+      const groupBookingId = booking.groupBookingId?.trim();
+      if (!groupBookingId) {
+        items.push({
+          key: `booking-${booking.id}`,
+          kind: 'single',
+          representative: booking,
+          bookings: [booking],
+        });
+        return;
+      }
+
+      const groupBookings = groupedMap.get(groupBookingId) ?? [];
+      groupBookings.push(booking);
+      groupedMap.set(groupBookingId, groupBookings);
+    });
+
+    const seenGroups = new Set<string>();
+    bookings.forEach((booking) => {
+      const groupBookingId = booking.groupBookingId?.trim();
+      if (!groupBookingId || seenGroups.has(groupBookingId)) return;
+
+      seenGroups.add(groupBookingId);
+      const groupBookings = groupedMap.get(groupBookingId) ?? [booking];
+      items.push({
+        key: `group-${groupBookingId}`,
+        kind: 'group',
+        groupBookingId,
+        representative: groupBookings[0] ?? booking,
+        bookings: groupBookings,
+      });
+    });
+
+    return items;
+  }, [bookings]);
 
   const load = async () => {
     setLoading(true);
@@ -135,14 +187,15 @@ export default function BookingsPage() {
   }, [activeTab]);
 
   const filtered = useMemo(() => {
-    if (activeTab === 'all') return bookings;
-    if (activeTab === 'pending') return bookings.filter(b => b.status === 'PENDING');
-    if (activeTab === 'confirmed') return bookings.filter(b => b.status === 'CONFIRMED');
-    if (activeTab === 'staying') return bookings.filter(b => b.status === 'CHECKED_IN');
-    if (activeTab === 'completed') return bookings.filter(b => b.status === 'COMPLETED');
-    if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED' || b.status === 'REJECTED');
-    return bookings;
-  }, [bookings, activeTab]);
+    const source = bookingItems;
+    if (activeTab === 'all') return source;
+    if (activeTab === 'pending') return source.filter(item => item.representative.status === 'PENDING');
+    if (activeTab === 'confirmed') return source.filter(item => item.representative.status === 'CONFIRMED');
+    if (activeTab === 'staying') return source.filter(item => item.representative.status === 'CHECKED_IN');
+    if (activeTab === 'completed') return source.filter(item => item.representative.status === 'COMPLETED');
+    if (activeTab === 'cancelled') return source.filter(item => item.representative.status === 'CANCELLED' || item.representative.status === 'REJECTED');
+    return source;
+  }, [bookingItems, activeTab]);
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -158,6 +211,8 @@ export default function BookingsPage() {
 
   const openDetail = async (b: Booking) => {
     setSelected(b);
+    setSelectedGroupBooking(null);
+    setGroupBookingDetail(null);
     setEditMode(false);
     setRefundPreview(null);
     setDetailLoading(true);
@@ -181,6 +236,24 @@ export default function BookingsPage() {
       toast.error('Không thể tải chi tiết booking');
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const openGroupDetail = async (groupBookingId: string, bookingsInGroup: Booking[]) => {
+    setSelected(null);
+    setSelectedGroupBooking({ groupBookingId, bookings: bookingsInGroup });
+    setGroupBookingDetail(null);
+    setGroupDetailLoading(true);
+
+    try {
+      const detail = await groupBookingService.getGroupBookingDetail(groupBookingId);
+      setGroupBookingDetail(detail);
+    } catch (error) {
+      console.error('Load group booking detail error:', error);
+      toast.error('Không thể tải chi tiết đơn group booking');
+      setGroupBookingDetail(null);
+    } finally {
+      setGroupDetailLoading(false);
     }
   };
 
@@ -327,197 +400,225 @@ export default function BookingsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {paginated.map(b => (
-                <div
-                  key={b.id}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-                >
-                  <div className="flex flex-col">
-                    {/* Image section - full width on mobile, fixed height */}
-                    <div className="relative h-48 sm:h-56 bg-gray-100 overflow-hidden">
-                      {(() => {
-                        const hs = getHomestayById(b.homestayId);
-                        const img = hs?.images?.[0] || b.homestayImage || '';
-                        const alt = hs?.name || cleanLoadingText(b.homestayName) || 'Homestay';
-                        return (
-                          <ImageWithFallback
-                            src={img}
-                            alt={alt}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                        );
-                      })()}
-                      {/* Status badge on image */}
-                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
-                        <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
-                          {getStatusText(b.status)}
-                        </span>
-                        {/* Payment status badges */}
-                        {b.status === 'PENDING' && b.paymentStatus === 'UNPAID' && typeof b.depositAmount === 'number' && b.depositAmount > 0 && (
-                          <span title={`Cọc ${b.depositPercentage || 20}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
-                            Cọc: {b.depositAmount.toLocaleString('vi-VN')}đ
-                          </span>
-                        )}
-                        {b.status === 'CONFIRMED' && b.paymentStatus === 'DEPOSIT_PAID' && (
-                          <span title={`Còn lại: ${(b.remainingAmount || 0).toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
-                            Còn lại: {(b.remainingAmount || 0).toLocaleString('vi-VN')}đ
-                          </span>
-                        )}
-                        {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && b.paymentStatus === 'FULLY_PAID' && (
-                          <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Thanh toán đủ
-                          </span>
-                        )}
-                      </div>
-                      {/* Homestay icon */}
-                      <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm">
-                        <Home className="w-4 h-4 text-blue-500" />
-                        <span className="text-sm font-medium text-gray-700">Homestay</span>
-                      </div>
-                    </div>
+              {paginated.map((item) => {
+                const b = item.representative;
+                const isGroup = item.kind === 'group';
+                const cardTotalPrice = isGroup
+                  ? item.bookings.reduce((sum, booking) => sum + (booking.totalPrice || 0), 0)
+                  : (b.totalPrice ?? 0);
+                const cardGuests = isGroup
+                  ? item.bookings.reduce((sum, booking) => sum + (booking.guestsCount || 0), 0)
+                  : b.guestsCount;
+                const homestayLabels = item.bookings
+                  .map((booking) => cleanLoadingText(booking.homestayName) || getHomestayById(booking.homestayId)?.name || 'Homestay')
+                  .filter(Boolean);
 
-                    {/* Content section */}
-                    <div className="p-5">
-                      {/* Title and location */}
-                      <div className="mb-4">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">
-                          {(() => {
-                            const hs = getHomestayById(b.homestayId);
-                            const name = hs?.name || cleanLoadingText(b.homestayName);
-                            return name || 'Homestay';
-                          })()}
-                        </h3>
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="line-clamp-1">
-                            {(() => {
+                return (
+                  <div
+                    key={item.key}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
+                  >
+                    <div className="flex flex-col">
+                      <div className="relative h-48 sm:h-56 bg-gray-100 overflow-hidden">
+                        {(() => {
+                          const hs = getHomestayById(b.homestayId);
+                          const img = hs?.images?.[0] || b.homestayImage || '';
+                          const alt = hs?.name || cleanLoadingText(b.homestayName) || 'Homestay';
+                          return (
+                            <ImageWithFallback
+                              src={img}
+                              alt={alt}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          );
+                        })()}
+                        <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+                          {isGroup && (
+                            <span className="px-3 py-1.5 text-xs rounded-full font-semibold border border-cyan-200 bg-cyan-100 text-cyan-700 shadow-sm">
+                              Group booking
+                            </span>
+                          )}
+                          <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
+                            {getStatusText(b.status)}
+                          </span>
+                          {b.status === 'PENDING' && b.paymentStatus === 'UNPAID' && typeof b.depositAmount === 'number' && b.depositAmount > 0 && (
+                            <span title={`Cọc ${b.depositPercentage || 20}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                              Cọc: {b.depositAmount.toLocaleString('vi-VN')}đ
+                            </span>
+                          )}
+                          {b.status === 'CONFIRMED' && b.paymentStatus === 'DEPOSIT_PAID' && (
+                            <span title={`Còn lại: ${(b.remainingAmount || 0).toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                              Còn lại: {(b.remainingAmount || 0).toLocaleString('vi-VN')}đ
+                            </span>
+                          )}
+                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && b.paymentStatus === 'FULLY_PAID' && (
+                            <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm flex items-center gap-1">
+                              <Check className="w-3 h-3" /> Thanh toán đủ
+                            </span>
+                          )}
+                        </div>
+                        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm">
+                          <Home className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm font-medium text-gray-700">Homestay</span>
+                        </div>
+                      </div>
+
+                      <div className="p-5">
+                        <div className="mb-4">
+                          <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">
+                            {isGroup ? 'Đơn group booking' : (() => {
                               const hs = getHomestayById(b.homestayId);
-                              if (hs?.address) return hs.address;
-                              const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
-                              if (cityCountry) return cityCountry;
-                              return 'Đang cập nhật';
+                              const name = hs?.name || cleanLoadingText(b.homestayName);
+                              return name || 'Homestay';
                             })()}
-                          </span>
+                          </h3>
+                          {isGroup && homestayLabels.length > 0 && (
+                            <div className="text-sm text-cyan-700 font-medium line-clamp-2 mb-1">
+                              {homestayLabels.join(' · ')}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            <span className="line-clamp-1">
+                              {(() => {
+                                const hs = getHomestayById(b.homestayId);
+                                if (hs?.address) return hs.address;
+                                const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
+                                if (cityCountry) return cityCountry;
+                                return 'Đang cập nhật';
+                              })()}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Booking details grid */}
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-gray-600 mb-1">
-                            <Calendar className="w-4 h-4" />
-                            <span className="text-xs">Check-in</span>
-                          </div>
-                          <div className="font-semibold text-gray-900 text-sm">
-                            {new Date(b.checkIn).toLocaleDateString('vi-VN')}
-                          </div>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-gray-600 mb-1">
-                            <Calendar className="w-4 h-4" />
-                            <span className="text-xs">Check-out</span>
-                          </div>
-                          <div className="font-semibold text-gray-900 text-sm">
-                            {new Date(b.checkOut).toLocaleDateString('vi-VN')}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Guests and nights */}
-                      <div className="flex items-center justify-between mb-4 text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Users className="w-4 h-4" />
-                          <span>{b.guestsCount} khách</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Clock className="w-4 h-4" />
-                          <span>{nights(b.checkIn, b.checkOut)} đêm</span>
-                        </div>
-                      </div>
-
-                      {/* Price and actions */}
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                        {typeof b.totalPrice === 'number' ? (
-                          <div>
-                            <div className="text-xs text-gray-500">Tổng tiền</div>
-                            <div className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
-                              {b.totalPrice.toLocaleString('vi-VN')}đ
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-gray-600 mb-1">
+                              <Calendar className="w-4 h-4" />
+                              <span className="text-xs">Check-in</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {new Date(b.checkIn).toLocaleDateString('vi-VN')}
                             </div>
                           </div>
-                        ) : (
-                          <div></div>
-                        )}
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-gray-600 mb-1">
+                              <Calendar className="w-4 h-4" />
+                              <span className="text-xs">Check-out</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {new Date(b.checkOut).toLocaleDateString('vi-VN')}
+                            </div>
+                          </div>
+                        </div>
 
-                        <div className="flex items-center gap-2">
-                          {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
-                            <button
-                              onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
-                            >
-                              <Plus className="w-4 h-4" />
-                              Thêm dịch vụ
-                            </button>
+                        <div className="flex items-center justify-between mb-4 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Users className="w-4 h-4" />
+                            <span>{cardGuests} khách</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Clock className="w-4 h-4" />
+                            <span>{nights(b.checkIn, b.checkOut)} đêm</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                          {typeof cardTotalPrice === 'number' ? (
+                            <div>
+                              <div className="text-xs text-gray-500">Tổng tiền</div>
+                              <div className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
+                                {cardTotalPrice.toLocaleString('vi-VN')}đ
+                              </div>
+                            </div>
+                          ) : (
+                            <div />
                           )}
-                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
-                            <button
-                              onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
-                            >
-                              <UtensilsCrossed className="w-4 h-4" />
-                              Đặt món
-                            </button>
-                          )}
-                          {b.status === 'CHECKED_IN' && (
-                            <button
-                              onClick={() => navigate('/customer/equipment')}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
-                            >
-                              <Package className="w-4 h-4" />
-                              Mượn đồ dùng
-                            </button>
-                          )}
-                          {(() => {
-                            const existing = myReviewsMap[b.id];
-                            if (existing) {
-                              return (
+
+                          <div className="flex items-center gap-2">
+                            {isGroup ? (
+                              <button
+                                type="button"
+                                onClick={() => openGroupDetail(item.groupBookingId || '', item.bookings)}
+                                className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
+                              >
+                                Chi tiết nhóm
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <>
+                                {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
+                                  <button
+                                    onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                    Thêm dịch vụ
+                                  </button>
+                                )}
+                                {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
+                                  <button
+                                    onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
+                                  >
+                                    <UtensilsCrossed className="w-4 h-4" />
+                                    Đặt món
+                                  </button>
+                                )}
+                                {b.status === 'CHECKED_IN' && (
+                                  <button
+                                    onClick={() => navigate('/customer/equipment')}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
+                                  >
+                                    <Package className="w-4 h-4" />
+                                    Mượn đồ dùng
+                                  </button>
+                                )}
+                                {(() => {
+                                  const existing = myReviewsMap[b.id];
+                                  if (existing) {
+                                    return (
+                                      <button
+                                        onClick={() => setEditingReview(existing)}
+                                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
+                                      >
+                                        <Star className="w-4 h-4 text-yellow-400" />
+                                        Đã đánh giá
+                                      </button>
+                                    );
+                                  }
+                                  if (b.status === 'COMPLETED') {
+                                    return (
+                                      <button
+                                        onClick={() => setReviewingBooking({
+                                          id: b.id,
+                                          homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
+                                        })}
+                                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
+                                      >
+                                        <Star className="w-4 h-4" />
+                                        Đánh giá
+                                      </button>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                                 <button
-                                  onClick={() => setEditingReview(existing)}
-                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
+                                  onClick={() => openDetail(b)}
+                                  className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
                                 >
-                                  <Star className="w-4 h-4 text-yellow-400" />
-                                  Đã đánh giá
+                                  Chi tiết
+                                  <ChevronRight className="w-4 h-4" />
                                 </button>
-                              );
-                            }
-                            if (b.status === 'COMPLETED') {
-                              return (
-                                <button
-                                  onClick={() => setReviewingBooking({
-                                    id: b.id,
-                                    homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
-                                  })}
-                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
-                                >
-                                  <Star className="w-4 h-4" />
-                                  Đánh giá
-                                </button>
-                              );
-                            }
-                            return null;
-                          })()}
-                          <button
-                            onClick={() => openDetail(b)}
-                            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
-                          >
-                            Chi tiết
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -528,6 +629,124 @@ export default function BookingsPage() {
             pageSize={pageSize}
             onPageChange={setCurrentPage}
           />
+
+          {selectedGroupBooking && (
+            <div
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+              onClick={() => {
+                if (!groupDetailLoading) {
+                  setSelectedGroupBooking(null);
+                  setGroupBookingDetail(null);
+                }
+              }}
+            >
+              <div
+                className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden my-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-5 border-b border-gray-100 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-lg font-bold text-gray-900">Chi tiết đơn group booking</div>
+                    <div className="text-sm text-gray-500 mt-1 break-all">{selectedGroupBooking.groupBookingId}</div>
+                  </div>
+                  <button
+                    className="p-2 rounded-lg hover:bg-gray-50"
+                    onClick={() => {
+                      if (!groupDetailLoading) {
+                        setSelectedGroupBooking(null);
+                        setGroupBookingDetail(null);
+                      }
+                    }}
+                  >
+                    <XCircle className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+                  {groupDetailLoading ? (
+                    <div className="text-center py-8">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                      <p className="mt-2 text-gray-600">Đang tải chi tiết group booking...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 mb-2">Tổng quan</div>
+                          <div className="space-y-2 text-sm text-gray-700">
+                            <div className="flex items-center justify-between gap-3"><span>Mã group</span><strong className="break-all text-right">{groupBookingDetail?.id || selectedGroupBooking.groupBookingId}</strong></div>
+                            <div className="flex items-center justify-between gap-3"><span>Trạng thái</span><strong>{groupBookingDetail?.status || '—'}</strong></div>
+                            <div className="flex items-center justify-between gap-3"><span>Nhận phòng</span><strong>{groupBookingDetail?.checkIn ? new Date(groupBookingDetail.checkIn).toLocaleDateString('vi-VN') : '—'}</strong></div>
+                            <div className="flex items-center justify-between gap-3"><span>Trả phòng</span><strong>{groupBookingDetail?.checkOut ? new Date(groupBookingDetail.checkOut).toLocaleDateString('vi-VN') : '—'}</strong></div>
+                            <div className="flex items-center justify-between gap-3"><span>Tổng khách</span><strong>{groupBookingDetail?.totalGuestCount ?? selectedGroupBooking.bookings.reduce((sum, booking) => sum + booking.guestsCount, 0)}</strong></div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 mb-2">Thanh toán</div>
+                          <div className="space-y-2 text-sm text-gray-700">
+                            <div className="flex items-center justify-between gap-3"><span>Tổng tiền</span><strong>{typeof groupBookingDetail?.totalPrice === 'number' ? `${groupBookingDetail.totalPrice.toLocaleString('vi-VN')}đ` : '—'}</strong></div>
+                            <div className="flex items-center justify-between gap-3"><span>Đặt cọc</span><strong>{typeof groupBookingDetail?.depositAmount === 'number' ? `${groupBookingDetail.depositAmount.toLocaleString('vi-VN')}đ` : '—'}</strong></div>
+                            <div className="flex items-center justify-between gap-3"><span>Còn lại</span><strong>{typeof groupBookingDetail?.remainingAmount === 'number' ? `${groupBookingDetail.remainingAmount.toLocaleString('vi-VN')}đ` : '—'}</strong></div>
+                            <div className="flex items-center justify-between gap-3"><span>Số đơn con</span><strong>{selectedGroupBooking.bookings.length}</strong></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900 mb-3">Danh sách homestay trong group</div>
+                        <div className="space-y-3">
+                          {(groupBookingDetail?.homestays?.length ? groupBookingDetail.homestays : selectedGroupBooking.bookings.map((booking) => ({ homestayId: booking.homestayId, roomCount: 1 }))).map((item, index) => {
+                            const homestay = getHomestayById(item.homestayId);
+                            return (
+                              <div key={`${item.homestayId}-${index}`} className="rounded-xl border border-gray-200 p-4 flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-gray-900 line-clamp-1">{homestay?.name || item.homestayId}</div>
+                                  <div className="text-xs text-gray-500 mt-1">Số phòng: {item.roomCount ?? 1}</div>
+                                </div>
+                                <div className="text-xs text-gray-500 text-right">
+                                  {homestay?.address || 'Đang cập nhật'}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900 mb-3">Các booking con</div>
+                        <div className="space-y-3">
+                          {selectedGroupBooking.bookings.map((booking) => (
+                            <div key={booking.id} className="rounded-xl border border-gray-200 p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                              <div>
+                                <div className="font-semibold text-gray-900 line-clamp-1">{cleanLoadingText(booking.homestayName) || getHomestayById(booking.homestayId)?.name || 'Homestay'}</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {new Date(booking.checkIn).toLocaleDateString('vi-VN')} - {new Date(booking.checkOut).toLocaleDateString('vi-VN')} · {booking.guestsCount} khách
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(booking.status)}`}>
+                                  {getStatusText(booking.status)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => openDetail(booking)}
+                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
+                                >
+                                  Xem chi tiết
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Detail drawer/modal - giữ nguyên phần này từ code trước */}
           {selected && (

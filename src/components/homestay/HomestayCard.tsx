@@ -11,9 +11,10 @@ interface Props {
   homestay: Homestay;
   onBook?: () => void;
   isBooked?: boolean;
+  showBookButton?: boolean;
 }
 
-export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
+export default function HomestayCard({ homestay, onBook, isBooked, showBookButton = true }: Props) {
   const navigate = useNavigate();
   const { favorites, loading: favLoading, toggle } = useWishlist();
   const isLoggedIn = authService.isAuthenticated();
@@ -137,19 +138,21 @@ export default function HomestayCard({ homestay, onBook, isBooked }: Props) {
         </div>
       </Link>
 
-      {/* Book button — luôn ở đáy */}
-      <div className="px-4 pb-4 mt-auto">
-        <button
-          onClick={isBooked ? undefined : (onBook ?? (() => navigate(`/homestays/${homestay.id}`)))}
-          disabled={isBooked}
-          className={`w-full px-4 py-2 rounded-lg transition-all text-sm font-medium ${isBooked
-            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
-            }`}
-        >
-          {isBooked ? 'Đã đặt trong khoảng này' : 'Đặt Ngay'}
-        </button>
-      </div>
+      {/* Actions — luôn ở đáy */}
+      {showBookButton && (
+        <div className="px-4 pb-4 mt-auto">
+          <button
+            onClick={isBooked ? undefined : (onBook ?? (() => navigate(`/homestays/${homestay.id}`)))}
+            disabled={isBooked}
+            className={`w-full px-4 py-2 rounded-lg transition-all text-sm font-medium ${isBooked
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
+              }`}
+          >
+            {isBooked ? 'Đã đặt trong khoảng này' : 'Đặt Ngay'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
