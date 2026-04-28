@@ -4,7 +4,7 @@ import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, Che
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
-import { groupBookingService, type GroupBooking } from '../../services/groupBookingService';
+import { type GroupBooking } from '../../services/groupBookingService';
 import { reviewService, type Review } from '../../services/reviewService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
 import { refundService, type PendingRefund } from '../../services/refundService';
@@ -49,7 +49,7 @@ export default function BookingsPage() {
   const [myRefundsMap, setMyRefundsMap] = useState<Record<string, PendingRefund>>({});
   const [selectedGroupBooking, setSelectedGroupBooking] = useState<{ groupBookingId: string; bookings: Booking[] } | null>(null);
   const [groupBookingDetail, setGroupBookingDetail] = useState<GroupBooking | null>(null);
-  const [groupDetailLoading, setGroupDetailLoading] = useState(false);
+  const [groupDetailLoading] = useState(false);
 
   const [editMode, setEditMode] = useState(false);
   const [editCheckIn, setEditCheckIn] = useState('');
@@ -87,40 +87,35 @@ export default function BookingsPage() {
   };
 
   const bookingItems = useMemo<BookingListItem[]>(() => {
-    const groupedMap = new Map<string, Booking[]>();
     const items: BookingListItem[] = [];
+    const seenGroups = new Set<string>();
 
+    // Duyệt theo thứ tự bookings (đã sort mới nhất trước), thêm vào items giữ nguyên thứ tự
     bookings.forEach((booking) => {
       const groupBookingId = booking.groupBookingId?.trim();
+
       if (!groupBookingId) {
+        // Là đơn đơn → thêm trực tiếp
         items.push({
           key: `booking-${booking.id}`,
           kind: 'single',
           representative: booking,
           bookings: [booking],
         });
-        return;
+      } else if (!seenGroups.has(groupBookingId)) {
+        // Lần đầu gặp group này → thêm group
+        seenGroups.add(groupBookingId);
+
+        // Tìm tất cả bookings của group này
+        const groupBookings = bookings.filter(b => b.groupBookingId?.trim() === groupBookingId);
+        items.push({
+          key: `group-${groupBookingId}`,
+          kind: 'group',
+          groupBookingId,
+          representative: groupBookings[0],
+          bookings: groupBookings,
+        });
       }
-
-      const groupBookings = groupedMap.get(groupBookingId) ?? [];
-      groupBookings.push(booking);
-      groupedMap.set(groupBookingId, groupBookings);
-    });
-
-    const seenGroups = new Set<string>();
-    bookings.forEach((booking) => {
-      const groupBookingId = booking.groupBookingId?.trim();
-      if (!groupBookingId || seenGroups.has(groupBookingId)) return;
-
-      seenGroups.add(groupBookingId);
-      const groupBookings = groupedMap.get(groupBookingId) ?? [booking];
-      items.push({
-        key: `group-${groupBookingId}`,
-        kind: 'group',
-        groupBookingId,
-        representative: groupBookings[0] ?? booking,
-        bookings: groupBookings,
-      });
     });
 
     return items;
@@ -236,24 +231,6 @@ export default function BookingsPage() {
       toast.error('Không thể tải chi tiết booking');
     } finally {
       setDetailLoading(false);
-    }
-  };
-
-  const openGroupDetail = async (groupBookingId: string, bookingsInGroup: Booking[]) => {
-    setSelected(null);
-    setSelectedGroupBooking({ groupBookingId, bookings: bookingsInGroup });
-    setGroupBookingDetail(null);
-    setGroupDetailLoading(true);
-
-    try {
-      const detail = await groupBookingService.getGroupBookingDetail(groupBookingId);
-      setGroupBookingDetail(detail);
-    } catch (error) {
-      console.error('Load group booking detail error:', error);
-      toast.error('Không thể tải chi tiết đơn group booking');
-      setGroupBookingDetail(null);
-    } finally {
-      setGroupDetailLoading(false);
     }
   };
 
@@ -435,7 +412,7 @@ export default function BookingsPage() {
                         <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
                           {isGroup && (
                             <span className="px-3 py-1.5 text-xs rounded-full font-semibold border border-cyan-200 bg-cyan-100 text-cyan-700 shadow-sm">
-                              Group booking
+                              Đơn đặt nhóm
                             </span>
                           )}
                           <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
@@ -604,7 +581,8 @@ export default function BookingsPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
 
