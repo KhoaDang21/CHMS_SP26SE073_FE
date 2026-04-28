@@ -11,6 +11,23 @@ import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
 const dateISO = (d: Date) => d.toISOString().slice(0, 10);
 const timeLabel = (startTime: string) => String(startTime || "").slice(0, 5);
+const timeRangeLabel = (start: string, end?: string) => {
+  const s = timeLabel(start);
+  const e = timeLabel(end || "");
+  return e ? `${s} - ${e}` : s;
+};
+
+const toDateOnly = (iso: string) => new Date(`${String(iso).slice(0, 10)}T00:00:00`);
+const addDaysISO = (iso: string, delta: number) => {
+  const d = toDateOnly(iso);
+  d.setDate(d.getDate() + delta);
+  return dateISO(d);
+};
+const clampDateISO = (value: string, min: string, max: string) => {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+};
 
 export default function BookingDiningPage() {
   const { bookingId } = useParams();
@@ -37,6 +54,20 @@ export default function BookingDiningPage() {
     return Array.isArray(anyOrders) ? anyOrders : [];
   }, [booking]);
 
+  const dateBounds = useMemo(() => {
+    const today = dateISO(new Date());
+    const checkIn = String((booking as any)?.checkIn ?? (booking as any)?.CheckIn ?? "");
+    const checkOut = String((booking as any)?.checkOut ?? (booking as any)?.CheckOut ?? "");
+
+    // Allowed dining dates: [checkIn, checkOut) (exclude checkout day)
+    const maxStayDate = checkOut ? addDaysISO(checkOut, -1) : "";
+    const minAllowed = checkIn ? (today > checkIn ? today : checkIn) : today;
+    const maxAllowed = maxStayDate || today;
+
+    const expired = !!maxStayDate && today > maxStayDate;
+    return { today, checkIn, checkOut, minAllowed, maxAllowed, expired };
+  }, [booking]);
+
   const load = async () => {
     if (!bookingId) {
       toast.error("Không tìm thấy mã booking");
@@ -60,6 +91,15 @@ export default function BookingDiningPage() {
       const comboList = await diningService.customerGetCombos(detail.homestayId);
       setCombos(comboList);
       if (!selectedComboId && comboList.length > 0) setSelectedComboId(comboList[0].id);
+
+      // Clamp selected date to valid range once booking loaded
+      const today = dateISO(new Date());
+      const checkIn = String((detail as any)?.checkIn ?? (detail as any)?.CheckIn ?? "");
+      const checkOut = String((detail as any)?.checkOut ?? (detail as any)?.CheckOut ?? "");
+      const maxStayDate = checkOut ? addDaysISO(checkOut, -1) : "";
+      const minAllowed = checkIn ? (today > checkIn ? today : checkIn) : today;
+      const maxAllowed = maxStayDate || today;
+      setDate((prev) => clampDateISO(prev || minAllowed, minAllowed, maxAllowed));
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Không thể tải dữ liệu đặt món");
@@ -92,11 +132,11 @@ export default function BookingDiningPage() {
   }, [bookingId]);
 
   useEffect(() => {
-    if (booking?.homestayId && date) {
+    if (booking?.homestayId && date && !dateBounds.expired) {
       loadSlots(booking.homestayId, date);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booking?.homestayId, date]);
+  }, [booking?.homestayId, date, dateBounds.expired]);
 
   const selectedCombo = useMemo(
     () => combos.find((c) => c.id === selectedComboId) ?? null,
@@ -109,6 +149,14 @@ export default function BookingDiningPage() {
 
   const placeOrder = async () => {
     if (!bookingId || !booking) return;
+    if (dateBounds.expired) {
+      toast.error("Booking đã quá hạn lưu trú, không thể đặt món.");
+      return;
+    }
+    if (date < dateBounds.minAllowed || date > dateBounds.maxAllowed) {
+      toast.error("Ngày phục vụ không hợp lệ (đã qua hạn hoặc ngoài thời gian lưu trú).");
+      return;
+    }
     if (!selectedComboId) {
       toast.error("Vui lòng chọn món");
       return;
@@ -226,10 +274,21 @@ export default function BookingDiningPage() {
                     <div className="text-sm font-semibold text-gray-900 mb-2">Chọn ngày</div>
                     <input
                       value={date}
-                      onChange={(e) => setDate(e.target.value)}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setDate(clampDateISO(next, dateBounds.minAllowed, dateBounds.maxAllowed));
+                      }}
                       type="date"
+                      min={dateBounds.minAllowed}
+                      max={dateBounds.maxAllowed}
+                      disabled={dateBounds.expired}
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white"
                     />
+                    {dateBounds.expired && (
+                      <div className="text-xs text-red-600 mt-2">
+                        Booking đã quá hạn lưu trú, không thể đặt món.
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-gray-900 mb-2">Vị trí phục vụ</div>
@@ -377,7 +436,7 @@ export default function BookingDiningPage() {
 
                 <button
                   onClick={placeOrder}
-                  disabled={submitting || !selectedComboId || !selectedSlotId}
+                  disabled={submitting || !selectedComboId || !selectedSlotId || dateBounds.expired}
                   type="button"
                   className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold hover:from-blue-700 hover:to-cyan-700 disabled:opacity-60"
                 >
@@ -419,7 +478,7 @@ export default function BookingDiningPage() {
                               <div className="flex-1 min-w-0">
                                 <div className="font-bold text-gray-900 truncate">{o?.comboName ?? o?.ComboName ?? "Combo"}</div>
                                 <div className="text-sm text-gray-600 mt-1">
-                                  {String(o?.orderDate ?? o?.OrderDate ?? "").slice(0, 10)} • {timeLabel(String(o?.startTime ?? o?.StartTime ?? ""))}
+                                  {String(o?.orderDate ?? o?.OrderDate ?? "").slice(0, 10)} • {timeRangeLabel(String(o?.startTime ?? o?.StartTime ?? ""), String(o?.endTime ?? o?.EndTime ?? ""))}
                                 </div>
                                 <div className="text-sm text-gray-600 mt-1">
                                   {String(o?.serveLocation ?? o?.ServeLocation ?? "") === "BEACH" ? "Bãi biển" : "Phòng"}

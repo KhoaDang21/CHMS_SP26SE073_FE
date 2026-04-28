@@ -4,6 +4,7 @@ import type {
   AvailableDiningTimeSlot,
   DiningCombo,
   DiningOrder,
+  DiningTimeSlot,
   DiningServeLocation,
 } from "../types/dining.types";
 
@@ -45,12 +46,22 @@ const mapSlot = (item: any): AvailableDiningTimeSlot => ({
   disableReason: pick(item, "disableReason", "DisableReason"),
 });
 
+const mapTimeSlot = (item: any): DiningTimeSlot => ({
+  id: asString(pick(item, "id", "Id")),
+  homestayId: asString(pick(item, "homestayId", "HomestayId")),
+  startTime: normalizeTimeSpan(pick(item, "startTime", "StartTime")),
+  endTime: normalizeTimeSpan(pick(item, "endTime", "EndTime")),
+  maxCapacity: Number(pick(item, "maxCapacity", "MaxCapacity") ?? 0),
+  cutoffHours: Number(pick(item, "cutoffHours", "CutoffHours") ?? 0),
+});
+
 const mapOrder = (item: any): DiningOrder => ({
   id: asString(pick(item, "id", "Id")),
   comboName: asString(pick(item, "comboName", "ComboName")),
   imageUrl: pick(item, "imageUrl", "ImageUrl"),
   orderDate: asString(pick(item, "orderDate", "OrderDate")),
   startTime: normalizeTimeSpan(pick(item, "startTime", "StartTime")),
+  endTime: normalizeTimeSpan(pick(item, "endTime", "EndTime")),
   serveLocation: asString(pick(item, "serveLocation", "ServeLocation")),
   status: asString(pick(item, "status", "Status")),
   price: Number(pick(item, "price", "Price") ?? 0),
@@ -117,16 +128,18 @@ export const diningService = {
     return true;
   },
 
-  async managerGetSlots(homestayId: string): Promise<any[]> {
+  async managerGetSlots(homestayId: string): Promise<DiningTimeSlot[]> {
     const res = await apiService.get<any>(
       apiConfig.endpoints.dining.manager.slotsByHomestay(homestayId),
     );
-    return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    return list.map(mapTimeSlot);
   },
 
   async managerCreateSlot(payload: {
     homestayId: string;
     startTime: string; // "18:00:00"
+    endTime: string; // "19:00:00"
     maxCapacity: number;
     cutoffHours: number;
   }): Promise<any> {
@@ -135,6 +148,7 @@ export const diningService = {
       {
         homestayId: payload.homestayId,
         startTime: payload.startTime,
+        endTime: payload.endTime,
         maxCapacity: payload.maxCapacity,
         cutoffHours: payload.cutoffHours,
       },

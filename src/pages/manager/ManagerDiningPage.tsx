@@ -18,7 +18,7 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 import { managerHomestayService } from "../../services/managerHomestayService";
 import { diningService } from "../../services/diningService";
 import type { Homestay } from "../../types/homestay.types";
-import type { DiningCombo } from "../../types/dining.types";
+import type { DiningCombo, DiningTimeSlot } from "../../types/dining.types";
 import { Switch } from "../../components/ui/switch";
 
 const toTimeSpan = (hhmm: string) => {
@@ -39,7 +39,7 @@ export default function ManagerDiningPage() {
 
   const [loading, setLoading] = useState(true);
   const [combos, setCombos] = useState<DiningCombo[]>([]);
-  const [slots, setSlots] = useState<any[]>([]);
+  const [slots, setSlots] = useState<DiningTimeSlot[]>([]);
 
   const [creatingCombo, setCreatingCombo] = useState(false);
   const [comboName, setComboName] = useState("");
@@ -50,6 +50,7 @@ export default function ManagerDiningPage() {
 
   const [creatingSlot, setCreatingSlot] = useState(false);
   const [slotStartTime, setSlotStartTime] = useState("18:00");
+  const [slotEndTime, setSlotEndTime] = useState("19:00");
   const [slotMaxCapacity, setSlotMaxCapacity] = useState<number>(10);
   const [slotCutoffHours, setSlotCutoffHours] = useState<number>(2);
 
@@ -176,8 +177,13 @@ export default function ManagerDiningPage() {
   const createSlot = async () => {
     if (!homestayId) return;
     const startTime = toTimeSpan(slotStartTime);
+    const endTime = toTimeSpan(slotEndTime);
     if (!startTime) {
       toast.error("Vui lòng chọn giờ");
+      return;
+    }
+    if (!endTime) {
+      toast.error("Vui lòng chọn giờ kết thúc");
       return;
     }
     if (slotMaxCapacity <= 0) {
@@ -194,6 +200,7 @@ export default function ManagerDiningPage() {
       await diningService.managerCreateSlot({
         homestayId,
         startTime,
+        endTime,
         maxCapacity: slotMaxCapacity,
         cutoffHours: slotCutoffHours,
       });
@@ -211,7 +218,7 @@ export default function ManagerDiningPage() {
     try {
       await diningService.managerDeleteSlot(slotId);
       toast.success("Đã xóa khung giờ");
-      setSlots((prev) => prev.filter((s) => String(s?.id ?? s?.Id) !== String(slotId)));
+      setSlots((prev) => prev.filter((s) => String(s.id) !== String(slotId)));
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Không thể xóa khung giờ");
@@ -475,6 +482,15 @@ export default function ManagerDiningPage() {
                       />
                     </div>
                     <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Giờ kết thúc <span className="text-red-500">*</span></label>
+                      <input
+                        value={slotEndTime}
+                        onChange={(e) => setSlotEndTime(e.target.value)}
+                        type="time"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
                       <label className="text-xs font-medium text-gray-600 mb-1 block">Sức chứa tối đa (đơn) <span className="text-red-500">*</span></label>
                       <input
                         value={slotMaxCapacity}
@@ -484,7 +500,7 @@ export default function ManagerDiningPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white"
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-3">
                       <label className="text-xs font-medium text-gray-600 mb-1 block">Đặt trước tối thiểu (giờ) <span className="text-red-500">*</span></label>
                       <input
                         value={slotCutoffHours}
@@ -511,15 +527,18 @@ export default function ManagerDiningPage() {
                   {slots.length === 0 ? (
                     <div className="text-sm text-gray-500 text-center py-6">Chưa có khung giờ.</div>
                   ) : (
-                    slots.map((s: any) => {
-                      const id = String(s?.id ?? s?.Id ?? "");
-                      const startTime = String(s?.startTime ?? s?.StartTime ?? "").slice(0, 5);
-                      const maxCapacity = Number(s?.maxCapacity ?? s?.MaxCapacity ?? 0);
-                      const cutoffHours = Number(s?.cutoffHours ?? s?.CutoffHours ?? 0);
+                    slots.map((s) => {
+                      const id = String(s.id);
+                      const startTime = String(s.startTime || "").slice(0, 5);
+                      const endTime = String(s.endTime || "").slice(0, 5);
+                      const maxCapacity = Number(s.maxCapacity ?? 0);
+                      const cutoffHours = Number(s.cutoffHours ?? 0);
                       return (
                         <div key={id} className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-4">
                           <div>
-                            <div className="font-bold text-gray-900 text-lg">{startTime}</div>
+                            <div className="font-bold text-gray-900 text-lg">
+                              {startTime}{endTime ? ` - ${endTime}` : ""}
+                            </div>
                             <div className="text-sm text-gray-600 mt-1 space-y-0.5">
                               <div>Tối đa <span className="font-semibold">{maxCapacity}</span> đơn / khung giờ</div>
                               <div>Khách phải đặt trước <span className="font-semibold">{cutoffHours} tiếng</span></div>

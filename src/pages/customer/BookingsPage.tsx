@@ -535,90 +535,76 @@ export default function BookingsPage() {
                             <div />
                           )}
 
-                          <div className="flex items-center gap-2">
-                            {isGroup ? (
-                              <button
-                                type="button"
-                                onClick={() => openGroupDetail(item.groupBookingId || '', item.bookings)}
-                                className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
-                              >
-                                Chi tiết nhóm
-                                <ChevronRight className="w-4 h-4" />
-                              </button>
-                            ) : (
-                              <>
-                                {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
-                                  <button
-                                    onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
-                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
-                                  >
-                                    <Plus className="w-4 h-4" />
-                                    Thêm dịch vụ
-                                  </button>
-                                )}
-                                {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
-                                  <button
-                                    onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
-                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
-                                  >
-                                    <UtensilsCrossed className="w-4 h-4" />
-                                    Đặt món
-                                  </button>
-                                )}
-                                {b.status === 'CHECKED_IN' && (
-                                  <button
-                                    onClick={() => navigate('/customer/equipment')}
-                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
-                                  >
-                                    <Package className="w-4 h-4" />
-                                    Mượn đồ dùng
-                                  </button>
-                                )}
-                                {(() => {
-                                  const existing = myReviewsMap[b.id];
-                                  if (existing) {
-                                    return (
-                                      <button
-                                        onClick={() => setEditingReview(existing)}
-                                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
-                                      >
-                                        <Star className="w-4 h-4 text-yellow-400" />
-                                        Đã đánh giá
-                                      </button>
-                                    );
-                                  }
-                                  if (b.status === 'COMPLETED') {
-                                    return (
-                                      <button
-                                        onClick={() => setReviewingBooking({
-                                          id: b.id,
-                                          homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
-                                        })}
-                                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
-                                      >
-                                        <Star className="w-4 h-4" />
-                                        Đánh giá
-                                      </button>
-                                    );
-                                  }
-                                  return null;
-                                })()}
+                        <div className="flex items-center gap-2">
+                          {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
+                            <button
+                              onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Thêm dịch vụ
+                            </button>
+                          )}
+                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
+                            <button
+                              onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
+                            >
+                              <UtensilsCrossed className="w-4 h-4" />
+                              Đặt món
+                            </button>
+                          )}
+                          {b.status === 'CHECKED_IN' && (
+                            <button
+                              onClick={() => navigate('/customer/equipment')}
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
+                            >
+                              <Package className="w-4 h-4" />
+                              Mượn đồ dùng
+                            </button>
+                          )}
+                          {(() => {
+                            const existing = myReviewsMap[b.id];
+                            if (existing) {
+                              return (
                                 <button
-                                  onClick={() => openDetail(b)}
-                                  className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
+                                  onClick={() => setEditingReview(existing)}
+                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
                                 >
-                                  Chi tiết
-                                  <ChevronRight className="w-4 h-4" />
+                                  <Star className="w-4 h-4 text-yellow-400" />
+                                  Đã đánh giá
                                 </button>
-                              </>
-                            )}
-                          </div>
+                              );
+                            }
+                            if (b.status === 'COMPLETED') {
+                              return (
+                                <button
+                                  onClick={() => setReviewingBooking({
+                                    id: b.id,
+                                    homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
+                                  })}
+                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
+                                >
+                                  <Star className="w-4 h-4" />
+                                  Đánh giá
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
+                          <button
+                            onClick={() => openDetail(b)}
+                            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
+                          >
+                            Chi tiết
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
 
