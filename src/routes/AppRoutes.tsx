@@ -5,6 +5,7 @@ import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import HomePage from '../pages/HomePage';
 import HomestayDetail from '../pages/HomestayDetail';
+import GroupBookingSearchPage from '../pages/customer/GroupBookingSearchPage';
 import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
 import CustomerDashboard from '../pages/customer/CustomerDashboard';
@@ -116,6 +117,7 @@ export function AppRoutes() {
       <Route path="/experiences" element={<LocalExperiencesPage />} />
       <Route path="/travel-guides" element={<TravelGuidesPage />} />
       <Route path="/homestays/:id" element={<HomestayDetail />} />
+      <Route path="/group-booking/search" element={<GroupBookingSearchPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/auth/login" element={<LoginPage />} />
