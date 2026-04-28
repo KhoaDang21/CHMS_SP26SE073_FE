@@ -62,6 +62,8 @@ export default function HomePage() {
     [provinces, selectedProvince],
   );
 
+
+
   const handlePriceChange = (value: number) => {
     const normalized = Math.min(Math.max(value, PRICE_MIN), PRICE_MAX);
     setMaxPrice(normalized);
@@ -75,6 +77,8 @@ export default function HomePage() {
     const targetTop = window.scrollY + section.getBoundingClientRect().top - offset;
     window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   };
+
+
 
   // Load provinces & districts once
   useEffect(() => {
@@ -186,7 +190,7 @@ export default function HomePage() {
     }
 
     setHomestays(result);
-  }, [selectedProvinceName, selectedDistrict, checkInDate, checkOutDate, maxPrice, allHomestays, allDistricts, myBookings]);
+  }, [selectedProvince, selectedProvinceName, selectedDistrict, checkInDate, checkOutDate, maxPrice, allHomestays, allDistricts, myBookings]);
 
   const hasPriceFilter = maxPrice < PRICE_MAX;
 
@@ -234,9 +238,12 @@ export default function HomePage() {
               >
                 Khám phá
               </button>
+
             </div>
           </div>
         </section>
+
+
 
         {/* Search Section */}
         <div id="home-search-section" className="relative z-20 -mt-14 sm:-mt-16 lg:-mt-20 bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-white/70 p-6">

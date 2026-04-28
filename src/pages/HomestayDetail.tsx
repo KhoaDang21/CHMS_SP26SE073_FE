@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Star, Heart, ArrowLeft, CalendarDays, Users, Phone, MessageSquareText, MapPin, ExternalLink, Info, X, LogIn } from 'lucide-react'
 import MainLayout from '../layouts/MainLayout'
@@ -233,7 +233,7 @@ export default function HomestayDetail() {
         return Number.isNaN(dt.getTime()) ? null : dt
     }
 
-    const isDateInsideOccupiedRanges = (date: Date) => {
+    const isDateInsideOccupiedRanges = useCallback((date: Date) => {
         return occupiedDateRanges.some((range) => {
             const occupiedStart = parseYmdToDate(range.checkIn)
             const occupiedEnd = parseYmdToDate(range.checkOut)
@@ -241,7 +241,7 @@ export default function HomestayDetail() {
             // Rule chuẩn lưu trú: ngày checkout là ngày có thể nhận khách mới.
             return date >= occupiedStart && date < occupiedEnd
         })
-    }
+    }, [occupiedDateRanges])
 
     // Merge các occupied ranges liền kề/chồng nhau thành các block lớn hơn
     // VD: [15-16] + [17-18] → [15-18] vì checkout của range trước = checkin của range sau (liền kề)
@@ -318,7 +318,7 @@ export default function HomestayDetail() {
         const selectedStart = parseYmdToDate(checkIn)
         if (!selectedStart) return false
         return isDateInsideOccupiedRanges(selectedStart)
-    }, [checkIn, occupiedDateRanges])
+    }, [checkIn, isDateInsideOccupiedRanges])
 
     const hasOccupiedConflict = useMemo(() => {
         const selectedStart = parseYmdToDate(checkIn)
@@ -486,6 +486,151 @@ export default function HomestayDetail() {
     const seasonalDisplayPrice = seasonalPricingToShow?.price
     const hasSeasonalPricing = typeof seasonalDisplayPrice === 'number' && seasonalDisplayPrice > 0 && seasonalDisplayPrice !== homestay?.pricePerNight
 
+    const handleBookingClick = async () => {
+        if (!authService.isAuthenticated()) {
+            navigate('/auth/login')
+            return
+        }
+
+        if (!authService.isTokenValid()) {
+            toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.')
+            navigate('/auth/login')
+            return
+        }
+
+        if (!checkIn || !checkOut) {
+            toast.error('Vui lòng chọn ngày nhận và trả phòng')
+            return
+        }
+        if (isPastDate(checkIn) || isPastDate(checkOut)) {
+            toast.error('Không được chọn ngày trong quá khứ')
+            return
+        }
+        if (nights <= 0) {
+            toast.error('Ngày trả phải sau ngày nhận')
+            return
+        }
+        if (hasDateBlocked) {
+            toast.error('Khoảng ngày đã chọn trùng với lịch đã đặt, vui lòng chọn ngày khác')
+            return
+        }
+        if (!contactPhone.trim()) {
+            toast.error('Vui lòng nhập số điện thoại liên hệ')
+            return
+        }
+        if (!/^0\d{9}$/.test(contactPhone.trim())) {
+            toast.error('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)')
+            return
+        }
+        if (selectedPromotion && baseBookingTotal !== undefined) {
+            const minBookingAmount = selectedPromotion.minBookingAmount ?? selectedPromotion.minBookingValue ?? 0
+            if (minBookingAmount > 0 && baseBookingTotal < minBookingAmount) {
+                toast.error('Mã giảm giá chưa đạt điều kiện tối thiểu cho booking này')
+                return
+            }
+        }
+
+        setIsBooking(true)
+        try {
+            const selectedExperiencePayload = selectedExperienceItems.map((entry) => ({
+                id: entry.item.id,
+                name: entry.item.name,
+                qty: entry.qty,
+                price: entry.item.price,
+            }))
+            const mergedSpecialRequests = buildSpecialRequestsWithExperiences(
+                specialRequests || '',
+                selectedExperiencePayload,
+            )
+
+            const payload = {
+                homestayId: homestay?.id,
+                checkIn: checkIn,
+                checkOut: checkOut,
+                guestsCount: guests,
+                contactPhone: contactPhone.trim(),
+                ...(selectedPromotionId ? { promotionId: selectedPromotionId } : {}),
+                ...(mergedSpecialRequests ? { specialRequests: mergedSpecialRequests } : {}),
+                ...(selectedExperiencePayload.length > 0 ? { selectedExperiences: selectedExperiencePayload } : {}),
+            } as any
+
+            const res = await bookingService.createBooking(payload)
+            if (res && res.success && res.data?.id) {
+                const bookingData = res.data
+                const bookingTotal = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
+                const depositRate = (homestay!.depositPercentage ?? 20) / 100
+                const depositAmount = bookingData.depositAmount ?? bookingTotal * depositRate
+                const remainingAmount = bookingData.remainingAmount ?? bookingTotal - depositAmount
+                setPendingBooking({
+                    id: bookingData.id,
+                    homestayName: homestay!.name,
+                    checkIn,
+                    checkOut,
+                    totalNights: nights,
+                    guestsCount: guests,
+                    pricePerNight: effectivePricePerNight ?? homestay!.pricePerNight,
+                    bookingTotal,
+                    amountDue: depositAmount,
+                    depositAmount,
+                    remainingAmount,
+                    paymentLabel: 'Đặt cọc',
+                })
+            } else if (res && !res.success) {
+                toast.error(res.message || 'Đặt phòng thất bại')
+            } else {
+                toast.error('Không lấy được thông tin booking, vui lòng thử lại')
+            }
+        } catch (err: any) {
+            console.error(err)
+            toast.error(err?.message || 'Đã xảy ra lỗi khi đặt phòng')
+        } finally {
+            setIsBooking(false)
+        }
+    }
+
+    const bookingButtonLabel = !authService.isAuthenticated() ? (
+        <>
+            <LogIn className="w-4 h-4" />
+            Đăng nhập để đặt phòng
+        </>
+    ) : isBooking ? (
+        <>
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            Đang xử lý...
+        </>
+    ) : isCalculating ? 'Đang tính giá...' : 'Xác nhận đặt phòng';
+
+    const bookingButtonDisabled = authService.isAuthenticated()
+        ? isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked
+        : false;
+
+    if (loading) {
+        return (
+            <MainLayout>
+                <div className="max-w-[1600px] mx-auto px-4 py-8 text-center text-gray-600">Đang tải...</div>
+            </MainLayout>
+        )
+    }
+
+    if (error) {
+        return (
+            <MainLayout>
+                <div className="max-w-[1600px] mx-auto px-4 py-8 text-center text-red-600">{error}</div>
+            </MainLayout>
+        )
+    }
+
+    if (!homestay) {
+        return (
+            <MainLayout>
+                <div className="max-w-[1600px] mx-auto px-4 py-8 text-center text-gray-600">Không tìm thấy homestay.</div>
+            </MainLayout>
+        )
+    }
+
     return (
         <>
         <MainLayout>
@@ -498,11 +643,6 @@ export default function HomestayDetail() {
                     <ArrowLeft className="w-5 h-5" />
                     <span className="font-medium">Quay về</span>
                 </button>
-
-                {loading && <div className="py-8 text-center">Đang tải...</div>}
-                {error && <div className="py-8 text-center text-red-600">{error}</div>}
-
-                {homestay && (
                     <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Left / Main: images + details (span 2 columns on lg) */}
                         <div className="lg:col-span-2">
@@ -525,7 +665,7 @@ export default function HomestayDetail() {
                                                 <div key={idx} onClick={() => setLightboxSrc(img ?? '')} className="h-24 rounded overflow-hidden cursor-pointer border">
                                                     <ImageWithFallback src={img ?? ''} alt={`${homestay.name}-${idx}`} className="w-full h-full object-cover" />
                                                 </div>
-                                            )
+                                            );
                                         })}
                                     </div>
                                 </div>
@@ -937,7 +1077,7 @@ export default function HomestayDetail() {
                                     />
                                 </div>
 
-                                        {/* Step 4: Dịch vụ địa phương */}
+                                {/* Step 5: Dịch vụ địa phương */}
                                 <div className="mt-4">
                                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                                         <div className="flex items-center justify-between mb-2">
@@ -1106,127 +1246,16 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
-                                {authService.isAuthenticated() ? (
-                                <button onClick={async () => {
-                                    if (!authService.isTokenValid()) {
-                                        toast.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
-                                        navigate('/auth/login')
-                                        return
-                                    }
-
-                                    if (!checkIn || !checkOut) {
-                                        toast.error('Vui lòng chọn ngày nhận và trả phòng');
-                                        return
-                                    }
-                                    if (isPastDate(checkIn) || isPastDate(checkOut)) {
-                                        toast.error('Không được chọn ngày trong quá khứ');
-                                        return
-                                    }
-                                    if (nights <= 0) {
-                                        toast.error('Ngày trả phải sau ngày nhận');
-                                        return
-                                    }
-                                    if (hasDateBlocked) {
-                                        toast.error('Khoảng ngày đã chọn trùng với lịch đã đặt, vui lòng chọn ngày khác')
-                                        return
-                                    }
-                                    if (!contactPhone.trim()) {
-                                        toast.error('Vui lòng nhập số điện thoại liên hệ');
-                                        return
-                                    }
-                                    if (!/^0\d{9}$/.test(contactPhone.trim())) {
-                                        toast.error('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)');
-                                        return
-                                    }
-                                    if (selectedPromotion && baseBookingTotal !== undefined) {
-                                        const minBookingAmount = selectedPromotion.minBookingAmount ?? selectedPromotion.minBookingValue ?? 0
-                                        if (minBookingAmount > 0 && baseBookingTotal < minBookingAmount) {
-                                            toast.error('Mã giảm giá chưa đạt điều kiện tối thiểu cho booking này')
-                                            return
-                                        }
-                                    }
-
-                                    setIsBooking(true)
-                                    try {
-                                        const selectedExperiencePayload = selectedExperienceItems.map((entry) => ({
-                                            id: entry.item.id,
-                                            name: entry.item.name,
-                                            qty: entry.qty,
-                                            price: entry.item.price,
-                                        }))
-                                        const mergedSpecialRequests = buildSpecialRequestsWithExperiences(
-                                            specialRequests || '',
-                                            selectedExperiencePayload,
-                                        )
-
-                                        const payload = {
-                                            homestayId: homestay?.id,
-                                            checkIn: checkIn,
-                                            checkOut: checkOut,
-                                            guestsCount: guests,
-                                            contactPhone: contactPhone.trim(),
-                                            ...(selectedPromotionId ? { promotionId: selectedPromotionId } : {}),
-                                            ...(mergedSpecialRequests ? { specialRequests: mergedSpecialRequests } : {}),
-                                            ...(selectedExperiencePayload.length > 0 ? { selectedExperiences: selectedExperiencePayload } : {}),
-                                        } as any
-
-                                        const res = await bookingService.createBooking(payload)
-                                        if (res && res.success && res.data?.id) {
-                                            const bookingData = res.data
-                                            const bookingTotal = bookingData.totalPrice ?? computedTotal ?? (homestay!.pricePerNight * nights)
-                                            const depositRate = (homestay!.depositPercentage ?? 20) / 100
-                                            const depositAmount = bookingData.depositAmount ?? bookingTotal * depositRate
-                                            const remainingAmount = bookingData.remainingAmount ?? bookingTotal - depositAmount
-                                            setPendingBooking({
-                                                id: bookingData.id,
-                                                homestayName: homestay!.name,
-                                                checkIn,
-                                                checkOut,
-                                                totalNights: nights,
-                                                guestsCount: guests,
-                                                pricePerNight: effectivePricePerNight ?? homestay!.pricePerNight,
-                                                bookingTotal,
-                                                amountDue: depositAmount,
-                                                depositAmount,
-                                                remainingAmount,
-                                                paymentLabel: 'Đặt cọc',
-                                            })
-                                        } else if (res && !res.success) {
-                                            toast.error(res.message || 'Đặt phòng thất bại')
-                                        } else {
-                                            toast.error('Không lấy được thông tin booking, vui lòng thử lại')
-                                        }
-                                    } catch (err: any) {
-                                        console.error(err)
-                                        toast.error(err?.message || 'Đã xảy ra lỗi khi đặt phòng')
-                                    } finally {
-                                        setIsBooking(false)
-                                    }
-                                }} disabled={isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked} className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${isCalculating || isBooking || !checkIn || !checkOut || nights <= 0 || !contactPhone.trim() || hasDateBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}>
-                                    {isBooking ? (
-                                        <>
-                                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                                            </svg>
-                                            Đang xử lý...
-                                        </>
-                                    ) : isCalculating ? 'Đang tính giá...' : 'Xác nhận đặt phòng'}
-                                </button>
-                                ) : (
                                 <button
-                                    onClick={() => navigate('/auth/login')}
-                                    className="w-full mt-5 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 transition-all flex items-center justify-center gap-2"
+                                    onClick={handleBookingClick}
+                                    disabled={bookingButtonDisabled}
+                                    className={`w-full mt-5 py-3 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${bookingButtonDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'}`}
                                 >
-                                    <LogIn className="w-4 h-4" />
-                                    Đăng nhập để đặt phòng
+                                    {bookingButtonLabel}
                                 </button>
-                                )}
                             </div>
                         </div>
                     </div>
-                )}
-
                 {previewExperience && (
                     <div
                         className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"

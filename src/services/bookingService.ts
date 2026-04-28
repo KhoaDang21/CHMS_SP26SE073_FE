@@ -9,6 +9,7 @@ export interface Booking {
   homestayId: string;
   homestayName?: string;
   homestayImage?: string;
+  groupBookingId?: string | null;
   customerId?: string;
   customerName?: string;
   checkIn: string;
@@ -92,6 +93,7 @@ const mapBooking = (item: any): Booking => {
     homestayImage: cleanLoadingText(
       get("homestayImage", "HomestayImage", "homestayImageUrl", "HomestayImageUrl", "imageUrl", "ImageUrl"),
     ),
+    groupBookingId: get("groupBookingId", "GroupBookingId") ?? null,
     customerId: get("customerId", "CustomerId"),
     customerName: cleanLoadingText(get("customerName", "CustomerName")),
     checkIn: String(get("checkIn", "CheckIn") ?? ""),
