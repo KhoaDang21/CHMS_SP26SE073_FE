@@ -155,6 +155,11 @@ export const diningService = {
     );
   },
 
+  async managerDeleteCombo(comboId: string): Promise<boolean> {
+    await apiService.delete<any>(apiConfig.endpoints.dining.manager.deleteCombo(comboId));
+    return true;
+  },
+
   async managerDeleteSlot(slotId: string): Promise<boolean> {
     await apiService.delete<any>(apiConfig.endpoints.dining.manager.deleteSlot(slotId));
     return true;
