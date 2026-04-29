@@ -6,6 +6,11 @@ export interface Equipment {
   quantity: number;
   available: number;
   borrowed: number;
+  totalQuantity?: number;
+  availableQuantity?: number;
+  depositAmount?: number;
+  rentalFee?: number;
+  imageUrl?: string;
   condition: 'good' | 'fair' | 'maintenance';
   image?: string;
   description?: string;
@@ -33,15 +38,24 @@ export interface CreateEquipmentPayload {
   homestayId: string;
   name: string;
   category: string;
-  quantity: number;
+  totalQuantity: number;
+  availableQuantity: number;
+  depositAmount: number;
+  rentalFee: number;
+  imageUrl?: string;
   description?: string;
   condition?: 'good' | 'fair' | 'maintenance';
+  isActive: boolean;
 }
 
 export interface UpdateEquipmentPayload {
   name?: string;
   category?: string;
-  quantity?: number;
+  totalQuantity?: number;
+  availableQuantity?: number;
+  depositAmount?: number;
+  rentalFee?: number;
+  imageUrl?: string;
   description?: string;
   condition?: string;
   isActive?: boolean;
