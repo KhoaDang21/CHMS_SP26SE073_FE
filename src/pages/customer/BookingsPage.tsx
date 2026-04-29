@@ -4,6 +4,7 @@ import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, Che
 import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
+import { groupBookingService, type GroupBooking } from '../../services/groupBookingService';
 import { reviewService, type Review } from '../../services/reviewService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
 import { refundService, type PendingRefund } from '../../services/refundService';
@@ -26,6 +27,48 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
   return value;
 };
 
+// Helper to normalize date strings from API (could be ISO, timestamp, or malformed)
+const normalizeDateString = (value: any): string => {
+  if (!value) return '';
+  
+  // If already a valid ISO string, return as-is
+  if (typeof value === 'string' && value.length > 0) {
+    // Check if it's already in YYYY-MM-DD or ISO format
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+      return value;
+    }
+    // Try to parse and re-format
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+    return value;
+  }
+  
+  // If it's a number (timestamp), convert to ISO
+  if (typeof value === 'number') {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  }
+  
+  // If it's a Date object
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return value.toISOString().split('T')[0];
+  }
+  
+  return '';
+};
+
+type BookingListItem = {
+  key: string;
+  kind: 'single' | 'group';
+  representative: Booking;
+  bookings: Booking[];
+  groupBookingId?: string | null;
+};
+
 export default function BookingsPage() {
   const navigate = useNavigate();
   const pageSize = 10;
@@ -38,6 +81,9 @@ export default function BookingsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [refundPreview, setRefundPreview] = useState<{ estimatedRefund: number; message: string } | null>(null);
   const [myRefundsMap, setMyRefundsMap] = useState<Record<string, PendingRefund>>({});
+  const [selectedGroupBooking, setSelectedGroupBooking] = useState<{ groupBookingId: string; bookings: Booking[] } | null>(null);
+  const [groupBookingDetail, setGroupBookingDetail] = useState<GroupBooking | null>(null);
+  const [groupDetailLoading] = useState(false);
 
   const [editMode, setEditMode] = useState(false);
   const [editCheckIn, setEditCheckIn] = useState('');
@@ -50,7 +96,7 @@ export default function BookingsPage() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [homestayMap, setHomestayMap] = useState<Record<string, Homestay>>({});
   const [payingBooking, setPayingBooking] = useState<{
-    id: string; homestayName: string; checkIn: string; checkOut: string;
+    id: string; groupBookingId?: string; homestayName: string; checkIn: string; checkOut: string;
     totalNights: number; guestsCount: number; pricePerNight: number;
     bookingTotal: number; amountDue: number;
     depositAmount?: number; remainingAmount?: number; depositPercentage?: number; paymentLabel?: string;
@@ -73,6 +119,41 @@ export default function BookingsPage() {
     if (!key) return undefined;
     return homestayMap[key] || homestayMap[key.toLowerCase()];
   };
+
+  const bookingItems = useMemo<BookingListItem[]>(() => {
+    const items: BookingListItem[] = [];
+    const seenGroups = new Set<string>();
+
+    // Duyệt theo thứ tự bookings (đã sort mới nhất trước), thêm vào items giữ nguyên thứ tự
+    bookings.forEach((booking) => {
+      const groupBookingId = booking.groupBookingId?.trim();
+
+      if (!groupBookingId) {
+        // Là đơn đơn → thêm trực tiếp
+        items.push({
+          key: `booking-${booking.id}`,
+          kind: 'single',
+          representative: booking,
+          bookings: [booking],
+        });
+      } else if (!seenGroups.has(groupBookingId)) {
+        // Lần đầu gặp group này → thêm group
+        seenGroups.add(groupBookingId);
+
+        // Tìm tất cả bookings của group này
+        const groupBookings = bookings.filter(b => b.groupBookingId?.trim() === groupBookingId);
+        items.push({
+          key: `group-${groupBookingId}`,
+          kind: 'group',
+          groupBookingId,
+          representative: groupBookings[0],
+          bookings: groupBookings,
+        });
+      }
+    });
+
+    return items;
+  }, [bookings]);
 
   const load = async () => {
     setLoading(true);
@@ -135,14 +216,15 @@ export default function BookingsPage() {
   }, [activeTab]);
 
   const filtered = useMemo(() => {
-    if (activeTab === 'all') return bookings;
-    if (activeTab === 'pending') return bookings.filter(b => b.status === 'PENDING');
-    if (activeTab === 'confirmed') return bookings.filter(b => b.status === 'CONFIRMED');
-    if (activeTab === 'staying') return bookings.filter(b => b.status === 'CHECKED_IN');
-    if (activeTab === 'completed') return bookings.filter(b => b.status === 'COMPLETED');
-    if (activeTab === 'cancelled') return bookings.filter(b => b.status === 'CANCELLED' || b.status === 'REJECTED');
-    return bookings;
-  }, [bookings, activeTab]);
+    const source = bookingItems;
+    if (activeTab === 'all') return source;
+    if (activeTab === 'pending') return source.filter(item => item.representative.status === 'PENDING');
+    if (activeTab === 'confirmed') return source.filter(item => item.representative.status === 'CONFIRMED');
+    if (activeTab === 'staying') return source.filter(item => item.representative.status === 'CHECKED_IN');
+    if (activeTab === 'completed') return source.filter(item => item.representative.status === 'COMPLETED');
+    if (activeTab === 'cancelled') return source.filter(item => item.representative.status === 'CANCELLED' || item.representative.status === 'REJECTED');
+    return source;
+  }, [bookingItems, activeTab]);
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -157,30 +239,59 @@ export default function BookingsPage() {
   }, [filtered, currentPage]);
 
   const openDetail = async (b: Booking) => {
-    setSelected(b);
-    setEditMode(false);
-    setRefundPreview(null);
-    setDetailLoading(true);
-    try {
-      const detail = await bookingService.getBookingDetail(b.id);
-      if (detail) setSelected(detail);
+    // Check if this is a group booking - if so, show group detail modal instead
+    const groupBookingId = b.groupBookingId?.trim();
+    
+    if (groupBookingId) {
+      // This is a booking from a group - show group detail modal
+      setSelected(null);
+      setDetailLoading(true);
       try {
-        const hs = await publicHomestayService.getById(detail?.homestayId ?? b.homestayId);
-        setDetailHomestay(hs);
+        const groupDetail = await groupBookingService.getGroupBookingDetail(groupBookingId);
+        if (groupDetail) {
+          setGroupBookingDetail(groupDetail);
+        }
+        // Get all bookings in this group
+        const groupBookings = bookings.filter(bk => bk.groupBookingId?.trim() === groupBookingId);
+        setSelectedGroupBooking({
+          groupBookingId,
+          bookings: groupBookings,
+        });
       } catch (e) {
-        setDetailHomestay(null);
+        console.error('Load group booking detail error:', e);
+        toast.error('Không thể tải chi tiết group booking');
+      } finally {
+        setDetailLoading(false);
       }
-      // Load preview hoàn tiền: nếu chưa hủy thì tính dự kiến, nếu đã hủy thì lấy thực tế
-      if (!['REJECTED', 'COMPLETED', 'CHECKED_IN'].includes(b.status)) {
-        bookingService.previewRefund(b.id)
-          .then((r) => setRefundPreview(r))
-          .catch(() => { });
+    } else {
+      // This is a single booking - show single detail modal
+      setSelected(b);
+      setSelectedGroupBooking(null);
+      setGroupBookingDetail(null);
+      setEditMode(false);
+      setRefundPreview(null);
+      setDetailLoading(true);
+      try {
+        const detail = await bookingService.getBookingDetail(b.id);
+        if (detail) setSelected(detail);
+        try {
+          const hs = await publicHomestayService.getById(detail?.homestayId ?? b.homestayId);
+          setDetailHomestay(hs);
+        } catch (e) {
+          setDetailHomestay(null);
+        }
+        // Load preview hoàn tiền: nếu chưa hủy thì tính dự kiến, nếu đã hủy thì lấy thực tế
+        if (!['REJECTED', 'COMPLETED', 'CHECKED_IN'].includes(b.status)) {
+          bookingService.previewRefund(b.id)
+            .then((r) => setRefundPreview(r))
+            .catch(() => { });
+        }
+      } catch (e) {
+        console.error(e);
+        toast.error('Không thể tải chi tiết booking');
+      } finally {
+        setDetailLoading(false);
       }
-    } catch (e) {
-      console.error(e);
-      toast.error('Không thể tải chi tiết booking');
-    } finally {
-      setDetailLoading(false);
     }
   };
 
@@ -327,126 +438,140 @@ export default function BookingsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {paginated.map(b => (
-                <div
-                  key={b.id}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-                >
-                  <div className="flex flex-col">
-                    {/* Image section - full width on mobile, fixed height */}
-                    <div className="relative h-48 sm:h-56 bg-gray-100 overflow-hidden">
-                      {(() => {
-                        const hs = getHomestayById(b.homestayId);
-                        const img = hs?.images?.[0] || b.homestayImage || '';
-                        const alt = hs?.name || cleanLoadingText(b.homestayName) || 'Homestay';
-                        return (
-                          <ImageWithFallback
-                            src={img}
-                            alt={alt}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                        );
-                      })()}
-                      {/* Status badge on image */}
-                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
-                        <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
-                          {getStatusText(b.status)}
-                        </span>
-                        {/* Payment status badges */}
-                        {b.status === 'PENDING' && b.paymentStatus === 'UNPAID' && typeof b.depositAmount === 'number' && b.depositAmount > 0 && (
-                          <span title={`Cọc ${b.depositPercentage || 20}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
-                            Cọc: {b.depositAmount.toLocaleString('vi-VN')}đ
-                          </span>
-                        )}
-                        {b.status === 'CONFIRMED' && b.paymentStatus === 'DEPOSIT_PAID' && (
-                          <span title={`Còn lại: ${(b.remainingAmount || 0).toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
-                            Còn lại: {(b.remainingAmount || 0).toLocaleString('vi-VN')}đ
-                          </span>
-                        )}
-                        {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && b.paymentStatus === 'FULLY_PAID' && (
-                          <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Thanh toán đủ
-                          </span>
-                        )}
-                      </div>
-                      {/* Homestay icon */}
-                      <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm">
-                        <Home className="w-4 h-4 text-blue-500" />
-                        <span className="text-sm font-medium text-gray-700">Homestay</span>
-                      </div>
-                    </div>
+              {paginated.map((item) => {
+                const b = item.representative;
+                const isGroup = item.kind === 'group';
+                const cardTotalPrice = isGroup
+                  ? item.bookings.reduce((sum, booking) => sum + (booking.totalPrice || 0), 0)
+                  : (b.totalPrice ?? 0);
+                const cardGuests = isGroup
+                  ? item.bookings.reduce((sum, booking) => sum + (booking.guestsCount || 0), 0)
+                  : b.guestsCount;
+                const homestayLabels = item.bookings
+                  .map((booking) => cleanLoadingText(booking.homestayName) || getHomestayById(booking.homestayId)?.name || 'Homestay')
+                  .filter(Boolean);
 
-                    {/* Content section */}
-                    <div className="p-5">
-                      {/* Title and location */}
-                      <div className="mb-4">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">
-                          {(() => {
-                            const hs = getHomestayById(b.homestayId);
-                            const name = hs?.name || cleanLoadingText(b.homestayName);
-                            return name || 'Homestay';
-                          })()}
-                        </h3>
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="line-clamp-1">
-                            {(() => {
+                return (
+                  <div
+                    key={item.key}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
+                  >
+                    <div className="flex flex-col">
+                      <div className="relative h-48 sm:h-56 bg-gray-100 overflow-hidden">
+                        {(() => {
+                          const hs = getHomestayById(b.homestayId);
+                          const img = hs?.images?.[0] || b.homestayImage || '';
+                          const alt = hs?.name || cleanLoadingText(b.homestayName) || 'Homestay';
+                          return (
+                            <ImageWithFallback
+                              src={img}
+                              alt={alt}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          );
+                        })()}
+                        <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+                          {isGroup && (
+                            <span className="px-3 py-1.5 text-xs rounded-full font-semibold border border-cyan-200 bg-cyan-100 text-cyan-700 shadow-sm">
+                              Đơn đặt nhóm
+                            </span>
+                          )}
+                          <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
+                            {getStatusText(b.status)}
+                          </span>
+                          {b.status === 'PENDING' && b.paymentStatus === 'UNPAID' && typeof b.depositAmount === 'number' && b.depositAmount > 0 && (
+                            <span title={`Cọc ${b.depositPercentage || 20}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                              Cọc: {b.depositAmount.toLocaleString('vi-VN')}đ
+                            </span>
+                          )}
+                          {b.status === 'CONFIRMED' && b.paymentStatus === 'DEPOSIT_PAID' && (
+                            <span title={`Còn lại: ${(b.remainingAmount || 0).toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
+                              Còn lại: {(b.remainingAmount || 0).toLocaleString('vi-VN')}đ
+                            </span>
+                          )}
+                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && b.paymentStatus === 'FULLY_PAID' && (
+                            <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm flex items-center gap-1">
+                              <Check className="w-3 h-3" /> Thanh toán đủ
+                            </span>
+                          )}
+                        </div>
+                        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm">
+                          <Home className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm font-medium text-gray-700">Homestay</span>
+                        </div>
+                      </div>
+
+                      <div className="p-5">
+                        <div className="mb-4">
+                          <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1">
+                            {isGroup ? 'Đơn đặt nhóm' : (() => {
                               const hs = getHomestayById(b.homestayId);
-                              if (hs?.address) return hs.address;
-                              const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
-                              if (cityCountry) return cityCountry;
-                              return 'Đang cập nhật';
+                              const name = hs?.name || cleanLoadingText(b.homestayName);
+                              return name || 'Homestay';
                             })()}
-                          </span>
+                          </h3>
+                          {isGroup && homestayLabels.length > 0 && (
+                            <div className="text-sm text-cyan-700 font-medium line-clamp-2 mb-1">
+                              {homestayLabels.join(' · ')}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            <span className="line-clamp-1">
+                              {(() => {
+                                const hs = getHomestayById(b.homestayId);
+                                if (hs?.address) return hs.address;
+                                const cityCountry = `${hs?.city || ''} ${hs?.country || ''}`.trim();
+                                if (cityCountry) return cityCountry;
+                                return 'Đang cập nhật';
+                              })()}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Booking details grid */}
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-gray-600 mb-1">
-                            <Calendar className="w-4 h-4" />
-                            <span className="text-xs">Check-in</span>
-                          </div>
-                          <div className="font-semibold text-gray-900 text-sm">
-                            {new Date(b.checkIn).toLocaleDateString('vi-VN')}
-                          </div>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-gray-600 mb-1">
-                            <Calendar className="w-4 h-4" />
-                            <span className="text-xs">Check-out</span>
-                          </div>
-                          <div className="font-semibold text-gray-900 text-sm">
-                            {new Date(b.checkOut).toLocaleDateString('vi-VN')}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Guests and nights */}
-                      <div className="flex items-center justify-between mb-4 text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Users className="w-4 h-4" />
-                          <span>{b.guestsCount} khách</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Clock className="w-4 h-4" />
-                          <span>{nights(b.checkIn, b.checkOut)} đêm</span>
-                        </div>
-                      </div>
-
-                      {/* Price and actions */}
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                        {typeof b.totalPrice === 'number' ? (
-                          <div>
-                            <div className="text-xs text-gray-500">Tổng tiền</div>
-                            <div className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
-                              {b.totalPrice.toLocaleString('vi-VN')}đ
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-gray-600 mb-1">
+                              <Calendar className="w-4 h-4" />
+                              <span className="text-xs">Check-in</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {new Date(b.checkIn).toLocaleDateString('vi-VN')}
                             </div>
                           </div>
-                        ) : (
-                          <div></div>
-                        )}
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-gray-600 mb-1">
+                              <Calendar className="w-4 h-4" />
+                              <span className="text-xs">Check-out</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {new Date(b.checkOut).toLocaleDateString('vi-VN')}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mb-4 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Users className="w-4 h-4" />
+                            <span>{cardGuests} khách</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Clock className="w-4 h-4" />
+                            <span>{nights(b.checkIn, b.checkOut)} đêm</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                          {typeof cardTotalPrice === 'number' ? (
+                            <div>
+                              <div className="text-xs text-gray-500">Tổng tiền</div>
+                              <div className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
+                                {cardTotalPrice.toLocaleString('vi-VN')}đ
+                              </div>
+                            </div>
+                          ) : (
+                            <div />
+                          )}
 
                         <div className="flex items-center gap-2">
                           {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
@@ -458,7 +583,7 @@ export default function BookingsPage() {
                               Thêm dịch vụ
                             </button>
                           )}
-                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && new Date(b.checkOut) > new Date() && (
+                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
                             <button
                               onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
@@ -517,7 +642,8 @@ export default function BookingsPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
 
@@ -528,6 +654,392 @@ export default function BookingsPage() {
             pageSize={pageSize}
             onPageChange={setCurrentPage}
           />
+
+          {selectedGroupBooking && (
+            <div
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+              onClick={() => {
+                if (!groupDetailLoading) {
+                  setSelectedGroupBooking(null);
+                  setGroupBookingDetail(null);
+                }
+              }}
+            >
+              <div
+                className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden my-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-5 border-b border-gray-100 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-lg font-bold text-gray-900">Chi tiết đơn group booking</div>
+                    <div className="text-sm text-gray-500 mt-1 break-all">{selectedGroupBooking.groupBookingId}</div>
+                  </div>
+                  <button
+                    className="p-2 rounded-lg hover:bg-gray-50"
+                    onClick={() => {
+                      if (!groupDetailLoading) {
+                        setSelectedGroupBooking(null);
+                        setGroupBookingDetail(null);
+                      }
+                    }}
+                  >
+                    <XCircle className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+                  {groupDetailLoading ? (
+                    <div className="text-center py-8">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                      <p className="mt-2 text-gray-600">Đang tải chi tiết group booking...</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Thông tin cơ bản */}
+                      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-5 border border-blue-100">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Check-in</div>
+                            <div className="font-semibold text-gray-900">
+                              {groupBookingDetail?.checkIn 
+                                ? new Date(groupBookingDetail.checkIn).toLocaleDateString('vi-VN')
+                                : selectedGroupBooking?.bookings?.[0]?.checkIn
+                                  ? new Date(selectedGroupBooking.bookings[0].checkIn).toLocaleDateString('vi-VN')
+                                  : '—'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Check-out</div>
+                            <div className="font-semibold text-gray-900">
+                              {groupBookingDetail?.checkOut 
+                                ? new Date(groupBookingDetail.checkOut).toLocaleDateString('vi-VN')
+                                : selectedGroupBooking?.bookings?.[0]?.checkOut
+                                  ? new Date(selectedGroupBooking.bookings[0].checkOut).toLocaleDateString('vi-VN')
+                                  : '—'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Tổng khách</div>
+                            <div className="font-semibold text-gray-900">
+                              {groupBookingDetail?.totalGuestCount 
+                                ? groupBookingDetail.totalGuestCount
+                                : selectedGroupBooking?.bookings?.reduce((sum, b) => sum + (b.guestsCount || 0), 0) || 0
+                              } người
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Số đêm</div>
+                            <div className="font-semibold text-gray-900">
+                              {(() => {
+                                let checkIn: Date | null = null;
+                                let checkOut: Date | null = null;
+                                
+                                if (groupBookingDetail?.checkIn && groupBookingDetail?.checkOut) {
+                                  checkIn = new Date(groupBookingDetail.checkIn);
+                                  checkOut = new Date(groupBookingDetail.checkOut);
+                                } else if (selectedGroupBooking?.bookings?.[0]) {
+                                  checkIn = new Date(selectedGroupBooking.bookings[0].checkIn);
+                                  checkOut = new Date(selectedGroupBooking.bookings[0].checkOut);
+                                }
+                                
+                                if (!checkIn || !checkOut) return '—';
+                                const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+                                return nights > 0 ? nights : 0;
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {(groupBookingDetail?.contactPhone || selectedGroupBooking?.bookings?.[0]?.contactPhone) && (
+                          <div className="mt-4 pt-4 border-t border-blue-200">
+                            <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                              <Phone className="w-3 h-3" /> Số điện thoại liên hệ
+                            </div>
+                            <div className="font-semibold text-gray-900">{groupBookingDetail?.contactPhone || selectedGroupBooking?.bookings?.[0]?.contactPhone}</div>
+                          </div>
+                        )}
+
+                        {(typeof groupBookingDetail?.totalPrice === 'number' || typeof selectedGroupBooking?.bookings?.[0]?.totalPrice === 'number') && (
+                          <div className="mt-4 pt-4 border-t border-blue-200 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold text-gray-900">Tổng tiền</div>
+                              <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
+                                {(groupBookingDetail?.totalPrice ?? selectedGroupBooking?.bookings?.[0]?.totalPrice ?? 0).toLocaleString('vi-VN')}đ
+                              </div>
+                            </div>
+                            {(groupBookingDetail?.totalPrice || selectedGroupBooking?.bookings?.[0]?.totalPrice) && (
+                              <div className="text-xs text-gray-500 mt-2 space-y-1">
+                                <div className="flex justify-between">
+                                  <span>Cọc (20%)</span>
+                                  <span className="font-medium">{(groupBookingDetail?.depositAmount ?? selectedGroupBooking?.bookings?.[0]?.depositAmount ?? 0).toLocaleString('vi-VN')}đ</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Còn lại (80%)</span>
+                                  <span className="font-medium">{(groupBookingDetail?.remainingAmount ?? selectedGroupBooking?.bookings?.[0]?.remainingAmount ?? 0).toLocaleString('vi-VN')}đ</span>
+                                </div>
+                              </div>
+                            )}
+                            {(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) === 'UNPAID' && typeof (groupBookingDetail?.depositAmount ?? selectedGroupBooking?.bookings?.[0]?.depositAmount) === 'number' && (
+                              <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-100">
+                                <span className="text-orange-600 font-medium">Cần cọc ngay</span>
+                                <span className="font-bold text-orange-600">{(groupBookingDetail?.depositAmount ?? selectedGroupBooking?.bookings?.[0]?.depositAmount ?? 0).toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                            {(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) === 'DEPOSIT_PAID' && typeof (groupBookingDetail?.remainingAmount ?? selectedGroupBooking?.bookings?.[0]?.remainingAmount) === 'number' && (
+                              <div className="flex items-center justify-between text-sm pt-2 border-t border-blue-100">
+                                <span className="text-blue-600 font-medium">Còn lại cần thanh toán</span>
+                                <span className="font-bold text-blue-600">{(groupBookingDetail?.remainingAmount ?? selectedGroupBooking?.bookings?.[0]?.remainingAmount ?? 0).toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            )}
+                            {(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) === 'FULLY_PAID' && (
+                              <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ Đã thanh toán đầy đủ</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900 mb-3">Danh sách homestay trong group</div>
+                        <div className="space-y-3">
+                          {(groupBookingDetail?.homestays?.length ? groupBookingDetail.homestays : selectedGroupBooking.bookings.map((booking) => ({ homestayId: booking.homestayId, roomCount: 1 }))).map((item, index) => {
+                            const homestay = getHomestayById(item.homestayId);
+                            return (
+                              <div key={`${item.homestayId}-${index}`} className="rounded-xl border border-gray-200 p-4 flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-gray-900 line-clamp-1">{homestay?.name || item.homestayId}</div>
+                                  <div className="text-xs text-gray-500 mt-1">Số phòng: {item.roomCount ?? 1}</div>
+                                </div>
+                                <div className="text-xs text-gray-500 text-right">
+                                  {homestay?.address || 'Đang cập nhật'}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Booking Status Timeline */}
+                      <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
+                        <div className="text-sm font-semibold text-blue-900 mb-3">Trạng thái group booking</div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${(groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status) === 'PENDING' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>
+                              {(groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status) === 'PENDING' ? '1' : <Check className="w-4 h-4" />}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900">Đặt nhóm</div>
+                              <div className="text-gray-600 text-xs">
+                                Đã tạo lúc {groupBookingDetail?.createdAt 
+                                  ? new Date(groupBookingDetail.createdAt).toLocaleDateString('vi-VN')
+                                  : selectedGroupBooking?.bookings?.[0]?.createdAt
+                                    ? new Date(selectedGroupBooking.bookings[0].createdAt).toLocaleDateString('vi-VN')
+                                    : '—'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status || '') ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                              {['CONFIRMED', 'CHECKED_IN', 'COMPLETED'].includes(groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status || '') ? <Check className="w-4 h-4" /> : '2'}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900">Thanh toán cọc</div>
+                              {(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) !== 'UNPAID' && <div className="text-gray-600 text-xs">Đã thanh toán {(groupBookingDetail?.depositAmount ?? selectedGroupBooking?.bookings?.[0]?.depositAmount ?? 0).toLocaleString('vi-VN')}đ</div>}
+                              {(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) === 'UNPAID' && <div className="text-orange-600 text-xs font-medium">Chưa thanh toán</div>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) === 'FULLY_PAID' ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                              {(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) === 'FULLY_PAID' ? <Check className="w-4 h-4" /> : '3'}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900">Thanh toán còn lại</div>
+                              {(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) === 'FULLY_PAID' && <div className="text-gray-600 text-xs">Đã thanh toán {(groupBookingDetail?.remainingAmount ?? selectedGroupBooking?.bookings?.[0]?.remainingAmount ?? 0).toLocaleString('vi-VN')}đ</div>}
+                              {(groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) !== 'FULLY_PAID' && <div className="text-orange-600 text-xs font-medium">Thanh toán trước check-in</div>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${(groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status) === 'CHECKED_IN' ? 'bg-blue-200 text-blue-800' : (groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status) === 'COMPLETED' ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                              {(groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status) === 'COMPLETED' ? <Check className="w-4 h-4" /> : '4'}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900">Check-in & Lưu trú</div>
+                              {(groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status) === 'CHECKED_IN' ? <div className="text-blue-600 text-xs font-medium">Đang lưu trú</div> : (groupBookingDetail?.status || selectedGroupBooking?.bookings?.[0]?.status) === 'COMPLETED' ? <div className="text-gray-600 text-xs">Đã hoàn thành</div> : <div className="text-gray-600 text-xs">Chờ đến ngày check-in</div>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900 mb-3">Các booking con</div>
+                        <div className="space-y-3">
+                          {selectedGroupBooking.bookings.map((booking) => (
+                            <div key={booking.id} className="rounded-xl border border-gray-200 p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                              <div>
+                                <div className="font-semibold text-gray-900 line-clamp-1">{cleanLoadingText(booking.homestayName) || getHomestayById(booking.homestayId)?.name || 'Homestay'}</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {new Date(booking.checkIn).toLocaleDateString('vi-VN')} - {new Date(booking.checkOut).toLocaleDateString('vi-VN')} · {booking.guestsCount} khách
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(booking.status)}`}>
+                                  {getStatusText(booking.status)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Nút thanh toán cho group booking */}
+                      <div className="flex flex-col gap-3">
+                        {/* Nút Thanh toán cọc — PENDING (chưa cọc) */}
+                        {(groupBookingDetail?.status === 'PENDING' || selectedGroupBooking?.bookings?.[0]?.status === 'PENDING') && typeof (groupBookingDetail?.depositAmount ?? selectedGroupBooking?.bookings?.[0]?.depositAmount) === 'number' && (groupBookingDetail?.depositAmount ?? selectedGroupBooking?.bookings?.[0]?.depositAmount ?? 0) > 0 && (
+                          <button
+                            onClick={async () => {
+                              if (!selectedGroupBooking) return;
+                              let detail = groupBookingDetail;
+                              // Load group booking detail if not already loaded
+                              if (!detail) {
+                                try {
+                                  detail = await groupBookingService.getGroupBookingDetail(selectedGroupBooking.groupBookingId);
+                                  if (detail) setGroupBookingDetail(detail);
+                                } catch (e) {
+                                  console.error('Failed to load group booking detail:', e);
+                                  return;
+                                }
+                              }
+                              if (!detail) return;
+                              
+                              // Try to get dates from bookings if detail doesn't have them
+                              let checkInStr = detail.checkIn;
+                              let checkOutStr = detail.checkOut;
+                              if ((!checkInStr || checkInStr.trim() === '') && selectedGroupBooking?.bookings?.[0]) {
+                                checkInStr = selectedGroupBooking.bookings[0].checkIn;
+                                checkOutStr = selectedGroupBooking.bookings[0].checkOut;
+                              }
+                              
+                              // Normalize dates to ISO string format
+                              const normalizedCheckIn = normalizeDateString(checkInStr);
+                              const normalizedCheckOut = normalizeDateString(checkOutStr);
+                              
+                              const checkInDate = new Date(normalizedCheckIn);
+                              const checkOutDate = new Date(normalizedCheckOut);
+                              
+                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime()) 
+                                ? Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
+                                : 0;
+                              const totalPrice = detail.totalPrice ?? 0;
+                              const pricePerNight = totalNights > 0 ? Math.round(totalPrice / totalNights) : 0;
+                              
+                              // Get guest count - prioritize API data, fallback to calculating from bookings
+                              let guestsCount = detail.totalGuestCount ?? 0;
+                              if (!guestsCount && selectedGroupBooking?.bookings) {
+                                guestsCount = selectedGroupBooking.bookings.reduce((sum, b) => sum + (b.guestsCount || 0), 0);
+                              }
+                              
+                              setPayingBooking({
+                                id: detail.id,
+                                groupBookingId: detail.id,
+                                homestayName: 'Đơn đặt nhóm',
+                                checkIn: normalizedCheckIn,
+                                checkOut: normalizedCheckOut,
+                                totalNights: totalNights,
+                                guestsCount: guestsCount,
+                                pricePerNight: pricePerNight,
+                                bookingTotal: totalPrice,
+                                amountDue: detail.depositAmount ?? 0,
+                                depositAmount: detail.depositAmount,
+                                remainingAmount: detail.remainingAmount,
+                                depositPercentage: 20,
+                                paymentLabel: 'Đặt cọc nhóm',
+                              });
+                              setSelectedGroupBooking(null);
+                              setGroupBookingDetail(null);
+                            }}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white transition-all"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Đặt cọc nhóm ({(groupBookingDetail?.depositAmount ?? selectedGroupBooking?.bookings?.[0]?.depositAmount ?? 0).toLocaleString('vi-VN')}đ)
+                          </button>
+                        )}
+
+                        {/* Nút Thanh toán còn lại — CONFIRMED + DEPOSIT_PAID */}
+                        {(groupBookingDetail?.status === 'CONFIRMED' || selectedGroupBooking?.bookings?.[0]?.status === 'CONFIRMED') && (groupBookingDetail?.paymentStatus || selectedGroupBooking?.bookings?.[0]?.paymentStatus) === 'DEPOSIT_PAID' && typeof (groupBookingDetail?.remainingAmount ?? selectedGroupBooking?.bookings?.[0]?.remainingAmount) === 'number' && (groupBookingDetail?.remainingAmount ?? selectedGroupBooking?.bookings?.[0]?.remainingAmount ?? 0) > 0 && (
+                          <button
+                            onClick={async () => {
+                              if (!selectedGroupBooking) return;
+                              let detail = groupBookingDetail;
+                              // Load group booking detail if not already loaded
+                              if (!detail) {
+                                try {
+                                  detail = await groupBookingService.getGroupBookingDetail(selectedGroupBooking.groupBookingId);
+                                  if (detail) setGroupBookingDetail(detail);
+                                } catch (e) {
+                                  console.error('Failed to load group booking detail:', e);
+                                  return;
+                                }
+                              }
+                              if (!detail) return;
+                              
+                              // Try to get dates from bookings if detail doesn't have them
+                              let checkInStr = detail.checkIn;
+                              let checkOutStr = detail.checkOut;
+                              if ((!checkInStr || checkInStr.trim() === '') && selectedGroupBooking?.bookings?.[0]) {
+                                checkInStr = selectedGroupBooking.bookings[0].checkIn;
+                                checkOutStr = selectedGroupBooking.bookings[0].checkOut;
+                              }
+                              
+                              // Normalize dates to ISO string format
+                              const normalizedCheckIn = normalizeDateString(checkInStr);
+                              const normalizedCheckOut = normalizeDateString(checkOutStr);
+                              
+                              const checkInDate = new Date(normalizedCheckIn);
+                              const checkOutDate = new Date(normalizedCheckOut);
+                              
+                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime()) 
+                                ? Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
+                                : 0;
+                              const totalPrice = detail.totalPrice ?? 0;
+                              const pricePerNight = totalNights > 0 ? Math.round(totalPrice / totalNights) : 0;
+                              
+                              // Get guest count - prioritize API data, fallback to calculating from bookings
+                              let guestsCount = detail.totalGuestCount ?? 0;
+                              if (!guestsCount && selectedGroupBooking?.bookings) {
+                                guestsCount = selectedGroupBooking.bookings.reduce((sum, b) => sum + (b.guestsCount || 0), 0);
+                              }
+                              
+                              setPayingBooking({
+                                id: detail.id,
+                                groupBookingId: detail.id,
+                                homestayName: 'Đơn đặt nhóm',
+                                checkIn: normalizedCheckIn,
+                                checkOut: normalizedCheckOut,
+                                totalNights: totalNights,
+                                guestsCount: guestsCount,
+                                pricePerNight: pricePerNight,
+                                bookingTotal: totalPrice,
+                                amountDue: detail.remainingAmount ?? 0,
+                                depositAmount: detail.depositAmount,
+                                remainingAmount: detail.remainingAmount,
+                                depositPercentage: 20,
+                                paymentLabel: 'Thanh toán còn lại',
+                              });
+                              setSelectedGroupBooking(null);
+                              setGroupBookingDetail(null);
+                            }}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white transition-all"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Thanh toán còn lại ({(groupBookingDetail?.remainingAmount ?? selectedGroupBooking?.bookings?.[0]?.remainingAmount ?? 0).toLocaleString('vi-VN')}đ)
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Detail drawer/modal - giữ nguyên phần này từ code trước */}
           {selected && (
@@ -977,6 +1489,7 @@ export default function BookingsPage() {
                                   : (selected.remainingAmount ?? 0);
                                 setPayingBooking({
                                   id: selected.id,
+                                  groupBookingId: selected.groupBookingId ?? undefined,
                                   homestayName: selected.homestayName || hs?.name || 'Homestay',
                                   checkIn: selected.checkIn,
                                   checkOut: selected.checkOut,

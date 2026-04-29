@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, X, ChevronRight } from "lucide-react";
+import { MapPin, Calendar, X, ChevronRight, CalendarDays, Search, Users } from "lucide-react";
 import { bookingService, type Booking } from "../../services/bookingService";
 import MainLayout from "../../layouts/MainLayout";
 import { publicHomestayService } from "../../services/publicHomestayService";
@@ -8,6 +8,7 @@ import { authService } from "../../services/authService";
 import { provinceService } from "../../services/provinceService";
 import { districtService } from "../../services/districtService";
 import HomestayCard from "../../components/homestay/HomestayCard";
+import toast from 'react-hot-toast';
 import type { Province, District } from "../../types/homestay.types";
 
 const PRICE_MIN = 0;
@@ -34,6 +35,12 @@ export default function CustomerDashboard() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [checkInDate, setCheckInDate] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
+  const [isGroupSearchOpen, setIsGroupSearchOpen] = useState(false);
+  const [groupSearchProvince, setGroupSearchProvince] = useState("");
+  const [groupSearchDistrict, setGroupSearchDistrict] = useState("");
+  const [groupSearchCheckIn, setGroupSearchCheckIn] = useState("");
+  const [groupSearchCheckOut, setGroupSearchCheckOut] = useState("");
+  const [groupSearchGuests, setGroupSearchGuests] = useState(6);
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
   const [showPriceFilter, setShowPriceFilter] = useState(false);
 
@@ -58,6 +65,19 @@ export default function CustomerDashboard() {
     [provinces, selectedProvince],
   );
 
+  const groupSearchProvinceName = useMemo(
+    () => provinces.find((p) => p.id === groupSearchProvince)?.name ?? '',
+    [groupSearchProvince, provinces],
+  );
+
+  const groupSearchDistricts = useMemo(() => {
+    if (!groupSearchProvinceName) return [];
+
+    return allDistricts.filter(
+      (district) => (district.provinceName || '').toLowerCase() === groupSearchProvinceName.toLowerCase(),
+    );
+  }, [allDistricts, groupSearchProvinceName]);
+
   // State for all homestays
   const [allHomestays, setAllHomestays] = useState<any[]>([]);
   const [filteredHomestays, setFilteredHomestays] = useState<any[]>([]);
@@ -65,6 +85,49 @@ export default function CustomerDashboard() {
   const handlePriceChange = (value: number) => {
     const normalized = Math.min(Math.max(value, PRICE_MIN), PRICE_MAX);
     setMaxPrice(normalized);
+  };
+
+  const toggleGroupSearchPanel = () => {
+    if (isGroupSearchOpen) {
+      setIsGroupSearchOpen(false);
+      return;
+    }
+
+    setGroupSearchProvince(selectedProvince);
+    setGroupSearchDistrict(selectedDistrict);
+    setGroupSearchCheckIn('');
+    setGroupSearchCheckOut('');
+    setGroupSearchGuests(6);
+    setIsGroupSearchOpen(true);
+  };
+
+  const handleGroupSearchSubmit = () => {
+    if (!groupSearchProvince || !groupSearchDistrict) {
+      toast.error('Vui lòng chọn tỉnh/thành và khu vực cho group booking.');
+      return;
+    }
+
+    if (!groupSearchCheckIn || !groupSearchCheckOut) {
+      toast.error('Vui lòng chọn ngày nhận và trả phòng.');
+      return;
+    }
+
+    if (groupSearchGuests < 1) {
+      toast.error('Số khách phải lớn hơn 0.');
+      return;
+    }
+
+    const districtName = allDistricts.find((district) => district.id === groupSearchDistrict)?.name ?? '';
+    const params = new URLSearchParams({
+      districtId: groupSearchDistrict,
+      districtName,
+      checkIn: groupSearchCheckIn,
+      checkOut: groupSearchCheckOut,
+      guestsCount: String(groupSearchGuests),
+    });
+
+    setIsGroupSearchOpen(false);
+    navigate(`/group-booking/search?${params.toString()}`);
   };
 
   // Load provinces & districts once
@@ -208,19 +271,158 @@ export default function CustomerDashboard() {
     <MainLayout>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-8 space-y-8">
         {/* Welcome Section */}
-        <div>
+        <div className="pb-4">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Chào mừng trở lại, {currentUser?.name}! 👋
           </h2>
           <p className="text-gray-600">Tìm kiếm homestay ven biển hoàn hảo cho bạn</p>
         </div>
 
+        {/* Group Booking Search Panel */}
+        {isGroupSearchOpen && (
+          <section className="relative z-30">
+            <div className="rounded-[1.75rem] border border-cyan-100 bg-white/98 p-5 sm:p-6 shadow-[0_24px_60px_-20px_rgba(6,182,212,0.35)] backdrop-blur">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-700">
+                    <Search className="h-3.5 w-3.5" />
+                    Group booking
+                  </p>
+                  <h3 className="mt-3 text-xl sm:text-2xl font-bold text-slate-900">Tìm homestay phù hợp cho nhóm của bạn</h3>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Chọn khu vực, ngày lưu trú và số khách để chuyển sang trang kết quả.
+                  </p>
+                </div>
 
+                <button
+                  type="button"
+                  onClick={() => setIsGroupSearchOpen(false)}
+                  className="shrink-0 rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                  aria-label="Đóng form group booking"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form
+                className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleGroupSearchSubmit();
+                }}
+              >
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Tỉnh/Thành</label>
+                  <select
+                    value={groupSearchProvince}
+                    onChange={(event) => {
+                      setGroupSearchProvince(event.target.value);
+                      setGroupSearchDistrict('');
+                    }}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                  >
+                    <option value="">Chọn tỉnh/thành</option>
+                    {provinces.map((province) => (
+                      <option key={province.id} value={province.id}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Khu vực</label>
+                  <select
+                    value={groupSearchDistrict}
+                    onChange={(event) => setGroupSearchDistrict(event.target.value)}
+                    disabled={!groupSearchProvince}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    <option value="">Chọn khu vực</option>
+                    {groupSearchDistricts.map((district) => (
+                      <option key={district.id} value={district.id}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Ngày nhận phòng</label>
+                  <div className="relative">
+                    <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="date"
+                      min={today}
+                      value={groupSearchCheckIn}
+                      onChange={(event) => setGroupSearchCheckIn(event.target.value)}
+                      className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-4 text-slate-900 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Ngày trả phòng</label>
+                  <div className="relative">
+                    <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="date"
+                      min={groupSearchCheckIn || today}
+                      value={groupSearchCheckOut}
+                      onChange={(event) => setGroupSearchCheckOut(event.target.value)}
+                      className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-4 text-slate-900 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="xl:col-span-4">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Số khách</label>
+                  <div className="relative">
+                    <Users className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={groupSearchGuests}
+                      onChange={(event) => setGroupSearchGuests(Number(event.target.value) || 1)}
+                      className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-4 text-slate-900 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2 xl:col-span-4 mt-1 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsGroupSearchOpen(false)}
+                    className="inline-flex items-center justify-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700"
+                  >
+                    <Search className="h-4 w-4" />
+                    Tìm homestay phù hợp
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+        )}
 
         {/* Search Section */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-gray-900">Tìm Kiếm Homestay</h3>
+            <button
+              type="button"
+              onClick={toggleGroupSearchPanel}
+              className="inline-flex items-center gap-2 rounded-full border border-cyan-300 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
+            >
+              <Users className="h-4 w-4" />
+              Đặt đơn nhóm
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -348,9 +550,9 @@ export default function CustomerDashboard() {
               )}
             </div>
           </div>
-        </div>
 
         {/* Upcoming Bookings */}
+        <div className="mt-12">
         {isLoadingBookings ? (
           <div className="text-center py-8">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -388,6 +590,7 @@ export default function CustomerDashboard() {
             </div>
           </div>
         )}
+        </div>
 
         {showUpcomingModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
@@ -458,6 +661,7 @@ export default function CustomerDashboard() {
         )}
 
         {/* Search Results */}
+        <div className="mt-10">
         {hasSearchFilter && (
           <div>
             <div className="flex items-center justify-between mb-6">
@@ -488,8 +692,10 @@ export default function CustomerDashboard() {
             )}
           </div>
         )}
+        </div>
 
         {/* All Homestays */}
+        <div className="mt-10">
         {!hasSearchFilter && (
           <div>
             <div className="flex items-center justify-between mb-6">
@@ -508,8 +714,10 @@ export default function CustomerDashboard() {
             </div>
           </div>
         )}
+        </div>
 
         {/* Promotional Banner */}
+        <div className="mt-12">
         <div className="bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 rounded-2xl p-8 md:p-12 text-white shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
@@ -536,7 +744,9 @@ export default function CustomerDashboard() {
             </div>
           </div>
         </div>
+        </div>
       </div>
+    </div>
 
       <button
         onClick={handleOpenCompare}

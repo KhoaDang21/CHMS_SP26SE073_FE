@@ -95,7 +95,7 @@ class ApiService {
         throw new Error(error.message || `HTTP Error: ${response.status}`);
       }
 
-      return await response.json();
+      return await this.parseResponseBody<T>(response);
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
