@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Clock, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
 import { bookingService } from '../../services/bookingService';
+import { groupBookingService } from '../../services/groupBookingService';
 import { paymentService } from '../../services/paymentService';
 import MainLayout from '../../layouts/MainLayout';
 import toast from 'react-hot-toast';
@@ -31,10 +32,72 @@ export default function PaymentResultPage() {
   const resolveBooking = async (id: string) => {
     const detail = await bookingService.getBookingDetail(id);
     if (detail) return detail;
-
-    // Fallback: endpoint detail có thể lỗi tạm thời ở BE, lấy từ danh sách booking của customer.
+    // Fallback 1: endpoint detail có thể lỗi tạm thời ở BE, lấy từ danh sách booking của customer.
     const myBookings = await bookingService.getMyBookings();
-    return myBookings.find((item) => item.id === id) ?? null;
+    const found = myBookings.find((item) => item.id === id);
+    if (found) return found;
+
+    // Fallback 2: booking có thể là GroupBooking (group id). Thử lấy chi tiết group booking.
+    try {
+      const group = await groupBookingService.getGroupBookingDetail(id);
+      if (group) {
+        // Try to aggregate child bookings (if any) to compute accurate checkIn/checkOut and totals
+        try {
+          const myBookings = await bookingService.getMyBookings();
+          const childBookings = myBookings.filter(b => (b.groupBookingId ?? '') === group.id);
+          if (childBookings && childBookings.length > 0) {
+            // compute earliest checkIn and latest checkOut
+            const checkIns = childBookings.map(b => new Date(b.checkIn)).filter(d => !isNaN(d.getTime()));
+            const checkOuts = childBookings.map(b => new Date(b.checkOut)).filter(d => !isNaN(d.getTime()));
+            const earliest = checkIns.length ? new Date(Math.min(...checkIns.map(d => d.getTime()))) : undefined;
+            const latest = checkOuts.length ? new Date(Math.max(...checkOuts.map(d => d.getTime()))) : undefined;
+            const totalPriceSum = childBookings.reduce((s, cb) => s + (Number(cb.totalPrice) || 0), 0);
+            const guestsSum = childBookings.reduce((s, cb) => s + (Number(cb.guestsCount) || 0), 0);
+
+            return {
+              id: group.id,
+              groupBookingId: group.id,
+              homestayName: 'Đơn đặt nhóm',
+              checkIn: earliest ? earliest.toISOString() : group.checkIn,
+              checkOut: latest ? latest.toISOString() : group.checkOut,
+              totalPrice: (totalPriceSum || group.totalPrice) ?? undefined,
+              depositAmount: group.depositAmount ?? undefined,
+              remainingAmount: group.remainingAmount ?? undefined,
+              depositPercentage: (group as any).depositPercentage ?? undefined,
+              paymentStatus: group.paymentStatus ?? undefined,
+              status: group.status,
+              guestsCount: (guestsSum || group.totalGuestCount) ?? 0,
+              contactPhone: group.contactPhone,
+              _isGroup: true,
+            } as any;
+          }
+        } catch (e) {
+          console.error('Aggregate child bookings error:', e);
+        }
+
+        // Fallback to group fields if no child bookings
+        return {
+          id: group.id,
+          groupBookingId: group.id,
+          homestayName: 'Đơn đặt nhóm',
+          checkIn: group.checkIn,
+          checkOut: group.checkOut,
+          totalPrice: group.totalPrice ?? undefined,
+          depositAmount: group.depositAmount ?? undefined,
+          remainingAmount: group.remainingAmount ?? undefined,
+          depositPercentage: (group as any).depositPercentage ?? undefined,
+          paymentStatus: group.paymentStatus ?? undefined,
+          status: group.status,
+          guestsCount: group.totalGuestCount ?? 0,
+          contactPhone: group.contactPhone,
+          _isGroup: true,
+        } as any;
+      }
+    } catch (e) {
+      console.error('Get group booking fallback error:', e);
+    }
+
+    return null;
   };
 
   const checkBookingStatus = async (attempt = 0) => {
@@ -43,10 +106,13 @@ export default function PaymentResultPage() {
     try {
       const detail = await resolveBooking(bookingId);
       if (!detail) {
-        if (attempt < 1) {
+        // Tăng số lần retry lên 4 lần để chờ backend cập nhật trạng thái
+        // Delay tăng dần: 1.5s, 2s, 2.5s, 3s = tổng ~9s
+        if (attempt < 4) {
+          const delay = 1500 + (attempt * 500);
           setTimeout(() => {
             void checkBookingStatus(attempt + 1);
-          }, 1200);
+          }, delay);
           return;
         }
         setState('error');
@@ -59,6 +125,14 @@ export default function PaymentResultPage() {
       else if (status === 'CANCELLED' || status === 'REJECTED') setState('cancelled');
       else setState('pending'); // PENDING = chưa thanh toán
     } catch {
+      // Nếu API error, cũng retry để chờ backend sẵn sàng
+      if (attempt < 4) {
+        const delay = 1500 + (attempt * 500);
+        setTimeout(() => {
+          void checkBookingStatus(attempt + 1);
+        }, delay);
+        return;
+      }
       setState('error');
     }
   };
@@ -86,7 +160,12 @@ export default function PaymentResultPage() {
     if (!booking) return;
     setIsCancelling(true);
     try {
-      const res = await bookingService.cancelBooking(booking.id);
+      let res;
+      if ((booking as any)?._isGroup || (booking as any)?.groupBookingId) {
+        res = await groupBookingService.cancelGroupBooking(booking.id);
+      } else {
+        res = await bookingService.cancelBooking(booking.id);
+      }
       if (res?.success) {
         toast.success('Đã hủy booking');
         setState('cancelled');

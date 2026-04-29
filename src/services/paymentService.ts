@@ -2,11 +2,12 @@ import { apiService } from './apiService';
 import { apiConfig } from '../config/apiConfig';
 
 // BE: POST /api/payment/create-link
-// Request: { BookingId: Guid, CancelUrl: string, ReturnUrl: string }
+// Request: { BookingId: Guid, GroupBookingId?: Guid, CancelUrl: string, ReturnUrl: string }
 // Response: ApiResponse<object> { data: { checkoutUrl: string } }
 
 export interface CreatePaymentLinkRequest {
   bookingId: string;
+  groupBookingId?: string;
   cancelUrl: string;
   returnUrl: string;
 }
@@ -33,6 +34,7 @@ export const paymentService = {
   async createLink(payload: CreatePaymentLinkRequest): Promise<CreatePaymentLinkResponse> {
     const res = await apiService.post<any>(apiConfig.endpoints.payments.createLink, {
       bookingId: payload.bookingId,
+      ...(payload.groupBookingId && { groupBookingId: payload.groupBookingId }),
       cancelUrl: payload.cancelUrl,
       returnUrl: payload.returnUrl,
     });
