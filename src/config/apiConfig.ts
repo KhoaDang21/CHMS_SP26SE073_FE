@@ -319,6 +319,8 @@ export const apiConfig = {
           `/api/manager/dining/combos/${comboId}/image`,
         toggleCombo: (comboId: string) =>
           `/api/manager/dining/combos/${comboId}/toggle`,
+        deleteCombo: (comboId: string) =>
+          `/api/manager/dining/combos/${comboId}`,
         slotsByHomestay: (homestayId: string) =>
           `/api/manager/dining/homestays/${homestayId}/slots`,
         createSlot: "/api/manager/dining/slots",

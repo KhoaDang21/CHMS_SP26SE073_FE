@@ -225,6 +225,17 @@ export default function ManagerDiningPage() {
     }
   };
 
+  const deleteCombo = async (comboId: string) => {
+    try {
+      await diningService.managerDeleteCombo(comboId);
+      toast.success("Đã xóa món");
+      setCombos((prev) => prev.filter((c) => String(c.id) !== String(comboId)));
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Không thể xóa món (có thể còn đơn chưa hoàn tất)");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       <aside
@@ -449,6 +460,13 @@ export default function ManagerDiningPage() {
                                   }}
                                 />
                               </label>
+                              <button
+                                onClick={() => deleteCombo(c.id)}
+                                type="button"
+                                className="text-xs text-red-600 hover:text-red-800 underline underline-offset-2"
+                              >
+                                Xóa món
+                              </button>
                             </div>
                           </div>
                         </div>
