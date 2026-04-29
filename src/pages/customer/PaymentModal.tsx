@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 interface BookingInfo {
   id: string;
+  groupBookingId?: string; // Mã group booking nếu đây là đơn con của group
   homestayName: string;
   checkIn: string;
   checkOut: string;
@@ -29,6 +30,43 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
   const [isPaying, setIsPaying] = useState(false);
 
   const formatMoney = (n: number) => `${n.toLocaleString('vi-VN')}đ`;
+  
+  const safeFormatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return '—';
+    try {
+      // Handle numeric timestamps
+      if (typeof dateStr === 'number') {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('vi-VN');
+        }
+      }
+      
+      // Handle string dates
+      if (typeof dateStr === 'string') {
+        // Try direct parsing first
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('vi-VN');
+        }
+        
+        // Try parsing as "YYYY-MM-DD"
+        if (dateStr.includes('-') && dateStr.length === 10) {
+          const date2 = new Date(dateStr + 'T00:00:00');
+          if (!isNaN(date2.getTime())) {
+            return date2.toLocaleDateString('vi-VN');
+          }
+        }
+        
+        // If all else fails, return the string as-is
+        return dateStr;
+      }
+      
+      return '—';
+    } catch (e) {
+      return dateStr ? String(dateStr) : '—';
+    }
+  };
 
   const handlePay = async () => {
     setIsPaying(true);
@@ -38,6 +76,7 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
 
       const res = await paymentService.createLink({
         bookingId: booking.id,
+        groupBookingId: booking.groupBookingId,
         cancelUrl,
         returnUrl,
       });
@@ -81,9 +120,9 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
               <div className="flex items-center gap-2.5">
                 <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
                 <p className="text-sm text-gray-700">
-                  {new Date(booking.checkIn).toLocaleDateString('vi-VN')}
+                  {safeFormatDate(booking.checkIn)}
                   {' → '}
-                  {new Date(booking.checkOut).toLocaleDateString('vi-VN')}
+                  {safeFormatDate(booking.checkOut)}
                   <span className="text-gray-500 ml-1">({booking.totalNights} đêm)</span>
                 </p>
               </div>
@@ -93,15 +132,6 @@ export default function PaymentModal({ booking, onClose, onBack }: PaymentModalP
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-blue-100 space-y-1.5">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>{formatMoney(booking.pricePerNight)} × {booking.totalNights} đêm</span>
-                <span>{formatMoney(booking.bookingTotal)}</span>
-              </div>
-              {/* Tổng tiền */}
-              <div className="flex justify-between text-sm font-semibold text-gray-900 pt-1.5 border-t border-blue-100">
-                <span>Tổng tiền booking</span>
-                <span>{formatMoney(booking.bookingTotal)}</span>
-              </div>
               {/* Breakdown cọc / còn lại */}
               {(() => {
                 const isDepositPayment = !booking.paymentLabel || booking.paymentLabel === 'Đặt cọc';

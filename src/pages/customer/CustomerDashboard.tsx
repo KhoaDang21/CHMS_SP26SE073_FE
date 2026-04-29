@@ -421,7 +421,7 @@ export default function CustomerDashboard() {
               className="inline-flex items-center gap-2 rounded-full border border-cyan-300 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
             >
               <Users className="h-4 w-4" />
-              Tìm group booking
+              Đặt đơn nhóm
             </button>
           </div>
 
