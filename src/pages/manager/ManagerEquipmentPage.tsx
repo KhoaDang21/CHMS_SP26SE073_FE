@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Search,
   Edit2,
   Trash2,
+  Plus,
   Package,
   CheckCircle,
   Clock,
@@ -19,97 +20,24 @@ import { authService } from '../../services/authService';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { managerNavItemsGrouped } from '../../config/adminNavItemsGrouped';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import { equipmentLendingService } from '../../services/equipmentLendingService';
+import { managerHomestayService } from '../../services/managerHomestayService';
 import type { Equipment } from '../../types/equipment.types';
+import type { Homestay } from '../../types/homestay.types';
 
 const CATEGORIES = ['Swimming', 'Water Sports', 'Sports', 'Beach', 'Other'];
-
-const MOCK_HOMESTAYS = [
-  { id: 'hs-1', name: 'Sunrise Beach Homestay' },
-  { id: 'hs-2', name: 'Blue Coral Retreat' },
-  { id: 'hs-3', name: 'Ocean Breeze Villa' },
-];
-
-const MOCK_EQUIPMENT: Equipment[] = [
-  {
-    id: 'eq-1',
-    homestayId: 'hs-1',
-    name: 'Kính bơi',
-    category: 'Swimming',
-    quantity: 20,
-    available: 15,
-    borrowed: 5,
-    condition: 'good',
-    description: 'Kính bơi chuyên nghiệp, chống tia UV',
-    isActive: true,
-  },
-  {
-    id: 'eq-2',
-    homestayId: 'hs-1',
-    name: 'Áo phao',
-    category: 'Swimming',
-    quantity: 30,
-    available: 22,
-    borrowed: 8,
-    condition: 'good',
-    description: 'Áo phao an toàn, nhiều size',
-    isActive: true,
-  },
-  {
-    id: 'eq-3',
-    homestayId: 'hs-2',
-    name: 'Thuyền SUP',
-    category: 'Water Sports',
-    quantity: 5,
-    available: 3,
-    borrowed: 2,
-    condition: 'good',
-    description: 'Thuyền Stand-up Paddle board',
-    isActive: true,
-  },
-  {
-    id: 'eq-4',
-    homestayId: 'hs-2',
-    name: 'Bóng đá',
-    category: 'Sports',
-    quantity: 10,
-    available: 8,
-    borrowed: 2,
-    condition: 'good',
-    description: 'Bóng đá size 5 tiêu chuẩn',
-    isActive: true,
-  },
-  {
-    id: 'eq-5',
-    homestayId: 'hs-3',
-    name: 'Bóng chuyền',
-    category: 'Sports',
-    quantity: 8,
-    available: 6,
-    borrowed: 2,
-    condition: 'good',
-    description: 'Bóng chuyền bãi biển',
-    isActive: true,
-  },
-  {
-    id: 'eq-6',
-    homestayId: 'hs-3',
-    name: 'Ván lướt sóng',
-    category: 'Water Sports',
-    quantity: 6,
-    available: 4,
-    borrowed: 1,
-    condition: 'fair',
-    description: 'Surfboard cho người mới',
-    isActive: true,
-  },
-];
 
 interface EquipmentForm {
   name: string;
   category: string;
-  quantity: number;
+  totalQuantity: number;
+  availableQuantity: number;
+  depositAmount: number;
+  rentalFee: number;
+  imageUrl: string;
   description: string;
   condition: 'good' | 'fair' | 'maintenance';
+  isActive: boolean;
 }
 
 export default function ManagerEquipmentPage() {
@@ -118,11 +46,12 @@ export default function ManagerEquipmentPage() {
   const groupedNavItems = managerNavItemsGrouped;
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [homestays] = useState(MOCK_HOMESTAYS);
-  const [homestayId, setHomestayId] = useState<string>(MOCK_HOMESTAYS[0]?.id ?? '');
+  const [homestays, setHomestays] = useState<Homestay[]>([]);
+  const [homestayId, setHomestayId] = useState<string>('');
+  const [loadingHomestays, setLoadingHomestays] = useState(false);
 
-  const [loading] = useState(false);
-  const [allEquipment, setAllEquipment] = useState<Equipment[]>(MOCK_EQUIPMENT);
+  const [loading, setLoading] = useState(false);
+  const [allEquipment, setAllEquipment] = useState<Equipment[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -133,11 +62,67 @@ export default function ManagerEquipmentPage() {
   const [formData, setFormData] = useState<EquipmentForm>({
     name: '',
     category: 'Swimming',
-    quantity: 1,
+    totalQuantity: 1,
+    availableQuantity: 1,
+    depositAmount: 0,
+    rentalFee: 0,
+    imageUrl: '',
     description: '',
     condition: 'good',
+    isActive: true,
   });
-  const nextEquipmentIdRef = useRef(MOCK_EQUIPMENT.length + 1);
+
+  // Load equipment from API when homestayId changes
+  useEffect(() => {
+    const loadEquipment = async () => {
+      if (!homestayId) {
+        console.log('No homestayId selected, skipping equipment load');
+        return;
+      }
+      console.log('Loading equipment for homestayId:', homestayId);
+      setLoading(true);
+      try {
+        const items = await equipmentLendingService.managerGetEquipment(homestayId);
+        console.log('Equipment loaded successfully:', items);
+        setAllEquipment(items);
+      } catch (err) {
+        console.error('Error loading equipment:', err);
+        toast.error('Không thể tải danh sách đồ dùng');
+        setAllEquipment([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEquipment();
+  }, [homestayId]);
+
+  useEffect(() => {
+    const loadHomestays = async () => {
+      setLoadingHomestays(true);
+      try {
+        const list = await managerHomestayService.list();
+        setHomestays(list);
+        setHomestayId((current) => {
+          if (list.length === 0) return '';
+          const stillValid = list.some((item) => String(item.id) === String(current));
+          return stillValid ? current : String(list[0].id);
+        });
+
+        if (list.length === 0) {
+          toast.info('Không có homestay nào được phân công cho manager này.');
+        }
+      } catch (err) {
+        console.error('Error loading manager homestays:', err);
+        toast.error('Không thể tải danh sách homestay');
+        setHomestays([]);
+        setHomestayId('');
+      } finally {
+        setLoadingHomestays(false);
+      }
+    };
+
+    loadHomestays();
+  }, []);
 
   const equipment = allEquipment.filter((item) => String(item.homestayId) === String(homestayId));
 
@@ -158,79 +143,141 @@ export default function ManagerEquipmentPage() {
       toast.error('Vui lòng nhập tên đồ dùng');
       return;
     }
-    if (formData.quantity <= 0) {
+    if (formData.totalQuantity <= 0) {
       toast.error('Số lượng phải lớn hơn 0');
+      return;
+    }
+    if (formData.availableQuantity < 0 || formData.availableQuantity > formData.totalQuantity) {
+      toast.error('Số lượng có sẵn phải từ 0 đến tổng số lượng');
       return;
     }
 
     setIsSubmitting(true);
-    const newItem: Equipment = {
-      id: `eq-${nextEquipmentIdRef.current++}`,
-      homestayId,
-      name: formData.name.trim(),
-      category: formData.category,
-      quantity: formData.quantity,
-      available: formData.quantity,
-      borrowed: 0,
-      condition: formData.condition,
-      description: formData.description.trim() || undefined,
-      isActive: true,
-    };
-    setAllEquipment((prev) => [newItem, ...prev]);
-    toast.success(`Đã thêm ${formData.name}`);
-    setShowAddModal(false);
-    resetForm();
-    setIsSubmitting(false);
+    (async () => {
+      try {
+        const newItem = await equipmentLendingService.managerCreateEquipment({
+          homestayId,
+          name: formData.name.trim(),
+          category: formData.category,
+          totalQuantity: formData.totalQuantity,
+          availableQuantity: formData.availableQuantity,
+          depositAmount: formData.depositAmount,
+          rentalFee: formData.rentalFee,
+          imageUrl: formData.imageUrl.trim() || undefined,
+          description: formData.description.trim() || undefined,
+          condition: formData.condition as 'good' | 'fair' | 'maintenance',
+          isActive: formData.isActive,
+        });
+
+        if (newItem) {
+          setAllEquipment((prev) => [newItem, ...prev]);
+          toast.success(`Đã thêm ${formData.name}`);
+          setShowAddModal(false);
+          resetForm();
+        } else {
+          toast.error('Tạo đồ dùng thất bại');
+        }
+      } catch (err) {
+        console.error('Error adding equipment:', err);
+        toast.error('Lỗi khi tạo đồ dùng');
+      } finally {
+        setIsSubmitting(false);
+      }
+    })();
   };
 
   const handleUpdateEquipment = () => {
     if (!editingItem) return;
+    if (!formData.name.trim()) {
+      toast.error('Vui lòng nhập tên đồ dùng');
+      return;
+    }
+    if (formData.totalQuantity <= 0) {
+      toast.error('Số lượng phải lớn hơn 0');
+      return;
+    }
+    if (formData.availableQuantity < 0 || formData.availableQuantity > formData.totalQuantity) {
+      toast.error('Số lượng có sẵn phải từ 0 đến tổng số lượng');
+      return;
+    }
 
     setIsSubmitting(true);
-    setAllEquipment((prev) =>
-      prev.map((item) =>
-        item.id === editingItem.id
-          ? {
-              ...item,
-              name: formData.name,
-              category: formData.category,
-              quantity: formData.quantity,
-              available: Math.max(0, formData.quantity - item.borrowed),
-              description: formData.description || undefined,
-              condition: formData.condition,
-            }
-          : item
-      )
-    );
-    toast.success(`Đã cập nhật ${formData.name}`);
-    setEditingItem(null);
-    resetForm();
-    setIsSubmitting(false);
+    (async () => {
+      try {
+        const updated = await equipmentLendingService.managerUpdateEquipment(editingItem.id, {
+          name: formData.name.trim(),
+          category: formData.category,
+          totalQuantity: formData.totalQuantity,
+          availableQuantity: formData.availableQuantity,
+          depositAmount: formData.depositAmount,
+          rentalFee: formData.rentalFee,
+          imageUrl: formData.imageUrl.trim() || undefined,
+          description: formData.description.trim() || undefined,
+          condition: formData.condition,
+          isActive: formData.isActive,
+        });
+
+        if (updated) {
+          setAllEquipment((prev) =>
+            prev.map((item) => (item.id === editingItem.id ? updated : item))
+          );
+          toast.success(`Đã cập nhật ${formData.name}`);
+          setEditingItem(null);
+          setShowAddModal(false);
+          resetForm();
+        } else {
+          toast.error('Cập nhật thất bại');
+        }
+      } catch (err) {
+        console.error('Error updating equipment:', err);
+        toast.error('Lỗi khi cập nhật đồ dùng');
+      } finally {
+        setIsSubmitting(false);
+      }
+    })();
   };
 
   const handleDeleteEquipment = (id: string) => {
     const item = equipment.find((e) => e.id === id);
     if (!item) return;
 
-    if (item.borrowed > 0) {
-      toast.error('Không thể xóa đồ dùng đang được mượn!');
-      return;
-    }
-
     if (!confirm(`Bạn có chắc muốn xóa "${item.name}" không?`)) return;
 
-    setAllEquipment((prev) => prev.filter((item) => item.id !== id));
-    toast.success('Đã xóa đồ dùng');
+    (async () => {
+      try {
+        const success = await equipmentLendingService.managerDeleteEquipment(id);
+        if (success) {
+          setAllEquipment((prev) => prev.filter((item) => item.id !== id));
+          toast.success('Đã xóa đồ dùng');
+        } else {
+          toast.error('Xóa thất bại');
+        }
+      } catch (err) {
+        console.error('Error deleting equipment:', err);
+        toast.error('Lỗi khi xóa đồ dùng');
+      }
+    })();
   };
 
   const resetForm = () => {
     setFormData({
       name: '',
       category: 'Swimming',
-      quantity: 1,
+      totalQuantity: 1,
+      availableQuantity: 1,
+      depositAmount: 0,
+      rentalFee: 0,
+      imageUrl: '',
       description: '',
       condition: 'good',
+      isActive: true,
     });
+  };
+
+  const openAddModal = () => {
+    setEditingItem(null);
+    resetForm();
+    setShowAddModal(true);
   };
 
   const openEditModal = (item: Equipment) => {
@@ -238,9 +285,14 @@ export default function ManagerEquipmentPage() {
     setFormData({
       name: item.name,
       category: item.category,
-      quantity: item.quantity,
+      totalQuantity: item.totalQuantity ?? item.quantity,
+      availableQuantity: item.availableQuantity ?? item.available,
+      depositAmount: item.depositAmount ?? 0,
+      rentalFee: item.rentalFee ?? 0,
+      imageUrl: item.imageUrl ?? item.image ?? '',
       description: item.description || '',
       condition: item.condition,
+      isActive: item.isActive,
     });
   };
 
@@ -320,13 +372,20 @@ export default function ManagerEquipmentPage() {
                 <select
                   value={homestayId}
                   onChange={(e) => setHomestayId(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[280px] bg-white"
+                  disabled={loadingHomestays || homestays.length === 0}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[280px] bg-white disabled:bg-gray-100 disabled:text-gray-400"
                 >
-                  {homestays.map((h) => (
-                    <option key={String(h.id)} value={String(h.id)}>
-                      {h.name}
-                    </option>
-                  ))}
+                  {loadingHomestays ? (
+                    <option value="">Đang tải homestay...</option>
+                  ) : homestays.length === 0 ? (
+                    <option value="">Không có homestay phù hợp</option>
+                  ) : (
+                    homestays.map((h) => (
+                      <option key={String(h.id)} value={String(h.id)}>
+                        {h.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
@@ -339,11 +398,22 @@ export default function ManagerEquipmentPage() {
         </header>
 
         <main className="p-6 max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Quản lý đồ dùng</h1>
-            <p className="text-gray-600 mt-1">
-              {selectedHomestay ? `Homestay: ${selectedHomestay.name}` : 'Chọn homestay để quản lý'}
-            </p>
+          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Quản lý đồ dùng</h1>
+              <p className="text-gray-600 mt-1">
+                {selectedHomestay ? `Homestay: ${selectedHomestay.name}` : 'Chọn homestay để quản lý'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openAddModal}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              <Plus className="h-5 w-5" />
+              Thêm đồ dùng
+            </button>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
@@ -461,8 +531,16 @@ export default function ManagerEquipmentPage() {
                     key={item.id}
                     className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all"
                   >
-                    <div className="h-40 bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                      <Package className="w-16 h-16 text-white opacity-50" />
+                    <div className="h-40 bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center overflow-hidden">
+                      {item.imageUrl ? (
+                        <img 
+                          src={item.imageUrl} 
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Package className="w-16 h-16 text-white opacity-50" />
+                      )}
                     </div>
 
                     <div className="p-5">
@@ -530,6 +608,9 @@ export default function ManagerEquipmentPage() {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">
+                      Ảnh
+                    </th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">
                       Tên
                     </th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">
@@ -555,13 +636,26 @@ export default function ManagerEquipmentPage() {
                 <tbody className="divide-y divide-slate-200">
                   {filteredEquipment.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                         Không có đồ dùng nào
                       </td>
                     </tr>
                   ) : (
                     filteredEquipment.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="px-6 py-4">
+                          {item.imageUrl ? (
+                            <img 
+                              src={item.imageUrl} 
+                              alt={item.name}
+                              className="w-12 h-12 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center">
+                              <Package className="w-6 h-6 text-slate-400" />
+                            </div>
+                          )}
+                        </td>
                         <td className="px-6 py-4">
                           <div className="font-medium text-slate-900">{item.name}</div>
                           {item.description && (
@@ -619,113 +713,220 @@ export default function ManagerEquipmentPage() {
 
           {/* Add/Edit Modal */}
           {(showAddModal || editingItem) && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
-                <h2 className="text-2xl font-bold text-slate-900 mb-6">
-                  {editingItem ? 'Sửa đồ dùng' : 'Thêm đồ dùng mới'}
-                </h2>
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 px-4 py-10">
+              <div className="flex min-h-full items-start justify-center">
+                <div className="my-8 w-full max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+                  <h2 className="mb-5 text-2xl font-bold text-slate-900">
+                    {editingItem ? 'Sửa đồ dùng' : 'Thêm đồ dùng mới'}
+                  </h2>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Tên *
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Tên *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., Kính bơi"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Loại *
+                      </label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Tổng số lượng *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.totalQuantity}
+                        onChange={(e) => {
+                          const nextTotalQuantity = parseInt(e.target.value) || 1;
+                          setFormData({
+                            ...formData,
+                            totalQuantity: nextTotalQuantity,
+                            availableQuantity: Math.min(formData.availableQuantity, nextTotalQuantity),
+                          });
+                        }}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Số lượng có sẵn *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max={formData.totalQuantity}
+                        value={formData.availableQuantity}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            availableQuantity: Math.max(
+                              0,
+                              Math.min(parseInt(e.target.value) || 0, formData.totalQuantity)
+                            ),
+                          })
+                        }
+                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                          Tiền cọc *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.depositAmount}
+                          onChange={(e) =>
+                            setFormData({ ...formData, depositAmount: parseInt(e.target.value) || 0 })
+                          }
+                          className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                          Phí thuê *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.rentalFee}
+                          onChange={(e) =>
+                            setFormData({ ...formData, rentalFee: parseInt(e.target.value) || 0 })
+                          }
+                          className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Ảnh URL
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.imageUrl}
+                        onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="https://..."
+                      />
+                      {formData.imageUrl.trim() ? (
+                        <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                          <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Preview ảnh
+                            </span>
+                            <span className="max-w-[70%] truncate text-xs text-slate-400">
+                              {formData.imageUrl.trim()}
+                            </span>
+                          </div>
+                          <div className="flex aspect-[16/9] items-center justify-center bg-slate-100">
+                            <img
+                              src={formData.imageUrl.trim()}
+                              alt={formData.name || 'Equipment preview'}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
+                          Chưa có ảnh để preview
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Tình trạng *
+                      </label>
+                      <select
+                        value={formData.condition}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            condition: e.target.value as 'good' | 'fair' | 'maintenance',
+                          })
+                        }
+                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="good">Tốt</option>
+                        <option value="fair">Bình thường</option>
+                        <option value="maintenance">Bảo trì</option>
+                      </select>
+                    </div>
+
+                    <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.isActive}
+                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-slate-700">Kích hoạt đồ dùng</span>
                     </label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g., Kính bơi"
-                    />
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Mô tả
+                      </label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) =>
+                          setFormData({ ...formData, description: e.target.value })
+                        }
+                        rows={3}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Mô tả chi tiết..."
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Loại *
-                    </label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  <div className="mt-6 flex gap-3 pb-2">
+                    <button
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setEditingItem(null);
+                        resetForm();
+                      }}
+                      disabled={isSubmitting}
+                      className="flex-1 rounded-xl bg-slate-100 px-6 py-3 font-semibold text-slate-700 transition-colors hover:bg-slate-200 disabled:opacity-50"
                     >
-                      {CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Số lượng *
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.quantity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })
-                      }
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Tình trạng *
-                    </label>
-                    <select
-                      value={formData.condition}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          condition: e.target.value as 'good' | 'fair' | 'maintenance',
-                        })
-                      }
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      Hủy
+                    </button>
+                    <button
+                      onClick={editingItem ? handleUpdateEquipment : handleAddEquipment}
+                      disabled={isSubmitting}
+                      className="flex-1 rounded-xl bg-blue-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
                     >
-                      <option value="good">Tốt</option>
-                      <option value="fair">Bình thường</option>
-                      <option value="maintenance">Bảo trì</option>
-                    </select>
+                      {isSubmitting ? 'Đang xử lý...' : editingItem ? 'Cập nhật' : 'Thêm'} đồ dùng
+                    </button>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Mô tả
-                    </label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({ ...formData, description: e.target.value })
-                      }
-                      rows={3}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Mô tả chi tiết..."
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setEditingItem(null);
-                      resetForm();
-                    }}
-                    disabled={isSubmitting}
-                    className="flex-1 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors disabled:opacity-50"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={editingItem ? handleUpdateEquipment : handleAddEquipment}
-                    disabled={isSubmitting}
-                    className="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-semibold transition-colors disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Đang xử lý...' : editingItem ? 'Cập nhật' : 'Thêm'} đồ dùng
-                  </button>
                 </div>
               </div>
             </div>
