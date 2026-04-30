@@ -16,21 +16,34 @@ const pick = (obj: any, ...keys: string[]) => {
   return undefined;
 };
 
-const mapEquipment = (item: any): Equipment => ({
-  id: asString(pick(item, 'id', 'Id')),
-  homestayId: asString(pick(item, 'homestayId', 'HomestayId')),
-  name: asString(pick(item, 'name', 'Name')),
-  category: asString(pick(item, 'category', 'Category')),
-  quantity: Number(pick(item, 'quantity', 'Quantity') ?? 0),
-  available: Number(pick(item, 'available', 'Available') ?? 0),
-  borrowed: Number(pick(item, 'borrowed', 'Borrowed') ?? 0),
-  condition: pick(item, 'condition', 'Condition') ?? 'good',
-  image: pick(item, 'image', 'Image'),
-  description: pick(item, 'description', 'Description'),
-  isActive: Boolean(pick(item, 'isActive', 'IsActive') ?? true),
-  createdAt: pick(item, 'createdAt', 'CreatedAt'),
-  updatedAt: pick(item, 'updatedAt', 'UpdatedAt'),
-});
+const mapEquipment = (item: any): Equipment => {
+  const mapped: Equipment = {
+    id: asString(pick(item, 'id', 'Id')),
+    homestayId: asString(pick(item, 'homestayId', 'HomestayId')),
+    name: asString(pick(item, 'name', 'Name')),
+    category: asString(pick(item, 'category', 'Category')),
+    quantity: Number(pick(item, 'quantity', 'Quantity', 'totalQuantity', 'TotalQuantity') ?? 0),
+    available: Number(
+      pick(item, 'available', 'Available', 'availableQuantity', 'AvailableQuantity') ?? 0,
+    ),
+    borrowed: Number(pick(item, 'borrowed', 'Borrowed') ?? 0),
+    totalQuantity: Number(pick(item, 'totalQuantity', 'TotalQuantity', 'quantity', 'Quantity') ?? 0),
+    availableQuantity: Number(
+      pick(item, 'availableQuantity', 'AvailableQuantity', 'available', 'Available') ?? 0,
+    ),
+    depositAmount: Number(pick(item, 'depositAmount', 'DepositAmount') ?? 0),
+    rentalFee: Number(pick(item, 'rentalFee', 'RentalFee') ?? 0),
+    imageUrl: pick(item, 'imageUrl', 'ImageUrl', 'image', 'Image'),
+    condition: pick(item, 'condition', 'Condition') ?? 'good',
+    image: pick(item, 'image', 'Image', 'imageUrl', 'ImageUrl'),
+    description: pick(item, 'description', 'Description'),
+    isActive: Boolean(pick(item, 'isActive', 'IsActive') ?? true),
+    createdAt: pick(item, 'createdAt', 'CreatedAt'),
+    updatedAt: pick(item, 'updatedAt', 'UpdatedAt'),
+  };
+  console.log('Mapped equipment with imageUrl:', { id: mapped.id, name: mapped.name, imageUrl: mapped.imageUrl });
+  return mapped;
+};
 
 const mapBorrow = (item: any): EquipmentBorrow => ({
   id: asString(pick(item, 'id', 'Id')),
@@ -50,10 +63,13 @@ const mapBorrow = (item: any): EquipmentBorrow => ({
 export const equipmentLendingService = {
   // ========= MANAGER =========
   async managerGetEquipment(homestayId: string): Promise<Equipment[]> {
+    console.log('Fetching equipment from API for homestayId:', homestayId);
     const res = await apiService.get<any>(
       apiConfig.endpoints.equipment.manager.list(homestayId)
     );
+    console.log('API response:', res);
     const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    console.log('Parsed equipment list:', list);
     return list.map(mapEquipment);
   },
 

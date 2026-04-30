@@ -414,7 +414,7 @@ export const apiConfig = {
     },
     equipment: {
       manager: {
-        list: (homestayId: string) => `/api/manager/equipment/${homestayId}`,
+        list: (homestayId: string) => `/api/manager/equipment/homestays/${homestayId}`,
         create: '/api/manager/equipment',
         update: (equipmentId: string) => `/api/manager/equipment/${equipmentId}`,
         delete: (equipmentId: string) => `/api/manager/equipment/${equipmentId}`,
