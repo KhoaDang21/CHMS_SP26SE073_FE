@@ -6,6 +6,9 @@ import type {
   DiningOrder,
   DiningTimeSlot,
   DiningServeLocation,
+  UpdateDiningComboPayload,
+  UpdateDiningTimeSlotPayload,
+  ManagerDiningOrderHistory,
 } from "../types/dining.types";
 
 const asString = (v: any) => (v === undefined || v === null ? "" : String(v));
@@ -57,11 +60,18 @@ const mapTimeSlot = (item: any): DiningTimeSlot => ({
 
 const mapOrder = (item: any): DiningOrder => ({
   id: asString(pick(item, "id", "Id")),
+  bookingId: pick(item, "bookingId", "BookingId") ? asString(pick(item, "bookingId", "BookingId")) : undefined,
+  homestayId: pick(item, "homestayId", "HomestayId") ? asString(pick(item, "homestayId", "HomestayId")) : undefined,
+  homestayName: pick(item, "homestayName", "HomestayName") ? asString(pick(item, "homestayName", "HomestayName")) : undefined,
+  customerId: pick(item, "customerId", "CustomerId") ? asString(pick(item, "customerId", "CustomerId")) : undefined,
+  customerName: pick(item, "customerName", "CustomerName") ? asString(pick(item, "customerName", "CustomerName")) : undefined,
+  comboId: pick(item, "comboId", "ComboId") ? asString(pick(item, "comboId", "ComboId")) : undefined,
+  timeSlotId: pick(item, "timeSlotId", "TimeSlotId") ? asString(pick(item, "timeSlotId", "TimeSlotId")) : undefined,
   comboName: asString(pick(item, "comboName", "ComboName")),
   imageUrl: pick(item, "imageUrl", "ImageUrl"),
   orderDate: asString(pick(item, "orderDate", "OrderDate")),
   startTime: normalizeTimeSpan(pick(item, "startTime", "StartTime")),
-  endTime: normalizeTimeSpan(pick(item, "endTime", "EndTime")),
+  endTime: normalizeTimeSpan(pick(item, "endTime", "EndTime")) || undefined,
   serveLocation: asString(pick(item, "serveLocation", "ServeLocation")),
   status: asString(pick(item, "status", "Status")),
   price: Number(pick(item, "price", "Price") ?? 0),
@@ -158,6 +168,54 @@ export const diningService = {
   async managerDeleteCombo(comboId: string): Promise<boolean> {
     await apiService.delete<any>(apiConfig.endpoints.dining.manager.deleteCombo(comboId));
     return true;
+  },
+
+  async managerUpdateCombo(comboId: string, payload: UpdateDiningComboPayload): Promise<DiningCombo | null> {
+    const res = await apiService.put<any>(
+      apiConfig.endpoints.dining.manager.updateCombo(comboId),
+      payload,
+    );
+    const data = res?.data ?? res;
+    if (!data) return null;
+    return mapCombo(data);
+  },
+
+  async managerUpdateSlot(slotId: string, payload: UpdateDiningTimeSlotPayload): Promise<DiningTimeSlot | null> {
+    const res = await apiService.put<any>(
+      apiConfig.endpoints.dining.manager.updateSlot(slotId),
+      payload,
+    );
+    const data = res?.data ?? res;
+    if (!data) return null;
+    return mapTimeSlot(data);
+  },
+
+  async managerGetOrders(params: {
+    homestayId?: string;
+    fromDate?: string;
+    toDate?: string;
+    status?: string;
+    pageNumber?: number;
+    pageSize?: number;
+  }): Promise<ManagerDiningOrderHistory> {
+    const query: Record<string, any> = {};
+    if (params.homestayId) query.homestayId = params.homestayId;
+    if (params.fromDate) query.fromDate = params.fromDate;
+    if (params.toDate) query.toDate = params.toDate;
+    if (params.status) query.status = params.status;
+    if (params.pageNumber) query.pageNumber = params.pageNumber;
+    if (params.pageSize) query.pageSize = params.pageSize;
+
+    const res = await apiService.get<any>(apiConfig.endpoints.dining.manager.orders, query);
+    const data = res?.data ?? res;
+    const items: any[] = Array.isArray(data?.items) ? data.items : Array.isArray(data?.Items) ? data.Items : [];
+    return {
+      items: items.map(mapOrder),
+      totalCount: Number(data?.totalCount ?? data?.TotalCount ?? 0),
+      totalRevenue: Number(data?.totalRevenue ?? data?.TotalRevenue ?? 0),
+      pageNumber: Number(data?.pageNumber ?? data?.PageNumber ?? 1),
+      pageSize: Number(data?.pageSize ?? data?.PageSize ?? 20),
+    };
   },
 
   async managerDeleteSlot(slotId: string): Promise<boolean> {
