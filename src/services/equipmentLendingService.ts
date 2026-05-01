@@ -3,6 +3,7 @@ import { apiConfig } from '../config/apiConfig';
 import type {
   Equipment,
   EquipmentBorrow,
+  EquipmentBorrowRequest,
   CreateEquipmentPayload,
   UpdateEquipmentPayload,
 } from '../types/equipment.types';
@@ -56,6 +57,53 @@ const mapBorrow = (item: any): EquipmentBorrow => ({
   status: pick(item, 'status', 'Status') ?? 'pending',
   borrowedBy: pick(item, 'borrowedBy', 'BorrowedBy'),
   returnedBy: pick(item, 'returnedBy', 'ReturnedBy'),
+  note: pick(item, 'note', 'Note'),
+  condition: pick(item, 'condition', 'Condition'),
+});
+
+const mapBorrowRequest = (item: any): EquipmentBorrowRequest => ({
+  id: asString(pick(item, 'id', 'Id')),
+  bookingId: asString(pick(item, 'bookingId', 'BookingId')),
+  customerId: asString(pick(item, 'customerId', 'CustomerId')),
+  homestayId: asString(pick(item, 'homestayId', 'HomestayId')),
+  homestayName: asString(pick(item, 'homestayName', 'HomestayName')),
+  equipmentId: asString(pick(item, 'equipmentId', 'EquipmentId')),
+  equipmentName: asString(pick(item, 'equipmentName', 'EquipmentName')),
+  quantity: Number(pick(item, 'quantity', 'Quantity') ?? 1),
+  status: asString(pick(item, 'status', 'Status') ?? 'pending'),
+  requestedAt: pick(item, 'requestedAt', 'RequestedAt'),
+  note: pick(item, 'note', 'Note'),
+  approvedAt: pick(item, 'approvedAt', 'ApprovedAt'),
+  handedOverAt: pick(item, 'handedOverAt', 'HandedOverAt'),
+  returnedAt: pick(item, 'returnedAt', 'ReturnedAt'),
+  approvedByStaffId: asString(pick(item, 'approvedByStaffId', 'ApprovedByStaffId')),
+  handedOverByStaffId: asString(pick(item, 'handedOverByStaffId', 'HandedOverByStaffId')),
+  returnedByStaffId: asString(pick(item, 'returnedByStaffId', 'ReturnedByStaffId')),
+  rejectReason: pick(item, 'rejectReason', 'RejectReason'),
+  rejectedAt: pick(item, 'rejectedAt', 'RejectedAt'),
+  rejectedByStaffId: asString(pick(item, 'rejectedByStaffId', 'RejectedByStaffId')),
+});
+
+const normalizeBorrowRequestStatus = (status: string): EquipmentBorrow['status'] => {
+  const normalized = String(status || '').toLowerCase();
+
+  if (normalized === 'returned') return 'returned';
+  if (normalized === 'rejected' || normalized === 'cancelled') return 'cancelled';
+  if (normalized === 'pending' || normalized === 'requested') return 'pending';
+  return 'borrowed';
+};
+
+const mapRequestToBorrow = (item: any): EquipmentBorrow => ({
+  id: asString(pick(item, 'id', 'Id')),
+  bookingId: asString(pick(item, 'bookingId', 'BookingId')),
+  equipmentId: asString(pick(item, 'equipmentId', 'EquipmentId')),
+  equipmentName: asString(pick(item, 'equipmentName', 'EquipmentName')),
+  quantity: Number(pick(item, 'quantity', 'Quantity') ?? 1),
+  borrowDate: asString(pick(item, 'requestedAt', 'RequestedAt', 'borrowDate', 'BorrowDate')),
+  returnDate: pick(item, 'returnedAt', 'ReturnedAt', 'returnDate', 'ReturnDate'),
+  status: normalizeBorrowRequestStatus(asString(pick(item, 'status', 'Status') ?? 'pending')),
+  borrowedBy: asString(pick(item, 'customerName', 'CustomerName', 'customerId', 'CustomerId')),
+  returnedBy: asString(pick(item, 'returnedByStaffId', 'ReturnedByStaffId')),
   note: pick(item, 'note', 'Note'),
   condition: pick(item, 'condition', 'Condition'),
 });
@@ -116,12 +164,18 @@ export const equipmentLendingService = {
     note?: string;
   }): Promise<EquipmentBorrow | null> {
     const res = await apiService.post<any>(
-      apiConfig.endpoints.equipment.customer.borrow,
+      apiConfig.endpoints.equipment.customer.borrowRequest,
       payload
     );
     const data = res?.data ?? res;
     if (!data) return null;
     return mapBorrow(data);
+  },
+
+  async customerGetBorrowRequests(): Promise<EquipmentBorrowRequest[]> {
+    const res = await apiService.get<any>(apiConfig.endpoints.equipment.customer.borrowRequest);
+    const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    return list.map(mapBorrowRequest);
   },
 
   async customerCancelBorrow(borrowId: string): Promise<boolean> {
@@ -141,39 +195,73 @@ export const equipmentLendingService = {
   },
 
   // ========= STAFF =========
-  async staffGetBorrowRequests(homestayId: string): Promise<EquipmentBorrow[]> {
-    const res = await apiService.get<any>(
-      apiConfig.endpoints.equipment.staff.requests(homestayId)
-    );
+  async staffGetBorrowRequests(params?: Record<string, any>): Promise<EquipmentBorrowRequest[]> {
+    const res = await apiService.get<any>(apiConfig.endpoints.equipment.staff.list, params);
     const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-    return list.map(mapBorrow);
+    return list.map(mapBorrowRequest);
   },
 
-  async staffConfirmBorrow(borrowId: string, staffId?: string): Promise<boolean> {
-    await apiService.patch<any>(
-      apiConfig.endpoints.equipment.staff.confirmBorrow(borrowId),
-      { staffId }
-    );
+  async staffGetBorrowRequestDetail(requestId: string): Promise<EquipmentBorrowRequest | null> {
+    const res = await apiService.get<any>(apiConfig.endpoints.equipment.staff.detail(requestId));
+    const data = res?.data ?? res;
+    if (!data?.id) return null;
+    return mapBorrowRequest(data);
+  },
+
+  async staffApproveBorrowRequest(requestId: string): Promise<boolean> {
+    await apiService.post<any>(apiConfig.endpoints.equipment.staff.approve(requestId));
     return true;
   },
 
-  async staffRecordReturn(borrowId: string, payload: {
-    condition?: string;
-    note?: string;
-    staffId?: string;
-  }): Promise<boolean> {
-    await apiService.patch<any>(
-      apiConfig.endpoints.equipment.staff.recordReturn(borrowId),
-      payload
-    );
+  async staffHandOverBorrowRequest(
+    requestId: string,
+    payload?: { staffId?: string; note?: string }
+  ): Promise<boolean> {
+    await apiService.post<any>(apiConfig.endpoints.equipment.staff.handOver(requestId), payload ?? {});
     return true;
+  },
+
+  async staffRejectBorrowRequest(
+    requestId: string,
+    payload?: { staffId?: string; rejectReason?: string; note?: string }
+  ): Promise<boolean> {
+    await apiService.post<any>(apiConfig.endpoints.equipment.staff.reject(requestId), payload ?? {});
+    return true;
+  },
+
+  async staffRecordReturnBorrowRequest(
+    requestId: string,
+    payload?: {
+      condition?: string;
+      note?: string;
+      staffId?: string;
+    }
+  ): Promise<boolean> {
+    await apiService.post<any>(apiConfig.endpoints.equipment.staff.return(requestId), payload ?? {});
+    return true;
+  },
+
+  // Backward-compatible wrappers for existing call sites.
+  async staffConfirmBorrow(borrowId: string): Promise<boolean> {
+    return this.staffApproveBorrowRequest(borrowId);
+  },
+
+  async staffRecordReturn(
+    borrowId: string,
+    payload: {
+      condition?: string;
+      note?: string;
+      staffId?: string;
+    }
+  ): Promise<boolean> {
+    return this.staffRecordReturnBorrowRequest(borrowId, payload);
   },
 
   async staffGetActiveBorrows(homestayId: string): Promise<EquipmentBorrow[]> {
-    const res = await apiService.get<any>(
-      apiConfig.endpoints.equipment.staff.activeBorrows(homestayId)
-    );
-    const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-    return list.map(mapBorrow);
+    const list = await this.staffGetBorrowRequests();
+    return list
+      .filter((item) => !homestayId || item.homestayId === homestayId)
+      .filter((item) => ['approved', 'accepted', 'handedover', 'borrowed', 'in_progress'].includes(String(item.status).toLowerCase()))
+      .map(mapRequestToBorrow);
   },
 };

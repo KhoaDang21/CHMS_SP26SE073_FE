@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Search,
   Package,
@@ -17,6 +17,9 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import type { EquipmentBorrow } from '../../types/equipment.types';
+import { equipmentLendingService } from '../../services/equipmentLendingService';
+import { employeeService } from '../../services/employeeService';
+import { homestayService } from '../../services/homestayService';
 import { staffNavItemsGrouped } from '../../config/staffNavItems';
 
 const MOCK_HOMESTAYS = [
@@ -24,65 +27,20 @@ const MOCK_HOMESTAYS = [
   { id: 'hs-2', name: 'Blue Coral Retreat' },
   { id: 'hs-3', name: 'Ocean Breeze Villa' },
 ];
-
-const MOCK_PENDING_REQUESTS: EquipmentBorrow[] = [
-  {
-    id: 'req-1',
-    bookingId: 'bk-1',
-    equipmentId: 'eq-1',
-    equipmentName: 'Kính bơi',
-    quantity: 2,
-    borrowDate: '2026-04-26 09:00',
-    status: 'pending',
-    borrowedBy: 'Nguyễn Văn A',
-    note: 'Cần giao trước 10h',
-  },
-  {
-    id: 'req-2',
-    bookingId: 'bk-2',
-    equipmentId: 'eq-2',
-    equipmentName: 'Áo phao',
-    quantity: 3,
-    borrowDate: '2026-04-26 10:30',
-    status: 'pending',
-    borrowedBy: 'Trần Thị B',
-  },
-];
-
-const MOCK_ACTIVE_BORROWS: EquipmentBorrow[] = [
-  {
-    id: 'req-3',
-    bookingId: 'bk-3',
-    equipmentId: 'eq-3',
-    equipmentName: 'Thuyền SUP',
-    quantity: 1,
-    borrowDate: '2026-04-25 15:00',
-    status: 'borrowed',
-    borrowedBy: 'Lê Văn C',
-  },
-  {
-    id: 'req-4',
-    bookingId: 'bk-4',
-    equipmentId: 'eq-4',
-    equipmentName: 'Bóng đá',
-    quantity: 1,
-    borrowDate: '2026-04-26 08:30',
-    status: 'borrowed',
-    borrowedBy: 'Phạm Thị D',
-  },
-];
+ 
 
 export default function StaffEquipmentPage() {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [homestays] = useState(MOCK_HOMESTAYS);
+  const [homestays, setHomestays] = useState(MOCK_HOMESTAYS);
   const [homestayId, setHomestayId] = useState<string>(MOCK_HOMESTAYS[0]?.id ?? '');
+  const [assignedHomestayIds, setAssignedHomestayIds] = useState<string[] | null>(null);
 
-  const [pendingRequests, setPendingRequests] = useState<EquipmentBorrow[]>(MOCK_PENDING_REQUESTS);
-  const [activeBorrows, setActiveBorrows] = useState<EquipmentBorrow[]>(MOCK_ACTIVE_BORROWS);
-  const [loading] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<Array<{ raw: any; ui: EquipmentBorrow }>>([]);
+  const [activeBorrows, setActiveBorrows] = useState<Array<{ raw: any; ui: EquipmentBorrow }>>([]);
+  const [loading, setLoading] = useState(false);
   const [filterTab, setFilterTab] = useState<'pending' | 'active'>('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [returningItem, setReturningItem] = useState<EquipmentBorrow | null>(null);
@@ -92,45 +50,154 @@ export default function StaffEquipmentPage() {
   const [returnNote, setReturnNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleConfirmBorrow = (borrowId: string) => {
+
+
+  const handleApproveBorrow = async (requestId: string) => {
     setIsSubmitting(true);
-    const request = pendingRequests.find((item) => item.id === borrowId);
-    if (!request) {
+    try {
+      await equipmentLendingService.staffApproveBorrowRequest(requestId);
+      toast.success('Yêu cầu đã được chấp nhận');
+      await loadRequests();
+    } catch (err) {
+      console.error(err);
+      toast.error('Chấp nhận thất bại');
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-    const movedRequest: EquipmentBorrow = {
-      ...request,
-      status: 'borrowed',
-      borrowedBy: request.borrowedBy,
-    };
-    setPendingRequests((prev) => prev.filter((item) => item.id !== borrowId));
-    setActiveBorrows((prev) => [movedRequest, ...prev]);
-    toast.success('Đã xác nhận mượn');
-    setIsSubmitting(false);
   };
 
-  const handleRecordReturn = () => {
-    if (!returningItem) return;
-
+  const handleHandOverBorrow = async (requestId: string) => {
     setIsSubmitting(true);
-    setActiveBorrows((prev) =>
-      prev.map((item) =>
-        item.id === returningItem.id
-          ? { ...item, status: 'returned', returnDate: new Date().toLocaleString('vi-VN'), condition: returnCondition, note: returnNote || undefined }
-          : item
-      )
-    );
-    toast.success('Đã ghi nhận trả hàng');
-    setReturningItem(null);
-    setReturnCondition('good');
-    setReturnNote('');
-    setIsSubmitting(false);
+    try {
+      const staffId = user?.id;
+      await equipmentLendingService.staffHandOverBorrowRequest(requestId, { staffId });
+      toast.success('Đã giao đồ');
+      await loadRequests();
+    } catch (err) {
+      console.error(err);
+      toast.error('Giao đồ thất bại');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const filteredRequests = (
-    filterTab === 'pending' ? pendingRequests : activeBorrows
-  ).filter((req) => {
+  const handleRejectBorrow = async (requestId: string) => {
+    const reason = window.prompt('Lý do từ chối (tùy chọn):', '');
+    if (reason === null) return; // user cancelled
+    setIsSubmitting(true);
+    try {
+      const staffId = user?.id;
+      await equipmentLendingService.staffRejectBorrowRequest(requestId, { rejectReason: reason || undefined, staffId });
+      toast.success('Yêu cầu đã bị từ chối');
+      await loadRequests();
+    } catch (err) {
+      console.error(err);
+      toast.error('Từ chối thất bại');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRecordReturn = async () => {
+    if (!returningItem) return;
+    setIsSubmitting(true);
+    try {
+      const staffId = user?.id;
+      await equipmentLendingService.staffRecordReturnBorrowRequest(returningItem.id, {
+        condition: returnCondition,
+        note: returnNote || undefined,
+        staffId,
+      });
+      toast.success('Đã ghi nhận trả hàng');
+      setReturningItem(null);
+      setReturnCondition('good');
+      setReturnNote('');
+      await loadRequests();
+    } catch (err) {
+      console.error(err);
+      toast.error('Ghi nhận trả thất bại');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Map a borrow request response to the UI-friendly EquipmentBorrow shape
+  const mapRequestToBorrowLocal = (item: any): EquipmentBorrow => ({
+    id: item?.id ?? '',
+    bookingId: item?.bookingId ?? '',
+    equipmentId: item?.equipmentId ?? '',
+    equipmentName: item?.equipmentName ?? (item?.equipment?.name ?? ''),
+    quantity: Number(item?.quantity ?? 1),
+    borrowDate: item?.requestedAt ?? item?.borrowDate ?? '',
+    returnDate: item?.returnedAt ?? item?.returnDate ?? undefined,
+    status: ((): any => {
+      const s = String(item?.status || '').toLowerCase();
+      if (s === 'returned') return 'returned';
+      if (s === 'rejected' || s === 'cancelled') return 'cancelled';
+      if (s === 'pending' || s === 'requested') return 'pending';
+      return 'borrowed';
+    })(),
+    borrowedBy: item?.customerName ?? item?.customerId ?? '',
+    returnedBy: item?.returnedByStaffId ?? undefined,
+    note: item?.note ?? undefined,
+    condition: item?.condition ?? undefined,
+  });
+
+  const loadRequests = async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, any> = {};
+      if (Array.isArray(assignedHomestayIds) && assignedHomestayIds.length > 0) {
+        params.homestayIds = assignedHomestayIds;
+      } else if (homestayId) {
+        params.homestayId = homestayId;
+      }
+
+      const list = await equipmentLendingService.staffGetBorrowRequests(params);
+      const combined = Array.isArray(list)
+        ? list.map((item: any) => ({ raw: item, ui: mapRequestToBorrowLocal(item) }))
+        : [];
+      setPendingRequests(combined.filter((c) => c.ui.status === 'pending'));
+      setActiveBorrows(combined.filter((c) => c.ui.status !== 'pending' && c.ui.status !== 'cancelled'));
+    } catch (err) {
+      console.error(err);
+      toast.error('Không thể tải dữ liệu mượn');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      // If staff, try to resolve assigned homestays from employee profile
+      try {
+        if (user?.role === 'staff' && user.id) {
+          const emp = await employeeService.getEmployeeById(user.id);
+          const ids: string[] = (emp?.assignedHomestays ?? emp?.assignedHomestayIds ?? []) as string[];
+          if (Array.isArray(ids) && ids.length > 0) {
+            setAssignedHomestayIds(ids.map(String));
+            // load homestay names/details
+            const homes = await Promise.all(ids.map((id) => homestayService.getAdminHomestayById(String(id))));
+            const valid = homes.filter(Boolean) as any[];
+            if (valid.length > 0) {
+              setHomestays(valid.map((h) => ({ id: h.id, name: h.name })));
+              setHomestayId(valid[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error loading staff assignments', err);
+      }
+
+      await loadRequests();
+    };
+
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homestayId]);
+
+  const filteredRequests = (filterTab === 'pending' ? pendingRequests : activeBorrows).filter((c) => {
+    const req = c.ui;
     const matchesSearch =
       req.equipmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.borrowedBy?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -354,7 +421,7 @@ export default function StaffEquipmentPage() {
           <div className="space-y-4">
             {filteredRequests.map((request) => (
               <div
-                key={request.id}
+                key={request.raw?.id ?? request.ui.id}
                 className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -368,7 +435,7 @@ export default function StaffEquipmentPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-bold text-slate-900 text-lg">
-                            {request.equipmentName}
+                            {request.ui.equipmentName}
                           </h3>
                           <span
                             className={`px-3 py-1 rounded-lg text-xs font-semibold ${
@@ -384,26 +451,26 @@ export default function StaffEquipmentPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                           <div className="flex items-center gap-2 text-slate-600">
                             <User className="w-4 h-4" />
-                            <span>{request.borrowedBy || 'N/A'}</span>
+                            <span>{request.ui.borrowedBy || 'N/A'}</span>
                           </div>
                           <div className="flex items-center gap-2 text-slate-600">
                             <Package className="w-4 h-4" />
-                            <span>Số lượng: {request.quantity}</span>
+                            <span>Số lượng: {request.ui.quantity}</span>
                           </div>
                           <div className="flex items-center gap-2 text-slate-600">
                             <Calendar className="w-4 h-4" />
-                            <span>Yêu cầu: {request.borrowDate}</span>
+                            <span>Yêu cầu: {request.ui.borrowDate}</span>
                           </div>
-                          {request.returnDate && (
+                          {request.ui.returnDate && (
                             <div className="flex items-center gap-2 text-green-600">
                               <CheckCircle className="w-4 h-4" />
-                              <span>Trả: {request.returnDate}</span>
+                              <span>Trả: {request.ui.returnDate}</span>
                             </div>
                           )}
-                          {request.note && (
+                          {request.ui.note && (
                             <div className="col-span-2 flex items-start gap-2 text-slate-600">
                               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                              <span>{request.note}</span>
+                              <span>{request.ui.note}</span>
                             </div>
                           )}
                         </div>
@@ -414,20 +481,43 @@ export default function StaffEquipmentPage() {
                   {/* Right - Actions */}
                   <div className="flex gap-2">
                     {filterTab === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleApproveBorrow(request.raw?.id ?? request.ui.id)}
+                          disabled={isSubmitting || String(request.raw?.status ?? request.ui.status).toLowerCase() !== 'pending'}
+                          className="px-4 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-teal-500/30"
+                        >
+                          <CheckCircle className="w-5 h-5" />
+                          Xác nhận
+                        </button>
+
+                        <button
+                          onClick={() => handleRejectBorrow(request.raw?.id ?? request.ui.id)}
+                          disabled={isSubmitting}
+                          className="px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-red-500/20"
+                        >
+                          <X className="w-5 h-5" />
+                          Từ chối
+                        </button>
+                      </>
+                    )}
+
+                    {/* If approved but not yet handed over -> show hand-over */}
+                    {String(request.raw?.approvedAt ?? '').length > 0 && !request.raw?.handedOverAt && (
                       <button
-                        onClick={() => handleConfirmBorrow(request.id)}
+                        onClick={() => handleHandOverBorrow(request.raw?.id ?? request.ui.id)}
                         disabled={isSubmitting}
-                        className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-teal-500/30"
+                        className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-amber-500/30"
                       >
-                        <CheckCircle className="w-5 h-5" />
-                        Xác nhận
+                        <Package className="w-5 h-5" />
+                        Giao
                       </button>
                     )}
 
                     {filterTab === 'active' && (
                       <button
                         onClick={() => {
-                          setReturningItem(request);
+                          setReturningItem(request.ui);
                           setReturnCondition('good');
                           setReturnNote('');
                         }}
