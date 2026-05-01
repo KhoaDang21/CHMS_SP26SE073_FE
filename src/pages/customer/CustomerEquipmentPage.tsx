@@ -1,293 +1,66 @@
 import { useEffect, useState } from 'react';
-import {
-  ArrowLeft,
-  Search,
-  Package,
-  Plus,
-  Minus,
-  CheckCircle,
-  Clock,
-  XCircle,
-  ShoppingCart,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Package } from 'lucide-react';
 import MainLayout from '../../layouts/MainLayout';
-import type { Equipment, EquipmentBorrow } from '../../types/equipment.types';
-
-const CATEGORIES = ['Tất cả', 'Swimming', 'Water Sports', 'Sports', 'Beach', 'Other'];
-
-interface BookingOption {
-  id: string;
-  homestayId?: string;
-  homestayName: string;
-  checkInDate: string;
-  checkOutDate: string;
-  status: 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED';
-}
-
-const MOCK_BOOKINGS: BookingOption[] = [
-  {
-    id: 'bk-1',
-    homestayId: 'hs-1',
-    homestayName: 'Sunrise Beach Homestay',
-    checkInDate: '2026-04-25',
-    checkOutDate: '2026-04-28',
-    status: 'CHECKED_IN',
-  },
-  {
-    id: 'bk-2',
-    homestayId: 'hs-2',
-    homestayName: 'Blue Coral Retreat',
-    checkInDate: '2026-04-27',
-    checkOutDate: '2026-04-30',
-    status: 'CONFIRMED',
-  },
-  {
-    id: 'bk-3',
-    homestayId: 'hs-3',
-    homestayName: 'Ocean Breeze Villa',
-    checkInDate: '2026-04-20',
-    checkOutDate: '2026-04-22',
-    status: 'COMPLETED',
-  },
-];
-
-const MOCK_EQUIPMENT: Record<string, Equipment[]> = {
-  'hs-1': [
-    {
-      id: 'eq-1',
-      homestayId: 'hs-1',
-      name: 'Kính bơi',
-      category: 'Swimming',
-      quantity: 20,
-      available: 15,
-      borrowed: 5,
-      condition: 'good',
-      description: 'Kính bơi chuyên nghiệp, chống tia UV',
-      isActive: true,
-    },
-    {
-      id: 'eq-2',
-      homestayId: 'hs-1',
-      name: 'Áo phao',
-      category: 'Swimming',
-      quantity: 30,
-      available: 22,
-      borrowed: 8,
-      condition: 'good',
-      description: 'Áo phao an toàn, nhiều size',
-      isActive: true,
-    },
-  ],
-  'hs-2': [
-    {
-      id: 'eq-3',
-      homestayId: 'hs-2',
-      name: 'Thuyền SUP',
-      category: 'Water Sports',
-      quantity: 5,
-      available: 3,
-      borrowed: 2,
-      condition: 'good',
-      description: 'Thuyền Stand-up Paddle board',
-      isActive: true,
-    },
-    {
-      id: 'eq-4',
-      homestayId: 'hs-2',
-      name: 'Bóng đá',
-      category: 'Sports',
-      quantity: 10,
-      available: 8,
-      borrowed: 2,
-      condition: 'good',
-      description: 'Bóng đá size 5 tiêu chuẩn',
-      isActive: true,
-    },
-  ],
-  'hs-3': [
-    {
-      id: 'eq-5',
-      homestayId: 'hs-3',
-      name: 'Bóng chuyền',
-      category: 'Sports',
-      quantity: 8,
-      available: 6,
-      borrowed: 2,
-      condition: 'good',
-      description: 'Bóng chuyền bãi biển',
-      isActive: true,
-    },
-    {
-      id: 'eq-6',
-      homestayId: 'hs-3',
-      name: 'Ván lướt sóng',
-      category: 'Water Sports',
-      quantity: 6,
-      available: 4,
-      borrowed: 1,
-      condition: 'fair',
-      description: 'Surfboard cho người mới',
-      isActive: true,
-    },
-  ],
-};
-
-const MOCK_HISTORY: Record<string, EquipmentBorrow[]> = {
-  'bk-1': [
-    {
-      id: 'req-1',
-      bookingId: 'bk-1',
-      equipmentId: 'eq-1',
-      equipmentName: 'Kính bơi',
-      quantity: 2,
-      borrowDate: '2026-04-26 09:00',
-      status: 'pending',
-      note: 'Đang chờ nhân viên xác nhận',
-    },
-  ],
-  'bk-2': [],
-  'bk-3': [
-    {
-      id: 'req-2',
-      bookingId: 'bk-3',
-      equipmentId: 'eq-5',
-      equipmentName: 'Bóng chuyền',
-      quantity: 1,
-      borrowDate: '2026-04-21 14:00',
-      returnDate: '2026-04-21 16:00',
-      status: 'returned',
-    },
-  ],
-};
+import { bookingService } from '../../services/bookingService';
+import { equipmentLendingService } from '../../services/equipmentLendingService';
+import type { Equipment } from '../../types/equipment.types';
 
 export default function CustomerEquipmentPage() {
   const navigate = useNavigate();
-
-  const [bookings] = useState<BookingOption[]>(MOCK_BOOKINGS);
-  const [selectedBooking, setSelectedBooking] = useState<BookingOption | null>(MOCK_BOOKINGS[0]);
-
-  const [equipment, setEquipment] = useState<Equipment[]>(MOCK_EQUIPMENT[MOCK_BOOKINGS[0].homestayId || 'hs-1']);
-  const [borrowHistory, setBorrowHistory] = useState<EquipmentBorrow[]>(MOCK_HISTORY[MOCK_BOOKINGS[0].id] || []);
-  const [loading] = useState(false);
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const [cart, setCart] = useState<{ [key: string]: number }>({});
-  const [showCart, setShowCart] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [viewTab, setViewTab] = useState<'browse' | 'requests'>('browse');
+  const [searchParams] = useSearchParams();
+  const [loading, setLoading] = useState(false);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (selectedBooking) {
-      const homestayId = selectedBooking.homestayId || 'hs-1';
-      setEquipment(MOCK_EQUIPMENT[homestayId] || []);
-      setBorrowHistory(MOCK_HISTORY[selectedBooking.id] || []);
-      setCart({});
-    }
-  }, [selectedBooking]);
+    let mounted = true;
 
-  const filteredEquipment = equipment.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === 'Tất cả' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory && item.available > 0;
-  });
+    (async () => {
+      setLoading(true);
+      setError(null);
 
-  const handleAddToCart = (id: string) => {
-    const item = equipment.find((e) => e.id === id);
-    if (!item) return;
+      try {
+        const bookingIdFromQuery = searchParams.get('bookingId')?.trim();
+        const homestayIdFromQuery = searchParams.get('homestayId')?.trim();
+        const myBookings = await bookingService.getMyBookings();
 
-    const currentQty = cart[id] || 0;
-    if (currentQty >= item.available) {
-      toast.error('Vượt quá số lượng có sẵn!');
-      return;
-    }
+        const selectedBooking = bookingIdFromQuery
+          ? myBookings.find((booking) => booking.id === bookingIdFromQuery)
+          : myBookings.find((booking) => booking.status === 'CHECKED_IN' || booking.status === 'CONFIRMED');
 
-    setCart({ ...cart, [id]: currentQty + 1 });
-  };
+        const homestayId = homestayIdFromQuery || selectedBooking?.homestayId;
 
-  const handleRemoveFromCart = (id: string) => {
-    const currentQty = cart[id] || 0;
-    if (currentQty <= 0) return;
+        if (!homestayId) {
+          if (bookingIdFromQuery || homestayIdFromQuery) {
+            setError('Không tìm thấy homestay hợp lệ để tải dụng cụ.');
+          } else {
+            setError('Không tìm thấy booking phù hợp (hãy check-in trước khi mượn đồ).');
+          }
+          setEquipments([]);
+          return;
+        }
 
-    if (currentQty === 1) {
-      const newCart = { ...cart };
-      delete newCart[id];
-      setCart(newCart);
-    } else {
-      setCart({ ...cart, [id]: currentQty - 1 });
-    }
-  };
+        const list = await equipmentLendingService.customerGetEquipment(homestayId);
+        if (!mounted) return;
+        setEquipments(list);
+      } catch (e: any) {
+        if (!mounted) return;
+        setError(e?.message ?? 'Không thể tải danh sách dụng cụ.');
+        setEquipments([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
 
-  const handleSubmitRequest = () => {
-    const cartItems = Object.entries(cart);
-    if (cartItems.length === 0) {
-      toast.error('Giỏ hàng trống!');
-      return;
-    }
-
-    if (!selectedBooking) {
-      toast.error('Vui lòng chọn đặt phòng');
-      return;
-    }
-
-    setIsSubmitting(true);
-    const nextRequests: EquipmentBorrow[] = cartItems.map(([equipmentId, quantity]) => {
-      const item = equipment.find((e) => e.id === equipmentId);
-      return {
-        id: `req-${Date.now()}-${equipmentId}`,
-        bookingId: selectedBooking.id,
-        equipmentId,
-        equipmentName: item?.name || '',
-        quantity,
-        status: 'pending',
-        borrowDate: new Date().toLocaleString('vi-VN'),
-      };
-    });
-
-    setBorrowHistory((prev) => [...nextRequests, ...prev]);
-    setEquipment((prev) =>
-      prev.map((item) => {
-        const qty = cart[item.id] || 0;
-        if (!qty) return item;
-        return {
-          ...item,
-          available: Math.max(0, item.available - qty),
-          borrowed: item.borrowed + qty,
-        };
-      })
-    );
-    toast.success('Đã gửi yêu cầu mượn!');
-    setCart({});
-    setShowCart(false);
-    setIsSubmitting(false);
-  };
-
-  const handleCancelRequest = (borrowId: string) => {
-    const request = borrowHistory.find((item) => item.id === borrowId);
-    if (!request) return;
-    setBorrowHistory((prev) => prev.filter((item) => item.id !== borrowId));
-    setEquipment((prev) =>
-      prev.map((item) =>
-        item.id === request.equipmentId
-          ? { ...item, available: item.available + request.quantity, borrowed: Math.max(0, item.borrowed - request.quantity) }
-          : item
-      )
-    );
-    toast.success('Đã hủy yêu cầu');
-  };
-
-  const cartItemCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
-  const pendingRequests = borrowHistory.filter((r) => r.status === 'pending');
-  const borrowedItems = borrowHistory.filter((r) => r.status === 'borrowed');
+    return () => {
+      mounted = false;
+    };
+  }, [searchParams]);
 
   return (
     <MainLayout>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[calc(100vh-180px)] flex flex-col">
         <button
           onClick={() => navigate('/customer/bookings')}
           className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 mb-6"
@@ -302,369 +75,136 @@ export default function CustomerEquipmentPage() {
             <Package className="w-6 h-6 text-purple-600" />
             Mượn đồ dùng
           </h1>
-          <p className="text-sm text-gray-600 mt-1">Mượn miễn phí các đồ dùng trong thời gian lưu trú</p>
+          <p className="text-sm text-gray-600 mt-1">Chọn đồ dùng để mượn từ homestay của bạn.</p>
         </div>
 
-        {/* Booking Selector */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">Chọn đặt phòng:</label>
-            <select
-              value={selectedBooking?.id || ''}
-              onChange={(e) => {
-                const booking = bookings.find((b) => b.id === e.target.value);
-                setSelectedBooking(booking || null);
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-            >
-              {bookings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.homestayName} - {b.checkInDate} to {b.checkOutDate}
-                </option>
-              ))}
-            </select>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold tracking-wide text-cyan-600 uppercase">Tổng dụng cụ</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{equipments.length}</p>
+            <p className="mt-1 text-sm text-gray-500">Danh sách đồ dùng theo homestay đang chọn.</p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold tracking-wide text-emerald-600 uppercase">Trạng thái</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{loading ? 'Đang tải' : 'Sẵn sàng'}</p>
+            <p className="mt-1 text-sm text-gray-500">Trang đã bám đúng booking/homestay từ URL.</p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold tracking-wide text-purple-600 uppercase">Điểm vào</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">Customer</p>
+            <p className="mt-1 text-sm text-gray-500">Chỉ hiển thị dụng cụ của homestay đang ở.</p>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl shadow-sm border border-orange-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-orange-600 font-medium">Yêu cầu chờ xác nhận</p>
-                <p className="text-3xl font-bold text-orange-900 mt-2">{pendingRequests.length}</p>
+        <div className="flex-1">
+          {loading ? (
+            <div className="flex h-[320px] items-center justify-center rounded-3xl border border-gray-100 bg-white shadow-sm">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
+                <p className="mt-3 text-gray-600">Đang tải danh sách dụng cụ...</p>
               </div>
-              <Clock className="w-12 h-12 text-orange-500 opacity-50" />
             </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl shadow-sm border border-blue-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Đang mượn</p>
-                <p className="text-3xl font-bold text-blue-900 mt-2">{borrowedItems.length}</p>
-              </div>
-              <Package className="w-12 h-12 text-blue-500 opacity-50" />
+          ) : error ? (
+            <div className="rounded-3xl border border-yellow-200 bg-yellow-50 p-8 text-center shadow-sm">
+              <p className="text-yellow-900 font-semibold">{error}</p>
+              <p className="text-sm text-yellow-800 mt-2">Hãy kiểm tra lại booking hoặc liên hệ homestay.</p>
             </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-          <div className="flex gap-4 border-b border-slate-200 pb-4 mb-4">
-            <button
-              onClick={() => setViewTab('browse')}
-              className={`pb-2 font-medium transition-colors ${
-                viewTab === 'browse'
-                  ? 'text-purple-600 border-b-2 border-purple-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Duyệt đồ dùng
-            </button>
-            <button
-              onClick={() => setViewTab('requests')}
-              className={`pb-2 font-medium transition-colors ${
-                viewTab === 'requests'
-                  ? 'text-purple-600 border-b-2 border-purple-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Yêu cầu của tôi
-            </button>
-          </div>
-
-          {viewTab === 'browse' && (
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm đồ dùng..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
+          ) : equipments.length === 0 ? (
+            <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-gray-200 bg-white shadow-sm">
+              <div className="text-center px-6">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
+                  <Package className="w-8 h-8 text-purple-500" />
+                </div>
+                <p className="text-gray-700 font-semibold">Không có dụng cụ nào sẵn có.</p>
+                <p className="text-sm text-gray-500 mt-1">Homestay này chưa cấu hình danh sách equipment.</p>
               </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+              {equipments.map((eq) => {
+                const availableCount = eq.availableQuantity ?? eq.available ?? 0;
+                const totalCount = eq.totalQuantity ?? eq.quantity ?? availableCount;
+                const deposit = eq.depositAmount ?? 0;
+                const rentalFee = eq.rentalFee ?? 0;
+                const statusLabel = eq.isActive ? 'Đang bật' : 'Đang ẩn';
+                const statusClass = eq.isActive
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                  : 'bg-gray-100 text-gray-600 border-gray-200';
+                const conditionLabel =
+                  eq.condition === 'maintenance' ? 'Bảo trì' : eq.condition === 'fair' ? 'Khá' : 'Tốt';
+                const conditionClass =
+                  eq.condition === 'maintenance'
+                    ? 'bg-amber-50 text-amber-700 border-amber-100'
+                    : eq.condition === 'fair'
+                      ? 'bg-sky-50 text-sky-700 border-sky-100'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-100';
 
-              {/* Category Filter */}
-              <div className="flex gap-2 flex-wrap">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      selectedCategory === cat
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+                return (
+                  <div key={eq.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr]">
+                      <div className="relative min-h-[220px] bg-gradient-to-br from-purple-50 to-cyan-50">
+                        {eq.imageUrl ? (
+                          <img src={eq.imageUrl} alt={eq.name} className="absolute inset-0 h-full w-full object-cover" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Package className="w-14 h-14 text-purple-500" />
+                          </div>
+                        )}
+                        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                          <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusClass}`}>
+                            {statusLabel}
+                          </span>
+                          <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${conditionClass}`}>
+                            {conditionLabel}
+                          </span>
+                        </div>
+                      </div>
 
-              {/* Cart Button */}
-              <button
-                onClick={() => setShowCart(!showCart)}
-                className="relative px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-purple-500/30 whitespace-nowrap"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                Giỏ hàng
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center font-bold">
-                    {cartItemCount}
-                  </span>
-                )}
-              </button>
+                      <div className="p-5 flex flex-col">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="text-xl font-bold text-gray-900 truncate">{eq.name}</h3>
+                            <p className="mt-1 text-sm text-gray-500">{eq.category}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-gray-500">Giá thuê</p>
+                            <p className="text-lg font-bold text-gray-900">{rentalFee.toLocaleString('vi-VN')}₫</p>
+                          </div>
+                        </div>
+
+                        <p className="mt-4 text-sm text-gray-600 leading-6 line-clamp-4 min-h-[6rem]">
+                          {eq.description || 'Chưa có mô tả chi tiết cho dụng cụ này.'}
+                        </p>
+
+                        <div className="mt-5 grid grid-cols-2 gap-3">
+                          <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                            <p className="text-xs text-gray-500">Tổng số lượng</p>
+                            <p className="mt-1 text-base font-semibold text-gray-900">{totalCount}</p>
+                          </div>
+                          <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                            <p className="text-xs text-gray-500">Còn khả dụng</p>
+                            <p className="mt-1 text-base font-semibold text-gray-900">{availableCount}</p>
+                          </div>
+                          <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                            <p className="text-xs text-gray-500">Tiền cọc</p>
+                            <p className="mt-1 text-base font-semibold text-gray-900">{deposit.toLocaleString('vi-VN')}₫</p>
+                          </div>
+                          <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                            <p className="text-xs text-gray-500">Homestay</p>
+                            <p className="mt-1 text-base font-semibold text-gray-900 truncate">{eq.homestayId}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
-
-        {/* Content */}
-        {loading ? (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
-            <p className="mt-3 text-gray-600">Đang tải dữ liệu...</p>
-          </div>
-        ) : viewTab === 'browse' ? (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">
-              Đồ dùng có sẵn ({filteredEquipment.length})
-            </h2>
-            {filteredEquipment.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center">
-                <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                  Không có đồ dùng nào
-                </h3>
-                <p className="text-slate-600">Thử thay đổi bộ lọc hoặc tìm kiếm</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredEquipment.map((item) => {
-                  const inCart = cart[item.id] || 0;
-                  return (
-                    <div
-                      key={item.id}
-                      className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-all"
-                    >
-                      {/* Image Placeholder */}
-                      <div className="h-40 bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
-                        <Package className="w-16 h-16 text-white opacity-50" />
-                      </div>
-
-                      <div className="p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 text-lg">{item.name}</h3>
-                            <p className="text-sm text-slate-500">{item.category}</p>
-                          </div>
-                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-semibold">
-                            {item.available} còn
-                          </span>
-                        </div>
-
-                        {item.description && (
-                          <p className="text-sm text-slate-600 mb-4">{item.description}</p>
-                        )}
-
-                        {inCart > 0 ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleRemoveFromCart(item.id)}
-                              className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <div className="px-6 py-2 bg-purple-100 text-purple-700 rounded-xl font-bold text-lg">
-                              {inCart}
-                            </div>
-                            <button
-                              onClick={() => handleAddToCart(item.id)}
-                              className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleAddToCart(item.id)}
-                            className="w-full px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-purple-500/30"
-                          >
-                            <Plus className="w-5 h-5" />
-                            Thêm vào giỏ
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Yêu cầu của tôi</h2>
-            {borrowHistory.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center">
-                <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                  Không có yêu cầu nào
-                </h3>
-                <p className="text-slate-600">Mượn một số đồ dùng bây giờ</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {borrowHistory.map((request) => (
-                  <div
-                    key={request.id}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"
-                  >
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Package className="w-6 h-6 text-white" />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1 flex-wrap">
-                            <h3 className="font-bold text-slate-900">{request.equipmentName}</h3>
-                            <span
-                              className={`px-3 py-1 rounded-lg text-xs font-semibold flex-shrink-0 ${
-                                request.status === 'pending'
-                                  ? 'bg-orange-100 text-orange-700'
-                                  : request.status === 'borrowed'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-green-100 text-green-700'
-                              }`}
-                            >
-                              {request.status === 'pending'
-                                ? 'CHỜ XÁC NHẬN'
-                                : request.status === 'borrowed'
-                                ? 'ĐANG MƯỢN'
-                                : 'ĐÃ TRẢ'}
-                            </span>
-                          </div>
-                          <div className="flex gap-4 text-sm text-slate-600 flex-wrap">
-                            <span>SL: {request.quantity}</span>
-                            <span>Yêu cầu: {request.borrowDate}</span>
-                            {request.returnDate && <span>Trả: {request.returnDate}</span>}
-                          </div>
-                        </div>
-                      </div>
-
-                      {request.status === 'pending' && (
-                        <button
-                          onClick={() => handleCancelRequest(request.id)}
-                          className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-semibold flex items-center gap-2 transition-colors flex-shrink-0"
-                        >
-                          <XCircle className="w-4 h-4" />
-                          Hủy
-                        </button>
-                      )}
-
-                      {request.status === 'borrowed' && (
-                        <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-semibold flex-shrink-0">
-                          Trả cho nhân viên
-                        </div>
-                      )}
-
-                      {request.status === 'returned' && (
-                        <div className="px-4 py-2 bg-green-50 text-green-700 rounded-xl font-semibold flex items-center gap-2 flex-shrink-0">
-                          <CheckCircle className="w-4 h-4" />
-                          Hoàn tất
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </main>
-
-      {/* Cart Modal */}
-      {showCart && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowCart(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <ShoppingCart className="w-6 h-6 text-purple-500" />
-              Giỏ hàng của bạn
-            </h2>
-
-            {Object.keys(cart).length === 0 ? (
-              <div className="text-center py-8">
-                <ShoppingCart className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600">Giỏ hàng trống</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
-                  {Object.entries(cart).map(([id, qty]) => {
-                    const item = equipment.find((e) => e.id === id);
-                    if (!item) return null;
-
-                    return (
-                      <div
-                        key={id}
-                        className="flex items-center justify-between p-4 bg-slate-50 rounded-xl"
-                      >
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-slate-900">{item.name}</h3>
-                          <p className="text-sm text-slate-500">{item.category}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => handleRemoveFromCart(id)}
-                            className="p-1 hover:bg-slate-200 rounded transition-colors"
-                          >
-                            <Minus className="w-4 h-4 text-slate-600" />
-                          </button>
-                          <span className="font-bold text-purple-600 min-w-[2rem] text-center">
-                            {qty}
-                          </span>
-                          <button
-                            onClick={() => handleAddToCart(id)}
-                            className="p-1 hover:bg-slate-200 rounded transition-colors"
-                          >
-                            <Plus className="w-4 h-4 text-slate-600" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowCart(false)}
-                    className="flex-1 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
-                  >
-                    Tiếp tục mua
-                  </button>
-                  <button
-                    onClick={handleSubmitRequest}
-                    disabled={isSubmitting}
-                    className="flex-1 px-6 py-3 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                    {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </MainLayout>
   );
 }
