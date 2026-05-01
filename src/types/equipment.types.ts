@@ -34,6 +34,29 @@ export interface EquipmentBorrow {
   condition?: string;
 }
 
+export interface EquipmentBorrowRequest {
+  id: string;
+  bookingId: string;
+  customerId: string;
+  homestayId: string;
+  homestayName: string;
+  equipmentId: string;
+  equipmentName: string;
+  quantity: number;
+  status: string;
+  requestedAt?: string;
+  note?: string;
+  approvedAt?: string;
+  handedOverAt?: string;
+  returnedAt?: string;
+  approvedByStaffId?: string;
+  handedOverByStaffId?: string;
+  returnedByStaffId?: string;
+  rejectReason?: string;
+  rejectedAt?: string;
+  rejectedByStaffId?: string;
+}
+
 export interface CreateEquipmentPayload {
   homestayId: string;
   name: string;
