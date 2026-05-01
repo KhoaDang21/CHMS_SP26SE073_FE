@@ -594,7 +594,7 @@ export default function BookingsPage() {
                           )}
                           {b.status === 'CHECKED_IN' && (
                             <button
-                              onClick={() => navigate('/customer/equipment')}
+                              onClick={() => navigate(`/customer/equipment?bookingId=${encodeURIComponent(b.id)}&homestayId=${encodeURIComponent(b.homestayId)}`)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
                             >
                               <Package className="w-4 h-4" />
