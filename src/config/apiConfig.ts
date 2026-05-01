@@ -421,7 +421,7 @@ export const apiConfig = {
       },
       customer: {
         list: (homestayId: string) => `/api/customer/equipment/homestays/${homestayId}`,
-        borrow: '/api/customer/equipment/borrow',
+        borrowRequest: '/api/customer/equipment-requests',
         cancelBorrow: (borrowId: string) => `/api/customer/equipment/borrow/${borrowId}/cancel`,
         borrowHistory: (bookingId: string) => `/api/customer/equipment/borrow-history/${bookingId}`,
       },

@@ -3,6 +3,7 @@ import { apiConfig } from '../config/apiConfig';
 import type {
   Equipment,
   EquipmentBorrow,
+  EquipmentBorrowRequest,
   CreateEquipmentPayload,
   UpdateEquipmentPayload,
 } from '../types/equipment.types';
@@ -58,6 +59,29 @@ const mapBorrow = (item: any): EquipmentBorrow => ({
   returnedBy: pick(item, 'returnedBy', 'ReturnedBy'),
   note: pick(item, 'note', 'Note'),
   condition: pick(item, 'condition', 'Condition'),
+});
+
+const mapBorrowRequest = (item: any): EquipmentBorrowRequest => ({
+  id: asString(pick(item, 'id', 'Id')),
+  bookingId: asString(pick(item, 'bookingId', 'BookingId')),
+  customerId: asString(pick(item, 'customerId', 'CustomerId')),
+  homestayId: asString(pick(item, 'homestayId', 'HomestayId')),
+  homestayName: asString(pick(item, 'homestayName', 'HomestayName')),
+  equipmentId: asString(pick(item, 'equipmentId', 'EquipmentId')),
+  equipmentName: asString(pick(item, 'equipmentName', 'EquipmentName')),
+  quantity: Number(pick(item, 'quantity', 'Quantity') ?? 1),
+  status: asString(pick(item, 'status', 'Status') ?? 'pending'),
+  requestedAt: pick(item, 'requestedAt', 'RequestedAt'),
+  note: pick(item, 'note', 'Note'),
+  approvedAt: pick(item, 'approvedAt', 'ApprovedAt'),
+  handedOverAt: pick(item, 'handedOverAt', 'HandedOverAt'),
+  returnedAt: pick(item, 'returnedAt', 'ReturnedAt'),
+  approvedByStaffId: asString(pick(item, 'approvedByStaffId', 'ApprovedByStaffId')),
+  handedOverByStaffId: asString(pick(item, 'handedOverByStaffId', 'HandedOverByStaffId')),
+  returnedByStaffId: asString(pick(item, 'returnedByStaffId', 'ReturnedByStaffId')),
+  rejectReason: pick(item, 'rejectReason', 'RejectReason'),
+  rejectedAt: pick(item, 'rejectedAt', 'RejectedAt'),
+  rejectedByStaffId: asString(pick(item, 'rejectedByStaffId', 'RejectedByStaffId')),
 });
 
 export const equipmentLendingService = {
@@ -116,12 +140,18 @@ export const equipmentLendingService = {
     note?: string;
   }): Promise<EquipmentBorrow | null> {
     const res = await apiService.post<any>(
-      apiConfig.endpoints.equipment.customer.borrow,
+      apiConfig.endpoints.equipment.customer.borrowRequest,
       payload
     );
     const data = res?.data ?? res;
     if (!data) return null;
     return mapBorrow(data);
+  },
+
+  async customerGetBorrowRequests(): Promise<EquipmentBorrowRequest[]> {
+    const res = await apiService.get<any>(apiConfig.endpoints.equipment.customer.borrowRequest);
+    const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    return list.map(mapBorrowRequest);
   },
 
   async customerCancelBorrow(borrowId: string): Promise<boolean> {
