@@ -58,6 +58,12 @@ export default function ManagerEquipmentPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Equipment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSafetyModal, setShowSafetyModal] = useState(false);
+  const [safetyTarget, setSafetyTarget] = useState<Equipment | null>(null);
+  const [safetyCondition, setSafetyCondition] = useState<'GOOD' | 'NEEDS_INSPECTION' | 'DAMAGED' | 'RETIRED'>('GOOD');
+  const [safetyStatus, setSafetyStatus] = useState<'COMPLIANT' | 'INSPECTION_DUE' | 'BLOCKED'>('COMPLIANT');
+  const [safetyNote, setSafetyNote] = useState('');
+  const [nextInspectionDueAt, setNextInspectionDueAt] = useState('');
 
   const [formData, setFormData] = useState<EquipmentForm>({
     name: '',
@@ -257,6 +263,33 @@ export default function ManagerEquipmentPage() {
         toast.error('Lỗi khi xóa đồ dùng');
       }
     })();
+  };
+
+  const handleSubmitSafetyInspection = async () => {
+    if (!safetyTarget) return;
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        conditionStatus: safetyCondition,
+        safetyStatus,
+        nextInspectionDueAt: nextInspectionDueAt || undefined,
+        safetyNote: safetyNote || undefined,
+      };
+      const updated = await equipmentLendingService.managerSafetyInspection(safetyTarget.id, payload);
+      if (updated) {
+        setAllEquipment((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+        toast.success('Đã lưu kết quả kiểm tra an toàn');
+      } else {
+        toast.error('Lưu kiểm tra thất bại');
+      }
+      setShowSafetyModal(false);
+      setSafetyTarget(null);
+    } catch (err) {
+      console.error('Error submitting safety inspection', err);
+      toast.error('Lỗi khi lưu kiểm tra an toàn');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -590,6 +623,12 @@ export default function ManagerEquipmentPage() {
                           Sửa
                         </button>
                         <button
+                          onClick={() => { setSafetyTarget(item); setShowSafetyModal(true); setSafetyCondition((item as any).conditionStatus ?? 'GOOD'); setSafetyStatus((item as any).safetyStatus ?? 'COMPLIANT'); setSafetyNote((item as any).safetyNote ?? ''); setNextInspectionDueAt((item as any).nextInspectionDueAt ?? ''); }}
+                          className="flex-1 px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+                        >
+                          Kiểm tra
+                        </button>
+                        <button
                           onClick={() => handleDeleteEquipment(item.id)}
                           className="flex-1 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
                         >
@@ -695,6 +734,12 @@ export default function ManagerEquipmentPage() {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
+                             <button
+                                onClick={() => { setSafetyTarget(item); setShowSafetyModal(true); setSafetyCondition((item as any).conditionStatus ?? 'GOOD'); setSafetyStatus((item as any).safetyStatus ?? 'COMPLIANT'); setSafetyNote((item as any).safetyNote ?? ''); setNextInspectionDueAt((item as any).nextInspectionDueAt ?? ''); }}
+                                className="p-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-lg transition-colors"
+                              >
+                                Kiểm tra
+                              </button>
                             <button
                               onClick={() => handleDeleteEquipment(item.id)}
                               className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
@@ -926,6 +971,54 @@ export default function ManagerEquipmentPage() {
                     >
                       {isSubmitting ? 'Đang xử lý...' : editingItem ? 'Cập nhật' : 'Thêm'} đồ dùng
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Safety Inspection Modal */}
+          {showSafetyModal && safetyTarget && (
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 px-4 py-10">
+              <div className="flex min-h-full items-start justify-center">
+                <div className="my-8 w-full max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+                  <h2 className="mb-5 text-2xl font-bold text-slate-900">Kiểm tra an toàn</h2>
+                  <p className="text-sm text-slate-600 mb-4">{safetyTarget.name}</p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">Tình trạng thiết bị</label>
+                      <select value={safetyCondition} onChange={(e) => setSafetyCondition(e.target.value as any)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5">
+                        <option value="GOOD">GOOD</option>
+                        <option value="NEEDS_INSPECTION">NEEDS_INSPECTION</option>
+                        <option value="DAMAGED">DAMAGED</option>
+                        <option value="RETIRED">RETIRED</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">Trạng thái an toàn</label>
+                      <select value={safetyStatus} onChange={(e) => setSafetyStatus(e.target.value as any)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5">
+                        <option value="COMPLIANT">COMPLIANT</option>
+                        <option value="INSPECTION_DUE">INSPECTION_DUE</option>
+                        <option value="BLOCKED">BLOCKED</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">Ghi chú</label>
+                      <textarea rows={3} value={safetyNote} onChange={(e) => setSafetyNote(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5" />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">Ngày kiểm tra tiếp theo (tùy chọn)</label>
+                      <input type="datetime-local" value={nextInspectionDueAt} onChange={(e) => setNextInspectionDueAt(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-2.5" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button onClick={() => { setShowSafetyModal(false); setSafetyTarget(null); }} disabled={isSubmitting} className="flex-1 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">Hủy</button>
+                    <button onClick={handleSubmitSafetyInspection} disabled={isSubmitting} className="flex-1 px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl font-semibold">{isSubmitting ? 'Đang xử lý...' : 'Lưu kiểm tra'}</button>
                   </div>
                 </div>
               </div>

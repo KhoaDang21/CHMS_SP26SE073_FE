@@ -267,6 +267,18 @@ export const staffNavItemsGrouped: AdminNavSection[] = [
         path: "/staff/bicycles",
       },
       {
+        id: "equipment",
+        label: "Đồ dùng",
+        icon: Package,
+        path: "/staff/equipment",
+      },
+      {
+        id: "facilities",
+        label: "Bảo trì",
+        icon: Home,
+        path: "/staff/facilities",
+      },
+      {
         id: "travel-guides",
         label: "Cẩm nang du lịch",
         icon: BookOpen,
