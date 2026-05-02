@@ -23,7 +23,6 @@ import { adminBookingService } from '../../services/adminBookingService';
 import { employeeService } from '../../services/employeeService';
 import { homestayService } from '../../services/homestayService';
 import { locationService } from '../../services/locationService';
-import { apiService } from '../../services/apiService';
 import { Pagination } from '../../components/common/Pagination';
 import type { Booking, BookingStatus, BookingStats } from '../../types/booking.types';
 import { toast } from 'sonner';
@@ -94,33 +93,10 @@ export default function ManagerBookings() {
     }
   };
 
-  const fetchLocationDistrictMap = async (): Promise<Map<string, string>> => {
-    try {
-      const res = await apiService.get<any>('/api/locations');
-      const payload = res?.data ?? res;
-      const list: any[] = Array.isArray(payload)
-        ? payload
-        : payload?.items ?? payload?.Items ?? [];
-
-      return new Map(
-        (Array.isArray(list) ? list : [])
-          .map((item) => {
-            const locationId = String(item?.id ?? item?.Id ?? '').trim();
-            const districtId = String(item?.districtId ?? item?.DistrictId ?? '').trim();
-            return [locationId, districtId] as const;
-          })
-          .filter(([locationId, districtId]) => Boolean(locationId) && Boolean(districtId)),
-      );
-    } catch {
-      return new Map<string, string>();
-    }
-  };
-
   const resolveHomestayProvinceId = (
     homestay: any,
     districtToProvinceMap: Map<string, string>,
     provinceNameToIdMap: Map<string, string>,
-    locationDistrictMap: Map<string, string>,
   ): string => {
     const directProvinceId = String(
       homestay?.provinceId ||
@@ -139,15 +115,7 @@ export default function ManagerBookings() {
       '',
     ).trim();
 
-    const locationId = String(
-      homestay?.locationId ||
-      homestay?.LocationId ||
-      homestay?.location?.id ||
-      homestay?.Location?.Id ||
-      '',
-    ).trim();
-
-    const districtId = districtIdRaw || (locationId ? locationDistrictMap.get(locationId) || '' : '');
+    const districtId = districtIdRaw;
     if (districtId && districtToProvinceMap.has(districtId)) {
       return districtToProvinceMap.get(districtId) || '';
     }
@@ -201,12 +169,11 @@ export default function ManagerBookings() {
   const loadBookings = async () => {
     setLoading(true);
     try {
-      const [provinceId, allHomestays, allBookings, provinces, locationDistrictMap] = await Promise.all([
+      const [provinceId, allHomestays, allBookings, provinces] = await Promise.all([
         getAssignedProvinceId(),
         homestayService.getAllAdminHomestays(),
         adminBookingService.getAllBookings(),
         locationService.getProvinces(),
-        fetchLocationDistrictMap(),
       ]);
 
       if (!provinceId) {
@@ -232,7 +199,7 @@ export default function ManagerBookings() {
         (allHomestays || [])
           .filter(
             (h: any) =>
-              resolveHomestayProvinceId(h, districtToProvinceMap, provinceNameToIdMap, locationDistrictMap) === provinceId,
+              resolveHomestayProvinceId(h, districtToProvinceMap, provinceNameToIdMap) === provinceId,
           )
           .map((h: any) => String(h.id)),
       );
