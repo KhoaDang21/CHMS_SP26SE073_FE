@@ -479,6 +479,22 @@ export default function BookingsPage() {
                           <span className={`px-3 py-1.5 text-xs rounded-full font-semibold border ${getStatusColor(b.status)} shadow-sm`}>
                             {getStatusText(b.status)}
                           </span>
+                          {b.status === 'CANCELLED' && (() => {
+                            const refundInfo = myRefundsMap[b.id];
+                            if (!refundInfo) return null;
+                            if (refundInfo.refundStatus === 'COMPLETED') {
+                              return (
+                                <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-green-100 text-green-700 border border-green-200 shadow-sm flex items-center gap-1">
+                                  <Check className="w-3 h-3" /> Đã hoàn {refundInfo.refundAmount.toLocaleString('vi-VN')}đ
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> Chờ hoàn {refundInfo.refundAmount.toLocaleString('vi-VN')}đ
+                              </span>
+                            );
+                          })()}
                           {b.status === 'PENDING' && b.paymentStatus === 'UNPAID' && typeof b.depositAmount === 'number' && b.depositAmount > 0 && (
                             <span title={`Cọc ${b.depositPercentage || 20}% - ${b.depositAmount.toLocaleString('vi-VN')}đ`} className="px-2.5 py-1 text-xs rounded-full font-semibold bg-orange-100 text-orange-700 border border-orange-200 shadow-sm cursor-help">
                               Cọc: {b.depositAmount.toLocaleString('vi-VN')}đ
@@ -1459,6 +1475,38 @@ export default function BookingsPage() {
                       ) : (
                         /* Thao tác - Buttons */
                         <div className="flex flex-col gap-4 pt-2">
+                          {/* Edit và Cancel buttons — luôn ở trên cùng */}
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              onClick={startEdit}
+                              disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
+                              title={selected.status !== 'PENDING' ? 'Chỉ có thể sửa booking khi chưa thanh toán cọc' : ''}
+                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status !== 'PENDING'
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-gray-900 hover:bg-black text-white'
+                                }`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                              Sửa booking
+                            </button>
+                            <button
+                              onClick={() => { if (selected) setCancelRefundBooking(selected); }}
+                              disabled={saving || selected.status === 'CANCELLED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
+                              title={
+                                selected.status === 'CHECKED_IN' ? 'Không thể hủy khi đang lưu trú' :
+                                  selected.status === 'COMPLETED' ? 'Booking đã hoàn thành' :
+                                    selected.status === 'CANCELLED' ? 'Booking đã bị hủy' : ''
+                              }
+                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status === 'CANCELLED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'
+                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                  : 'bg-red-600 hover:bg-red-700 text-white'
+                                }`}
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Hủy booking
+                            </button>
+                          </div>
+
                           {(selected.status === 'CHECKED_IN' || ((selected.status === 'PENDING' || selected.status === 'CONFIRMED') && !hasSelectedExperiences(selected.specialRequests))) && (
                             <button
                               onClick={() => navigate(`/customer/bookings/${selected.id}/services`)}
@@ -1575,38 +1623,6 @@ export default function BookingsPage() {
                               <ChevronRight className="w-4 h-4" />
                             </button>
                           )}
-
-                          {/* Edit và Cancel buttons */}
-                          <div className="flex flex-col sm:flex-row gap-3">
-                            <button
-                              onClick={startEdit}
-                              disabled={saving || selected.status === 'CANCELLED' || selected.status === 'CONFIRMED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
-                              title={selected.status !== 'PENDING' ? 'Chỉ có thể sửa booking khi chưa thanh toán cọc' : ''}
-                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status !== 'PENDING'
-                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                : 'bg-gray-900 hover:bg-black text-white'
-                                }`}
-                            >
-                              <Pencil className="w-4 h-4" />
-                              Sửa booking
-                            </button>
-                            <button
-                              onClick={() => { if (selected) setCancelRefundBooking(selected); }}
-                              disabled={saving || selected.status === 'CANCELLED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'}
-                              title={
-                                selected.status === 'CHECKED_IN' ? 'Không thể hủy khi đang lưu trú' :
-                                  selected.status === 'COMPLETED' ? 'Booking đã hoàn thành' :
-                                    selected.status === 'CANCELLED' ? 'Booking đã bị hủy' : ''
-                              }
-                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status === 'CANCELLED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'
-                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                  : 'bg-red-600 hover:bg-red-700 text-white'
-                                }`}
-                            >
-                              <XCircle className="w-4 h-4" />
-                              Hủy booking
-                            </button>
-                          </div>
                         </div>
                       )}
                     </>
