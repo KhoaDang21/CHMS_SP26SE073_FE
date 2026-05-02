@@ -49,10 +49,25 @@ export default function BookingDiningPage() {
   const [submitting, setSubmitting] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  const diningOrders: DiningOrder[] = useMemo(() => {
+  /** Đơn vừa tạo trong phiên — BE hiện không Include DiningOrders trong GET booking chi tiết khách */
+  const [sessionPlacedOrders, setSessionPlacedOrders] = useState<DiningOrder[]>([]);
+
+  const diningOrdersFromBooking: DiningOrder[] = useMemo(() => {
     const anyOrders = (booking as any)?.diningOrders ?? (booking as any)?.DiningOrders ?? [];
-    return Array.isArray(anyOrders) ? anyOrders : [];
+    return Array.isArray(anyOrders) ? (anyOrders as DiningOrder[]) : [];
   }, [booking]);
+
+  const diningOrders: DiningOrder[] = useMemo(() => {
+    const byId = new Map<string, DiningOrder>();
+    for (const o of diningOrdersFromBooking) {
+      const oid = String((o as any)?.id ?? (o as any)?.Id ?? "");
+      if (oid) byId.set(oid, { ...o, id: oid });
+    }
+    for (const o of sessionPlacedOrders) {
+      if (o.id) byId.set(o.id, o);
+    }
+    return Array.from(byId.values());
+  }, [diningOrdersFromBooking, sessionPlacedOrders]);
 
   const dateBounds = useMemo(() => {
     const today = dateISO(new Date());
@@ -127,6 +142,10 @@ export default function BookingDiningPage() {
   };
 
   useEffect(() => {
+    setSessionPlacedOrders([]);
+  }, [bookingId]);
+
+  useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
@@ -172,7 +191,7 @@ export default function BookingDiningPage() {
 
     setSubmitting(true);
     try {
-      await diningService.customerCreateOrder({
+      const created = await diningService.customerCreateOrder({
         bookingId,
         comboId: selectedComboId,
         timeSlotId: selectedSlotId,
@@ -180,6 +199,12 @@ export default function BookingDiningPage() {
         serveLocation,
         note: note.trim() || undefined,
       });
+      if (created?.id) {
+        setSessionPlacedOrders((prev) => {
+          const next = [...prev.filter((x) => x.id !== created.id), created];
+          return next;
+        });
+      }
       toast.success("Đặt món thành công. Tiền sẽ được cộng vào hóa đơn phòng.");
       setNote("");
       await load();
@@ -195,6 +220,7 @@ export default function BookingDiningPage() {
   const cancelOrder = async (orderId: string) => {
     try {
       await diningService.customerCancelOrder(orderId);
+      setSessionPlacedOrders((prev) => prev.filter((x) => x.id !== orderId));
       toast.success("Đã hủy món. Tiền sẽ được trừ trong hóa đơn phòng.");
       await load();
       if (booking?.homestayId) await loadSlots(booking.homestayId, date);
