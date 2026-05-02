@@ -50,6 +50,7 @@ import BicycleGamificationPage from '../pages/shared/BicycleGamificationPage';
 import ManagerBicycleGamificationPage from '../pages/manager/ManagerBicycleGamificationPage';
 import ManagerDiningPage from '../pages/manager/ManagerDiningPage';
 import ManagerEquipmentPage from '../pages/manager/ManagerEquipmentPage';
+import StaffFacilitiesPage from '../pages/staff/StaffFacilitiesPage';
 import CancellationPoliciesPage from '../pages/admin/CancellationPoliciesPage';
 import AdminRefundsPage from '../pages/admin/AdminRefundsPage';
 import StaffDiningOrdersPage from '../pages/staff/StaffDiningOrdersPage';
@@ -320,7 +321,6 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
       {/* Protected Routes - Staff */}
       <Route
         path="/staff/dashboard"
@@ -359,6 +359,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <StaffEquipmentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/facilities"
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <StaffFacilitiesPage />
           </ProtectedRoute>
         }
       />

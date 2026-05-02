@@ -215,6 +215,7 @@ export default function HomestayDetail() {
     }, [id])
 
     const images = homestay?.images ?? []
+    const facilities = homestay?.facilities ?? homestay?.facilityNames ?? homestay?.amenities ?? homestay?.amenityNames ?? []
 
     const nights = useMemo(() => {
         if (!checkIn || !checkOut) return 0
@@ -802,18 +803,18 @@ export default function HomestayDetail() {
                                 </div>
 
                                 <div className="mt-6">
-                                    <h4 className="font-semibold mb-3">Tiện nghi</h4>
-                                    {homestay.amenities && homestay.amenities.length > 0 ? (
-                                        <div className="flex flex-wrap gap-2">
-                                            {homestay.amenities.map((a, i) => (
-                                                <div key={i} className="flex items-center gap-1.5 text-sm bg-cyan-50 text-cyan-800 border border-cyan-100 px-3 py-1.5 rounded-lg font-medium">
-                                                    <span className="text-base">✓</span>
-                                                    {a}
+                                    <h4 className="font-semibold mb-3">Danh sách facility của home</h4>
+                                    {facilities.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {facilities.map((facility, index) => (
+                                                <div key={`${facility}-${index}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 font-semibold">•</span>
+                                                    <span className="font-medium">{facility}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-sm text-gray-500">Không có thông tin tiện nghi</div>
+                                        <div className="text-sm text-gray-500">Không có thông tin facility</div>
                                     )}
                                 </div>
                             </div>

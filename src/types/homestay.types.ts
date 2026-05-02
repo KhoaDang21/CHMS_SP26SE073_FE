@@ -73,6 +73,8 @@ export interface Homestay {
   amenities?: string[];
   amenityIds?: string[];
   amenityNames?: string[];
+  facilities?: string[];
+  facilityNames?: string[];
   rating?: number;
   reviewCount?: number;
   averageRating?: number;

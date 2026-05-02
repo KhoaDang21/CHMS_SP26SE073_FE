@@ -418,6 +418,7 @@ export const apiConfig = {
         create: '/api/manager/equipment',
         update: (equipmentId: string) => `/api/manager/equipment/${equipmentId}`,
         delete: (equipmentId: string) => `/api/manager/equipment/${equipmentId}`,
+        safetyInspection: (equipmentId: string) => `/api/manager/equipment/${equipmentId}/safety-inspection`,
       },
       customer: {
         list: (homestayId: string) => `/api/customer/equipment/homestays/${homestayId}`,
@@ -432,6 +433,29 @@ export const apiConfig = {
         handOver: (id: string) => `/api/staff/equipment-requests/${id}/hand-over`,
         reject: (id: string) => `/api/staff/equipment-requests/${id}/reject`,
         return: (id: string) => `/api/staff/equipment-requests/${id}/return`,
+        returnInspection: (id: string) => `/api/staff/equipment-requests/${id}/return-inspection`,
+      },
+    },
+    facilities: {
+      manager: {
+        list: (homestayId: string) => `/api/manager/facilities/homestays/${homestayId}`,
+        create: '/api/manager/facilities',
+        update: (id: string) => `/api/manager/facilities/${id}`,
+        delete: (id: string) => `/api/manager/facilities/${id}`,
+        consume: (id: string) => `/api/manager/facilities/${id}/consume`,
+      },
+      maintenance: {
+        list: (homestayId: string) => `/api/manager/maintenance/homestays/${homestayId}`,
+        create: '/api/manager/maintenance',
+        assignStaff: (id: string) => `/api/manager/maintenance/${id}/assign-staff`,
+        updateStatus: (id: string) => `/api/manager/maintenance/${id}/status`,
+      },
+      staff: {
+        maintenanceList: '/api/staff/maintenance',
+        maintenanceDetail: (id: string) => `/api/staff/maintenance/${id}`,
+        start: (id: string) => `/api/staff/maintenance/${id}/start`,
+        complete: (id: string) => `/api/staff/maintenance/${id}/complete`,
+        consume: (id: string) => `/api/staff/facilities/${id}/consume`,
       },
     },
   },

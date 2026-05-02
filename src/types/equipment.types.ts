@@ -6,6 +6,12 @@ export interface Equipment {
   quantity: number;
   available: number;
   borrowed: number;
+  // Safety / inspection fields
+  conditionStatus?: 'GOOD' | 'NEEDS_INSPECTION' | 'DAMAGED' | 'RETIRED';
+  safetyStatus?: 'COMPLIANT' | 'INSPECTION_DUE' | 'BLOCKED';
+  lastInspectedAt?: string;
+  nextInspectionDueAt?: string;
+  safetyNote?: string;
   totalQuantity?: number;
   availableQuantity?: number;
   depositAmount?: number;

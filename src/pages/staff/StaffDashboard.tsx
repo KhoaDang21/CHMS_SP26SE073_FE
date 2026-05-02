@@ -7,17 +7,14 @@ import {
   CheckCircle,
   Clock,
   Home,
-  LogOut,
   Menu,
   Users,
-  X,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService } from '../../services/extraChargeService';
 import type { Booking } from '../../types/booking.types';
-import { RoleBadge } from '../../components/common/RoleBadge';
-import { staffNavItemsGrouped } from '../../config/staffNavItems';
+import StaffSidebar from '../../components/staff/StaffSidebar';
 import { toast } from 'sonner';
 import { CheckoutInspectionModal } from '../../components/staff/CheckoutInspectionModal';
 import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
@@ -191,14 +188,6 @@ export default function StaffDashboard() {
     }
   };
 
-  const navigationSections = staffNavItemsGrouped.map((section) => ({
-    section: section.section,
-    items: section.items.map((item) => ({
-      ...item,
-      active: item.path === '/staff/dashboard',
-    })),
-  }));
-
   const getTaskIcon = (type: TodayTask['type']) => {
     switch (type) {
       case 'checkin':
@@ -240,77 +229,14 @@ export default function StaffDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-br from-cyan-600 to-blue-700 text-white transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
-      >
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-6 border-b border-cyan-500/30">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <Home className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="font-bold text-lg">CHMS</h1>
-                <p className="text-xs text-cyan-200">Staff Portal</p>
-              </div>
-            </div>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden" type="button">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
-            {navigationSections.map((section) => (
-              <div key={section.section} className="space-y-1">
-                <h3 className="px-4 text-xs font-bold text-cyan-200 uppercase tracking-wider">
-                  {section.section}
-                </h3>
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => navigate(item.path)}
-                      type="button"
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        item.active ? 'bg-white/20 text-white font-medium' : 'text-cyan-100 hover:bg-white/10'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-
-          <div className="p-6 border-t border-cyan-500/30">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'S'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{currentUser?.name ?? 'Staff'}</p>
-                <RoleBadge role={currentUser?.role || 'staff'} size="sm" />
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 border-t border-cyan-500/30">
-            <button
-              onClick={handleLogout}
-              type="button"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-cyan-100 hover:bg-white/10 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Đăng xuất</span>
-            </button>
-          </div>
-        </div>
-      </aside>
+      <StaffSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentPath="/staff/dashboard"
+        userName={currentUser?.name}
+        userRole={currentUser?.role || 'staff'}
+        onLogout={handleLogout}
+      />
 
       <div className="flex-1 lg:ml-64">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
