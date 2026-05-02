@@ -29,6 +29,7 @@ import { authService } from '../../services/authService';
 import EditHomestayModal from '../../components/admin/EditHomestayModal';
 import { managerNavItemsGrouped } from '../../config/adminNavItemsGrouped';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import ManagerHomestayFacilitiesTab from '../../components/manager/ManagerHomestayFacilitiesTab';
 
 export default function ManagerHomestayDetailPage() {
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ export default function ManagerHomestayDetailPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState<'overview' | 'facilities'>('overview');
 
   const user = authService.getCurrentUser();
 
@@ -311,8 +313,37 @@ export default function ManagerHomestayDetailPage() {
             </div>
           </div>
 
-          {/* Image Gallery */}
-          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+          {/* Tab Navigation */}
+          <div className="mb-6 border-b border-gray-200">
+            <div className="flex gap-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`pb-4 font-medium transition-colors ${
+                  activeTab === 'overview'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Tổng quan
+              </button>
+              <button
+                onClick={() => setActiveTab('facilities')}
+                className={`pb-4 font-medium transition-colors ${
+                  activeTab === 'facilities'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Sản phẩm & Tài sản
+              </button>
+            </div>
+          </div>
+
+          {/* Overview Tab Content */}
+          {activeTab === 'overview' && (
+            <>
+              {/* Image Gallery */}
+              <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
             <div className="relative h-96 md:h-[500px] bg-gray-200">
               {images.length > 0 ? (
                 <>
@@ -542,6 +573,13 @@ export default function ManagerHomestayDetailPage() {
               </div>
             </div>
           </div>
+            </>
+          )}
+
+          {/* Facilities Tab Content */}
+          {activeTab === 'facilities' && id && (
+            <ManagerHomestayFacilitiesTab homestayId={id} />
+          )}
         </div>
       </div>
 

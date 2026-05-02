@@ -7,20 +7,17 @@ import {
   User,
   Calendar,
   AlertCircle,
-  Home,
-  LogOut,
   Menu,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import { RoleBadge } from '../../components/common/RoleBadge';
 import type { EquipmentBorrow } from '../../types/equipment.types';
 import { equipmentLendingService } from '../../services/equipmentLendingService';
 import { employeeService } from '../../services/employeeService';
 import { homestayService } from '../../services/homestayService';
-import { staffNavItemsGrouped } from '../../config/staffNavItems';
+import StaffSidebar from '../../components/staff/StaffSidebar';
 
 const MOCK_HOMESTAYS = [
   { id: 'hs-1', name: 'Sunrise Beach Homestay' },
@@ -48,6 +45,7 @@ export default function StaffEquipmentPage() {
     'good'
   );
   const [returnNote, setReturnNote] = useState('');
+  const [markBlocked, setMarkBlocked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
 
@@ -103,15 +101,17 @@ export default function StaffEquipmentPage() {
     setIsSubmitting(true);
     try {
       const staffId = user?.id;
-      await equipmentLendingService.staffRecordReturnBorrowRequest(returningItem.id, {
-        condition: returnCondition,
-        note: returnNote || undefined,
+      await equipmentLendingService.staffReturnInspection(returningItem.id, {
+        conditionAfter: String(returnCondition).toUpperCase(),
+        returnConditionNote: returnNote || undefined,
+        markEquipmentBlocked: markBlocked,
         staffId,
       });
-      toast.success('Đã ghi nhận trả hàng');
+      toast.success('Đã ghi nhận trả và kiểm tra tình trạng');
       setReturningItem(null);
       setReturnCondition('good');
       setReturnNote('');
+      setMarkBlocked(false);
       await loadRequests();
     } catch (err) {
       console.error(err);
@@ -158,7 +158,7 @@ export default function StaffEquipmentPage() {
         ? list.map((item: any) => ({ raw: item, ui: mapRequestToBorrowLocal(item) }))
         : [];
       setPendingRequests(combined.filter((c) => c.ui.status === 'pending'));
-      setActiveBorrows(combined.filter((c) => c.ui.status !== 'pending' && c.ui.status !== 'cancelled'));
+      setActiveBorrows(combined.filter((c) => c.ui.status !== 'pending' && c.ui.status !== 'cancelled' && c.ui.status !== 'returned'));
     } catch (err) {
       console.error(err);
       toast.error('Không thể tải dữ liệu mượn');
@@ -208,14 +208,6 @@ export default function StaffEquipmentPage() {
   const activeCount = activeBorrows.length;
   const selectedHomestay = homestays.find((h) => String(h.id) === String(homestayId));
 
-  const navigationSections = staffNavItemsGrouped.map((section) => ({
-    section: section.section,
-    items: section.items.map((item) => ({
-      ...item,
-      active: item.path === '/staff/equipment',
-    })),
-  }));
-
   const handleLogout = () => {
     authService.logout();
     navigate('/auth/login');
@@ -223,79 +215,14 @@ export default function StaffEquipmentPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-br from-cyan-600 to-blue-700 text-white transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
-      >
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-6 border-b border-cyan-500/30">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <Home className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="font-bold text-lg">CHMS</h1>
-                <p className="text-xs text-cyan-200">Staff Portal</p>
-              </div>
-            </div>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden" type="button">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
-            {navigationSections.map((section) => (
-              <div key={section.section} className="space-y-1">
-                <h3 className="px-4 text-xs font-bold text-cyan-200 uppercase tracking-wider">
-                  {section.section}
-                </h3>
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => navigate(item.path)}
-                      type="button"
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        item.active
-                          ? 'bg-white/20 text-white font-medium'
-                          : 'text-cyan-100 hover:bg-white/10'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-
-          <div className="p-6 border-t border-cyan-500/30">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                {user?.name?.charAt(0)?.toUpperCase() ?? 'S'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{user?.name ?? 'Staff'}</p>
-                <RoleBadge role={user?.role || 'staff'} size="sm" />
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 border-t border-cyan-500/30">
-            <button
-              onClick={handleLogout}
-              type="button"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-cyan-100 hover:bg-white/10 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Đăng xuất</span>
-            </button>
-          </div>
-        </div>
-      </aside>
+      <StaffSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentPath="/staff/equipment"
+        userName={user?.name}
+        userRole={user?.role || 'staff'}
+        onLogout={handleLogout}
+      />
 
       <div className="flex-1 lg:ml-64">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -319,24 +246,6 @@ export default function StaffEquipmentPage() {
         </header>
 
         <main className="p-6 max-w-7xl mx-auto">
-        {/* Homestay Selector */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">Chọn Homestay:</label>
-            <select
-              value={homestayId}
-              onChange={(e) => setHomestayId(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
-            >
-              {homestays.map((h) => (
-                <option key={String(h.id)} value={String(h.id)}>
-                  {h.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl shadow-sm border border-orange-200 p-6">
@@ -510,11 +419,12 @@ export default function StaffEquipmentPage() {
                         className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-amber-500/30"
                       >
                         <Package className="w-5 h-5" />
-                        Giao
+                        Xác nhận giao
                       </button>
                     )}
 
-                    {filterTab === 'active' && (
+                    {/* If handed over but not yet returned -> show record return */}
+                    {String(request.raw?.handedOverAt ?? '').length > 0 && !request.raw?.returnedAt && (
                       <button
                         onClick={() => {
                           setReturningItem(request.ui);
@@ -574,6 +484,16 @@ export default function StaffEquipmentPage() {
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
                   placeholder="Vết hư hại, bụi bẩn, v.v..."
                 />
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  id="markBlocked"
+                  type="checkbox"
+                  checked={markBlocked}
+                  onChange={(e) => setMarkBlocked(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="markBlocked" className="text-sm text-slate-700">Khoá thiết bị nếu hư hỏng nghiêm trọng</label>
               </div>
             </div>
 

@@ -42,6 +42,12 @@ const mapEquipment = (item: any): Equipment => {
     createdAt: pick(item, 'createdAt', 'CreatedAt'),
     updatedAt: pick(item, 'updatedAt', 'UpdatedAt'),
   };
+  // map optional safety fields
+  (mapped as any).conditionStatus = pick(item, 'conditionStatus', 'ConditionStatus') ?? pick(item, 'condition', 'Condition')?.toString()?.toUpperCase?.();
+  (mapped as any).safetyStatus = pick(item, 'safetyStatus', 'SafetyStatus');
+  (mapped as any).lastInspectedAt = pick(item, 'lastInspectedAt', 'LastInspectedAt');
+  (mapped as any).nextInspectionDueAt = pick(item, 'nextInspectionDueAt', 'NextInspectionDueAt');
+  (mapped as any).safetyNote = pick(item, 'safetyNote', 'SafetyNote');
   console.log('Mapped equipment with imageUrl:', { id: mapped.id, name: mapped.name, imageUrl: mapped.imageUrl });
   return mapped;
 };
@@ -241,6 +247,19 @@ export const equipmentLendingService = {
     return true;
   },
 
+  async staffReturnInspection(
+    requestId: string,
+    payload?: {
+      conditionAfter?: string;
+      returnConditionNote?: string;
+      markEquipmentBlocked?: boolean;
+      staffId?: string;
+    }
+  ): Promise<boolean> {
+    await apiService.post<any>(apiConfig.endpoints.equipment.staff.returnInspection(requestId), payload ?? {});
+    return true;
+  },
+
   // Backward-compatible wrappers for existing call sites.
   async staffConfirmBorrow(borrowId: string): Promise<boolean> {
     return this.staffApproveBorrowRequest(borrowId);
@@ -255,6 +274,19 @@ export const equipmentLendingService = {
     }
   ): Promise<boolean> {
     return this.staffRecordReturnBorrowRequest(borrowId, payload);
+  },
+
+  async managerSafetyInspection(equipmentId: string, payload: {
+    conditionStatus?: string;
+    safetyStatus?: string;
+    nextInspectionDueAt?: string;
+    safetyNote?: string;
+    safetyChecklistJson?: string;
+  }): Promise<Equipment | null> {
+    const res = await apiService.post<any>(apiConfig.endpoints.equipment.manager.safetyInspection(equipmentId), payload);
+    const data = res?.data ?? res;
+    if (!data) return null;
+    return mapEquipment(data);
   },
 
   async staffGetActiveBorrows(homestayId: string): Promise<EquipmentBorrow[]> {

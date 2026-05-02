@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bike, CheckCircle2, Gauge, Home, Loader2, LogOut, MapPinned, Menu, ShieldAlert, X } from 'lucide-react';
+import { Bike, CheckCircle2, Gauge, Loader2, MapPinned, Menu, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import { employeeService } from '../../services/employeeService';
@@ -10,9 +10,9 @@ import { managerBookingService } from '../../services/managerBookingService';
 import { adminBookingService } from '../../services/adminBookingService';
 import type { Booking } from '../../types/booking.types';
 import type { Homestay } from '../../types/homestay.types';
-import { RoleBadge } from '../../components/common/RoleBadge';
-import { adminNavItemsGrouped, managerNavItemsGrouped, staffNavItemsGrouped } from '../../config/adminNavItemsGrouped';
-import AdminSidebar from '../../components/admin/AdminSidebar';
+import { adminNavItemsGrouped, managerNavItemsGrouped } from '../../config/adminNavItemsGrouped';
+import { staffNavItemsGrouped } from '../../config/staffNavItems';
+import StaffSidebar from '../../components/staff/StaffSidebar';
 import {
   bicycleGamificationService,
   type HiddenGemPayload,
@@ -23,6 +23,8 @@ const tabs = [
   { key: 'bicycles', label: 'Kho xe đạp', icon: Gauge },
   { key: 'damage', label: 'Bảng phạt hư hỏng', icon: ShieldAlert },
   { key: 'routes', label: 'Lộ trình & Hidden Gems', icon: MapPinned },
+  { key: 'equipment', label: 'Đồ dùng', icon: Bike },
+  { key: 'facilities', label: 'Bảo trì', icon: ShieldAlert },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
@@ -114,7 +116,8 @@ export default function BicycleGamificationPage() {
 
   const visibleTabs = useMemo(() => {
     if (canManage) return tabs;
-    return tabs.filter((tab) => tab.key === 'operation');
+    // For staff, show operation plus equipment and facilities as requested
+    return tabs.filter((tab) => ['operation', 'equipment', 'facilities'].includes(tab.key));
   }, [canManage]);
 
   useEffect(() => {
@@ -425,90 +428,23 @@ export default function BicycleGamificationPage() {
     navigate('/auth/login');
   };
 
-  const getSidebarStyles = () => {
-    if (role === 'staff') {
-      return {
-        container: 'bg-gradient-to-br from-cyan-600 to-blue-700 text-white',
-        border: 'border-cyan-500/30',
-        headerBg: 'bg-white/20',
-        userAvatarBg: 'bg-gradient-to-br from-cyan-400 to-blue-500',
-        navActive: 'bg-white/20 text-white font-medium',
-        navInactive: 'text-cyan-100 hover:bg-white/10',
-        hoverText: 'text-cyan-100 hover:bg-white/10',
-      };
-    }
-    // Admin & Manager: white sidebar
-    return {
-      container: 'bg-white shadow-lg text-gray-900',
-      border: 'border-gray-200',
-      headerBg: 'bg-transparent',
-      userAvatarBg: 'bg-gradient-to-br from-blue-500 to-cyan-500',
-      navActive: 'bg-blue-50 text-blue-600 font-medium',
-      navInactive: 'text-gray-700 hover:bg-gray-50',
-      hoverText: 'text-gray-700 hover:bg-gray-50',
-    };
-  };
-
-  const styles = getSidebarStyles();
   const availableBicycles = bicycles.filter(
     (bicycle) => String(bicycle?.status || '').toUpperCase() === 'AVAILABLE',
   );
 
   return (
     <div className={`min-h-screen flex ${role === 'staff' ? 'bg-gray-50' : 'bg-gradient-to-br from-blue-50 to-cyan-50'}`}>
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 ${styles.container} transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:translate-x-0`}
-      >
-        <div className="flex flex-col h-full">
-          <div className={`flex items-center justify-between p-6 border-b ${styles.border}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 ${styles.headerBg} rounded-lg flex items-center justify-center`}>
-                {role === 'staff' ? <Home className="w-6 h-6" /> : <Bike className="w-6 h-6" />}
-              </div>
-              <div>
-                <h1 className="font-bold text-lg">CHMS</h1>
-                <p className={`text-xs ${role === 'staff' ? 'text-cyan-200' : 'text-gray-500'}`}>
-                  {role?.toUpperCase() === 'MANAGER' ? 'Quản lý vận hành' : role?.toUpperCase() === 'ADMIN' ? 'Hệ thống quản trị' : 'Staff Portal'}
-                </p>
-              </div>
-            </div>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden" type="button">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          <nav className="flex-1 p-4 overflow-y-auto">
-            <AdminSidebar groupedItems={groupedNavItems} />
-          </nav>
-
-          <div className={`p-6 border-t ${styles.border}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-full ${styles.userAvatarBg} flex items-center justify-center text-white font-bold text-lg`}>
-                {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`font-medium truncate ${role === 'staff' ? 'text-white' : 'text-gray-900'}`}>
-                  {user?.name ?? 'User'}
-                </p>
-                <RoleBadge role={user?.role || 'staff'} size="sm" />
-              </div>
-            </div>
-          </div>
-
-          <div className={`p-4 border-t ${styles.border}`}>
-            <button
-              onClick={handleLogout}
-              type="button"
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${styles.hoverText}`}
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-              <span>Đăng xuất</span>
-            </button>
-          </div>
-        </div>
-      </aside>
+      <StaffSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentPath="/staff/bicycles"
+        userName={user?.name}
+        userRole={user?.role || 'staff'}
+        onLogout={handleLogout}
+        groupedItems={groupedNavItems}
+        title="CHMS"
+        subtitle={role?.toUpperCase() === 'MANAGER' ? 'Quản lý vận hành' : role?.toUpperCase() === 'ADMIN' ? 'Hệ thống quản trị' : 'Staff Portal'}
+      />
 
       <div className={`flex-1 lg:ml-64 transition-colors ${role === 'staff' ? 'bg-gray-50' : 'bg-gradient-to-br from-blue-50 to-cyan-50'}`}>
         {/* Header */}
@@ -969,7 +905,17 @@ export default function BicycleGamificationPage() {
                   <button
                     key={tab.key}
                     type="button"
-                    onClick={() => setActiveTab(tab.key)}
+                    onClick={() => {
+                      if (tab.key === 'equipment') {
+                        navigate('/staff/equipment');
+                        return;
+                      }
+                      if (tab.key === 'facilities') {
+                        navigate('/staff/facilities');
+                        return;
+                      }
+                      setActiveTab(tab.key);
+                    }}
                     className={`rounded-xl border px-4 py-3 text-left transition-colors ${active
                         ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'

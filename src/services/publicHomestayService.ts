@@ -90,6 +90,8 @@ export const publicHomestayService = {
         bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
         images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
         amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+        facilities: it.facilities ?? it.Facilities ?? it.facilityNames ?? it.FacilityNames ?? [],
+        facilityNames: it.facilityNames ?? it.FacilityNames ?? it.facilities ?? it.Facilities ?? [],
         averageRating:
           it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
         totalReviews:
@@ -162,6 +164,8 @@ export const publicHomestayService = {
         bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
         images: it.images ?? it.ImageUrls ?? it.imageUrls ?? it.imageUrls ?? [],
         amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+        facilities: it.facilities ?? it.Facilities ?? it.facilityNames ?? it.FacilityNames ?? [],
+        facilityNames: it.facilityNames ?? it.FacilityNames ?? it.facilities ?? it.Facilities ?? [],
         averageRating:
           it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
         totalReviews:
@@ -228,6 +232,8 @@ export const publicHomestayService = {
         bathrooms: it.bathrooms ?? it.Bathrooms ?? 0,
         images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
         amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+        facilities: it.facilities ?? it.Facilities ?? it.facilityNames ?? it.FacilityNames ?? [],
+        facilityNames: it.facilityNames ?? it.FacilityNames ?? it.facilities ?? it.Facilities ?? [],
         averageRating:
           it.averageRating ?? it.AverageRating ?? it.rating ?? it.Rating ?? 0,
         totalReviews:
@@ -411,6 +417,8 @@ export const publicHomestayService = {
           area: it.area ?? it.Area,
           images: it.images ?? it.ImageUrls ?? it.imageUrls ?? [],
           amenities: it.amenities ?? it.AmenityNames ?? it.amenityNames ?? [],
+          facilities: it.facilities ?? it.Facilities ?? it.facilityNames ?? it.FacilityNames ?? [],
+          facilityNames: it.facilityNames ?? it.FacilityNames ?? it.facilities ?? it.Facilities ?? [],
           amenityIds: it.amenityIds ?? it.AmenityIds ?? [],
           averageRating: normalizedAverageRating,
           totalReviews: it.totalReviews ?? it.TotalReviews ?? it.reviewCount ?? it.ReviewCount ?? 0,
