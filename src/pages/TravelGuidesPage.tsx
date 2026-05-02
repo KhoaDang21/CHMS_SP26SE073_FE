@@ -660,22 +660,6 @@ export default function TravelGuidesPage() {
           </header>
 
           {pageContent}
-              <div className="ml-6 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => navigate('/staff/equipment')}
-                  className="rounded-full border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  Đồ dùng
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/staff/facilities')}
-                  className="rounded-full border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  Bảo trì
-                </button>
-              </div>
         </div>
       </div>
     );
