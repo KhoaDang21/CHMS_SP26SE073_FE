@@ -802,7 +802,16 @@ export default function StaffTickets() {
                                     }`}
                                   >
                                     {!isMe && <p className="text-xs font-medium mb-0.5 text-cyan-600">{reply.senderName}</p>}
-                                    <p className="whitespace-pre-wrap break-words leading-relaxed">{reply.message}</p>
+                                    {reply.message && <p className="whitespace-pre-wrap break-words leading-relaxed">{reply.message}</p>}
+                                    {reply.attachmentUrl && (
+                                      <a href={reply.attachmentUrl} target="_blank" rel="noreferrer" className="block mt-1.5">
+                                        <img
+                                          src={reply.attachmentUrl}
+                                          alt="Ảnh đính kèm"
+                                          className="max-w-[220px] rounded-xl border border-white/20 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                        />
+                                      </a>
+                                    )}
                                     <p className={`text-[10px] mt-1 ${isMe ? 'text-cyan-100 text-right' : 'text-gray-400'}`}>
                                       {formatTime(reply.createdAt)}
                                     </p>
