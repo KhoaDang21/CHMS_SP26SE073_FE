@@ -135,7 +135,14 @@ export const facilityService = {
     return list.map((i) => ({
       id: String(i.id ?? i.Id ?? ''),
       facilityAssetId: String(i.facilityAssetId ?? i.FacilityAssetId ?? ''),
+      facilityAssetName: i.facilityAssetName ?? i.FacilityAssetName ?? i.assetName ?? i.AssetName,
+      homestayId: i.homestayId ?? i.HomestayId ?? null,
+      homestayName: i.homestayName ?? i.HomestayName ?? i.propertyName ?? i.PropertyName,
+      bookingId: i.bookingId ?? i.BookingId ?? null,
+      reportedByUserId: i.reportedByUserId ?? i.ReportedByUserId ?? null,
+      reportedByUserName: i.reportedByUserName ?? i.ReportedByUserName ?? i.reportedByName ?? i.ReportedByName,
       assignedStaffId: i.assignedStaffId ?? i.AssignedStaffId ?? null,
+      assignedStaffName: i.assignedStaffName ?? i.AssignedStaffName ?? i.staffName ?? i.StaffName,
       title: i.title ?? i.Title ?? '',
       description: i.description ?? i.Description,
       priority: i.priority ?? i.Priority,
@@ -159,7 +166,14 @@ export const facilityService = {
     return {
       id: String(data.id ?? data.Id ?? ''),
       facilityAssetId: String(data.facilityAssetId ?? data.FacilityAssetId ?? ''),
+      facilityAssetName: data.facilityAssetName ?? data.FacilityAssetName ?? data.assetName ?? data.AssetName,
+      homestayId: data.homestayId ?? data.HomestayId ?? null,
+      homestayName: data.homestayName ?? data.HomestayName ?? data.propertyName ?? data.PropertyName,
+      bookingId: data.bookingId ?? data.BookingId ?? null,
+      reportedByUserId: data.reportedByUserId ?? data.ReportedByUserId ?? null,
+      reportedByUserName: data.reportedByUserName ?? data.ReportedByUserName ?? data.reportedByName ?? data.ReportedByName,
       assignedStaffId: data.assignedStaffId ?? data.AssignedStaffId ?? null,
+      assignedStaffName: data.assignedStaffName ?? data.AssignedStaffName ?? data.staffName ?? data.StaffName,
       title: data.title ?? data.Title ?? '',
       description: data.description ?? data.Description,
       priority: data.priority ?? data.Priority,
@@ -181,6 +195,39 @@ export const facilityService = {
     return true;
   },
 
+  async managerGetMaintenanceDetail(id: string): Promise<MaintenanceRequest | null> {
+    const res = await apiService.get<any>((apiConfig as any).endpoints.facilities.maintenance.detail(id));
+    const data = res?.data ?? res;
+    if (!data) return null;
+    return {
+      id: String(data.id ?? data.Id ?? ''),
+      facilityAssetId: String(data.facilityAssetId ?? data.FacilityAssetId ?? ''),
+      facilityAssetName: data.facilityAssetName ?? data.FacilityAssetName ?? data.assetName ?? data.AssetName,
+      homestayId: data.homestayId ?? data.HomestayId ?? null,
+      homestayName: data.homestayName ?? data.HomestayName ?? data.propertyName ?? data.PropertyName,
+      bookingId: data.bookingId ?? data.BookingId ?? null,
+      reportedByUserId: data.reportedByUserId ?? data.ReportedByUserId ?? null,
+      reportedByUserName: data.reportedByUserName ?? data.ReportedByUserName ?? data.reportedByName ?? data.ReportedByName,
+      assignedStaffId: data.assignedStaffId ?? data.AssignedStaffId ?? null,
+      assignedStaffName: data.assignedStaffName ?? data.AssignedStaffName ?? data.staffName ?? data.StaffName,
+      title: data.title ?? data.Title ?? '',
+      description: data.description ?? data.Description,
+      priority: data.priority ?? data.Priority,
+      damageLevel: data.damageLevel ?? data.DamageLevel,
+      estimatedCost: data.estimatedCost ?? data.EstimatedCost,
+      evidenceImageUrl: data.evidenceImageUrl ?? data.EvidenceImageUrl,
+      // some APIs return array field
+      ...(data.evidenceImageUrls ? { evidenceImageUrls: data.evidenceImageUrls } : {}),
+      facilityConditionStatus: data.facilityConditionStatus ?? data.FacilityConditionStatus,
+      status: data.status ?? data.Status,
+      createdAt: data.createdAt ?? data.CreatedAt,
+      updatedAt: data.updatedAt ?? data.UpdatedAt,
+      startedAt: data.startedAt ?? data.StartedAt ?? null,
+      completedAt: data.completedAt ?? data.CompletedAt ?? null,
+      actualCost: data.actualCost ?? data.ActualCost ?? null,
+    } as any;
+  },
+
   async managerUpdateMaintenanceStatus(id: string, status: string): Promise<boolean> {
     await apiService.patch((apiConfig as any).endpoints.facilities.maintenance.updateStatus(id), { status });
     return true;
@@ -193,7 +240,14 @@ export const facilityService = {
     return list.map((i) => ({
       id: String(i.id ?? i.Id ?? ''),
       facilityAssetId: String(i.facilityAssetId ?? i.FacilityAssetId ?? ''),
+      facilityAssetName: i.facilityAssetName ?? i.FacilityAssetName ?? i.assetName ?? i.AssetName,
+      homestayId: i.homestayId ?? i.HomestayId ?? null,
+      homestayName: i.homestayName ?? i.HomestayName ?? i.propertyName ?? i.PropertyName,
+      bookingId: i.bookingId ?? i.BookingId ?? null,
+      reportedByUserId: i.reportedByUserId ?? i.ReportedByUserId ?? null,
+      reportedByUserName: i.reportedByUserName ?? i.ReportedByUserName ?? i.reportedByName ?? i.ReportedByName,
       assignedStaffId: i.assignedStaffId ?? i.AssignedStaffId ?? null,
+      assignedStaffName: i.assignedStaffName ?? i.AssignedStaffName ?? i.staffName ?? i.StaffName,
       title: i.title ?? i.Title ?? '',
       description: i.description ?? i.Description,
       priority: i.priority ?? i.Priority,
@@ -217,7 +271,14 @@ export const facilityService = {
     return {
       id: String(data.id ?? data.Id ?? ''),
       facilityAssetId: String(data.facilityAssetId ?? data.FacilityAssetId ?? ''),
+      facilityAssetName: data.facilityAssetName ?? data.FacilityAssetName ?? data.assetName ?? data.AssetName,
+      homestayId: data.homestayId ?? data.HomestayId ?? null,
+      homestayName: data.homestayName ?? data.HomestayName ?? data.propertyName ?? data.PropertyName,
+      bookingId: data.bookingId ?? data.BookingId ?? null,
+      reportedByUserId: data.reportedByUserId ?? data.ReportedByUserId ?? null,
+      reportedByUserName: data.reportedByUserName ?? data.ReportedByUserName ?? data.reportedByName ?? data.ReportedByName,
       assignedStaffId: data.assignedStaffId ?? data.AssignedStaffId ?? null,
+      assignedStaffName: data.assignedStaffName ?? data.AssignedStaffName ?? data.staffName ?? data.StaffName,
       title: data.title ?? data.Title ?? '',
       description: data.description ?? data.Description,
       priority: data.priority ?? data.Priority,
@@ -241,6 +302,28 @@ export const facilityService = {
 
   async staffCompleteMaintenance(id: string, payload: StaffCompletePayload): Promise<boolean> {
     await apiService.patch((apiConfig as any).endpoints.facilities.staff.complete(id), payload ?? {});
+    return true;
+  },
+
+  async staffUploadMaintenanceEvidence(
+    id: string,
+    payload: {
+      imageFile?: File | null;
+      imageUrl?: string;
+    },
+  ): Promise<boolean> {
+    const form = new FormData();
+    if (payload.imageFile) {
+      form.append('ImageFile', payload.imageFile);
+    }
+    if (payload.imageUrl?.trim()) {
+      form.append('ImageUrl', payload.imageUrl.trim());
+    }
+    if (!payload.imageFile && !payload.imageUrl?.trim()) {
+      return true;
+    }
+
+    await apiService.postForm((apiConfig as any).endpoints.facilities.staff.evidence(id), form);
     return true;
   },
 
