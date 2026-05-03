@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, Package } from 'lucide-react';
+import { Plus, Edit2, Trash2, Package, Wrench, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { facilityService } from '../../services/facilityService';
-import { FACILITY_CONDITION_OPTIONS, type FacilityAsset, type CreateFacilityPayload } from '../../types/facility.types';
+import {
+  FACILITY_CONDITION_OPTIONS,
+  PRIORITY_LEVEL_OPTIONS,
+  DAMAGE_LEVEL_OPTIONS,
+  MAINTENANCE_STATUS_OPTIONS,
+  type FacilityAsset,
+  type CreateFacilityPayload,
+  type CreateMaintenancePayload,
+  type MaintenanceRequest,
+} from '../../types/facility.types';
 
 const commonFacilitySuggestions = [
   { name: 'Giường đôi', category: 'FURNITURE' },
@@ -33,14 +42,25 @@ interface ManagerHomestayFacilitiesTabProps {
 
 export default function ManagerHomestayFacilitiesTab({ homestayId }: ManagerHomestayFacilitiesTabProps) {
   const [loading, setLoading] = useState(false);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
   const [items, setItems] = useState<FacilityAsset[]>([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
+  const [detailRequest, setDetailRequest] = useState<MaintenanceRequest | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<FacilityAsset | null>(null);
   const [form, setForm] = useState<CreateFacilityPayload>({ homestayId, name: '' });
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [maintenanceTarget, setMaintenanceTarget] = useState<FacilityAsset | null>(null);
+  const [maintenanceForm, setMaintenanceForm] = useState<CreateMaintenancePayload>({
+    facilityAssetId: '',
+    title: '',
+  });
+  const [submittingMaintenance, setSubmittingMaintenance] = useState(false);
 
   useEffect(() => {
     if (!homestayId) return;
     loadFacilities();
+    loadMaintenanceRequests();
   }, [homestayId]);
 
   const loadFacilities = async () => {
@@ -53,6 +73,19 @@ export default function ManagerHomestayFacilitiesTab({ homestayId }: ManagerHome
       toast.error('Không thể tải danh sách tài sản');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMaintenanceRequests = async () => {
+    setLoadingMaintenance(true);
+    try {
+      const list = await facilityService.managerGetMaintenance(homestayId);
+      setMaintenanceRequests(list);
+    } catch (err) {
+      console.error(err);
+      toast.error('Không thể tải danh sách yêu cầu bảo trì');
+    } finally {
+      setLoadingMaintenance(false);
     }
   };
 
@@ -92,6 +125,20 @@ export default function ManagerHomestayFacilitiesTab({ homestayId }: ManagerHome
     setShowModal(true);
   };
 
+  const openMaintenance = (item: FacilityAsset) => {
+    setMaintenanceTarget(item);
+    setMaintenanceForm({
+      facilityAssetId: item.id,
+      title: `Bảo trì ${item.name}`,
+      description: item.description || '',
+      priority: 'MEDIUM',
+      damageLevel: 'MODERATE',
+      facilityConditionStatus: item.conditionStatus,
+      estimatedCost: item.replacementCost ?? undefined,
+    });
+    setShowMaintenanceModal(true);
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa tài sản này?')) return;
     try {
@@ -121,6 +168,46 @@ export default function ManagerHomestayFacilitiesTab({ homestayId }: ManagerHome
     } catch (err) {
       console.error(err);
       toast.error('Không thể lưu tài sản');
+    }
+  };
+
+  const handleCreateMaintenance = async () => {
+    if (!maintenanceTarget || !maintenanceForm.facilityAssetId) {
+      toast.error('Vui lòng chọn tài sản cần bảo trì');
+      return;
+    }
+    if (!maintenanceForm.title?.trim()) {
+      toast.error('Vui lòng nhập tiêu đề yêu cầu bảo trì');
+      return;
+    }
+
+    setSubmittingMaintenance(true);
+    try {
+      const created = await facilityService.managerCreateMaintenance({
+        facilityAssetId: maintenanceForm.facilityAssetId,
+        title: maintenanceForm.title.trim(),
+        description: maintenanceForm.description?.trim() || undefined,
+        priority: maintenanceForm.priority,
+        damageLevel: maintenanceForm.damageLevel,
+        estimatedCost: maintenanceForm.estimatedCost,
+        evidenceImageUrl: maintenanceForm.evidenceImageUrl?.trim() || undefined,
+        facilityConditionStatus: maintenanceForm.facilityConditionStatus,
+      });
+
+      if (!created) {
+        toast.error('Không thể tạo yêu cầu bảo trì');
+        return;
+      }
+
+      toast.success('Đã tạo yêu cầu bảo trì');
+      setShowMaintenanceModal(false);
+      setMaintenanceTarget(null);
+      await loadMaintenanceRequests();
+    } catch (err) {
+      console.error(err);
+      toast.error('Không thể tạo yêu cầu bảo trì');
+    } finally {
+      setSubmittingMaintenance(false);
     }
   };
 
@@ -174,14 +261,14 @@ export default function ManagerHomestayFacilitiesTab({ homestayId }: ManagerHome
               {item.description && (
                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.description}</p>
               )}
-              <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                 <div className="bg-slate-50 p-2 rounded">
                   <span className="text-gray-600 text-xs">Số lượng:</span>
                   <p className="font-semibold text-base">{item.quantity ?? 0}</p>
                 </div>
                 <div className="bg-slate-50 p-2 rounded">
                   <span className="text-gray-600 text-xs">Tình trạng:</span>
-                  <p className="font-semibold text-xs">{item.conditionStatus || 'N/A'}</p>
+                  <p className="font-semibold text-xs">{FACILITY_CONDITION_OPTIONS.find((o) => o.value === item.conditionStatus)?.label ?? item.conditionStatus ?? 'N/A'}</p>
                 </div>
                 {item.replacementCost && (
                   <div className="bg-slate-50 p-2 rounded">
@@ -210,10 +297,81 @@ export default function ManagerHomestayFacilitiesTab({ homestayId }: ManagerHome
                   <Trash2 className="w-4 h-4" /> Xóa
                 </button>
               </div>
+              <button
+                onClick={() => openMaintenance(item)}
+                className="mt-2 w-full px-3 py-2 bg-amber-50 text-amber-700 rounded hover:bg-amber-100 transition text-sm font-medium flex items-center justify-center gap-1"
+              >
+                <Wrench className="w-4 h-4" /> Tạo yêu cầu bảo trì
+              </button>
             </div>
           ))}
         </div>
       )}
+
+      <div className="mt-8 bg-white rounded-xl shadow-md p-5">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-bold text-gray-900">Yêu cầu bảo trì gần đây</h3>
+          </div>
+          <button
+            onClick={loadMaintenanceRequests}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            Làm mới
+          </button>
+        </div>
+
+        {loadingMaintenance ? (
+          <p className="text-sm text-gray-600">Đang tải yêu cầu bảo trì...</p>
+        ) : maintenanceRequests.length === 0 ? (
+          <p className="text-sm text-gray-600">Chưa có yêu cầu bảo trì nào cho homestay này.</p>
+        ) : (
+          <div className="space-y-3">
+            {maintenanceRequests.map((request) => (
+              <div key={request.id} className="rounded-lg border border-gray-200 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-gray-900">{request.title}</p>
+                    <p className="text-sm text-gray-600">
+                      {request.description || 'Không có mô tả'}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                    {MAINTENANCE_STATUS_OPTIONS.find((option) => option.value === request.status)?.label ?? request.status}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-gray-600 md:grid-cols-3">
+                  <p>Mức ưu tiên: {PRIORITY_LEVEL_OPTIONS.find((o) => o.value === request.priority)?.label ?? request.priority ?? 'N/A'}</p>
+                  <p>Mức hư hỏng: {DAMAGE_LEVEL_OPTIONS.find((o) => o.value === request.damageLevel)?.label ?? request.damageLevel ?? 'N/A'}</p>
+                  <p>Chi phí ước tính: {request.estimatedCost ? request.estimatedCost.toLocaleString('vi-VN') + ' ₫' : 'N/A'}</p>
+                </div>
+                {(request.assignedStaffName || request.assignedStaffId) && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Staff phụ trách: {request.assignedStaffName ?? request.assignedStaffId}
+                  </p>
+                )}
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const d = await facilityService.managerGetMaintenanceDetail(request.id);
+                        setDetailRequest(d);
+                      } catch (err) {
+                        console.error(err);
+                        toast.error('Không thể tải chi tiết yêu cầu');
+                      }
+                    }}
+                    className="px-3 py-2 bg-white border rounded text-sm text-gray-700 hover:bg-slate-50"
+                  >
+                    Xem chi tiết
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -346,6 +504,142 @@ export default function ManagerHomestayFacilitiesTab({ homestayId }: ManagerHome
               >
                 {editing ? 'Cập nhật' : 'Tạo mới'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMaintenanceModal && maintenanceTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Tạo yêu cầu bảo trì</h2>
+            <p className="mb-4 text-sm text-gray-600">
+              Tài sản: <span className="font-semibold text-gray-900">{maintenanceTarget.name}</span>
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-gray-700">Tiêu đề *</label>
+                <input
+                  value={maintenanceForm.title || ''}
+                  onChange={(e) => setMaintenanceForm((current) => ({ ...current, title: e.target.value }))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-gray-700">Mô tả</label>
+                <textarea
+                  value={maintenanceForm.description || ''}
+                  onChange={(e) => setMaintenanceForm((current) => ({ ...current, description: e.target.value }))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 mt-1 h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Mức ưu tiên</label>
+                <select
+                  value={maintenanceForm.priority || 'MEDIUM'}
+                  onChange={(e) => setMaintenanceForm((current) => ({ ...current, priority: e.target.value as CreateMaintenancePayload['priority'] }))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {PRIORITY_LEVEL_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Mức hư hỏng</label>
+                <select
+                  value={maintenanceForm.damageLevel || 'MODERATE'}
+                  onChange={(e) => setMaintenanceForm((current) => ({ ...current, damageLevel: e.target.value as CreateMaintenancePayload['damageLevel'] }))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {DAMAGE_LEVEL_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Chi phí ước tính</label>
+                <input
+                  type="number"
+                  value={maintenanceForm.estimatedCost ?? ''}
+                  onChange={(e) => setMaintenanceForm((current) => ({ ...current, estimatedCost: e.target.value ? Number(e.target.value) : undefined }))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Trạng thái thiết bị</label>
+                <select
+                  value={maintenanceForm.facilityConditionStatus || maintenanceTarget.conditionStatus || 'GOOD'}
+                  onChange={(e) => setMaintenanceForm((current) => ({ ...current, facilityConditionStatus: e.target.value as CreateMaintenancePayload['facilityConditionStatus'] }))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {FACILITY_CONDITION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-gray-700">Ảnh minh chứng</label>
+                <input
+                  value={maintenanceForm.evidenceImageUrl || ''}
+                  onChange={(e) => setMaintenanceForm((current) => ({ ...current, evidenceImageUrl: e.target.value }))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-2 justify-end">
+              <button
+                onClick={() => setShowMaintenanceModal(false)}
+                className="px-4 py-2 bg-slate-100 text-gray-700 rounded hover:bg-slate-200 transition font-medium"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleCreateMaintenance}
+                disabled={submittingMaintenance}
+                className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition font-medium disabled:opacity-60"
+              >
+                {submittingMaintenance ? 'Đang tạo...' : 'Tạo yêu cầu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detailRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Chi tiết yêu cầu bảo trì</h3>
+                <p className="text-sm text-slate-600">{detailRequest.title}</p>
+              </div>
+              <button onClick={() => setDetailRequest(null)} className="text-gray-500 hover:text-gray-700">Đóng</button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm text-slate-700">
+              <div><span className="font-medium">Tài sản:</span> {detailRequest.facilityAssetName ?? 'Không rõ'}</div>
+              <div><span className="font-medium">Homestay:</span> {detailRequest.homestayName ?? 'Không rõ'}</div>
+              {detailRequest.reportedByUserName && <div><span className="font-medium">Người báo:</span> {detailRequest.reportedByUserName}</div>}
+              {detailRequest.description && <div><span className="font-medium">Mô tả:</span> {detailRequest.description}</div>}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div>Mức ưu tiên: {PRIORITY_LEVEL_OPTIONS.find((o) => o.value === detailRequest.priority)?.label ?? detailRequest.priority ?? 'N/A'}</div>
+                <div>Mức hư hỏng: {DAMAGE_LEVEL_OPTIONS.find((o) => o.value === detailRequest.damageLevel)?.label ?? detailRequest.damageLevel ?? 'N/A'}</div>
+                <div>Tình trạng sau xử lý: {FACILITY_CONDITION_OPTIONS.find((o) => o.value === detailRequest.facilityConditionStatus)?.label ?? detailRequest.facilityConditionStatus ?? 'N/A'}</div>
+              </div>
+              <div>Chi phí ước tính: {detailRequest.estimatedCost ? detailRequest.estimatedCost.toLocaleString('vi-VN') + ' ₫' : 'N/A'}</div>
+              {detailRequest.actualCost !== null && detailRequest.actualCost !== undefined && <div>Chi phí thực tế: {detailRequest.actualCost.toLocaleString('vi-VN')} ₫</div>}
+              <div>Tình trạng: {MAINTENANCE_STATUS_OPTIONS.find((o) => o.value === (detailRequest.status as any))?.label ?? detailRequest.status}</div>
+
+              {(((detailRequest as any).evidenceImageUrls && (detailRequest as any).evidenceImageUrls.length) || detailRequest.evidenceImageUrl) && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(((detailRequest as any).evidenceImageUrls && (detailRequest as any).evidenceImageUrls.length ? (detailRequest as any).evidenceImageUrls : (detailRequest.evidenceImageUrl ? [detailRequest.evidenceImageUrl] : [])) as string[]).map((url, idx) => (
+                    <img key={idx} src={url} alt={`evidence-${idx}`} className="h-32 w-32 rounded-md object-cover border" />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

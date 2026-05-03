@@ -8,7 +8,7 @@ import { homestayService } from '../../services/homestayService';
 import { facilityService } from '../../services/facilityService';
 import StaffSidebar from '../../components/staff/StaffSidebar';
 import type { FacilityCondition, MaintenanceRequest, MaintenanceStatus } from '../../types/facility.types';
-import { FACILITY_CONDITION_OPTIONS, MAINTENANCE_STATUS_OPTIONS } from '../../types/facility.types';
+import { FACILITY_CONDITION_OPTIONS, MAINTENANCE_STATUS_OPTIONS, PRIORITY_LEVEL_OPTIONS, DAMAGE_LEVEL_OPTIONS } from '../../types/facility.types';
 
 const normalizeMaintenanceStatus = (value?: string): MaintenanceStatus => {
   const raw = String(value ?? '').trim().toUpperCase();
@@ -29,8 +29,13 @@ export default function StaffFacilitiesPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | MaintenanceStatus>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeItem, setActiveItem] = useState<MaintenanceRequest | null>(null);
+  const [startItem, setStartItem] = useState<MaintenanceRequest | null>(null);
   const [completeActualCost, setCompleteActualCost] = useState('');
   const [completeFacilityCondition, setCompleteFacilityCondition] = useState<FacilityCondition>('GOOD');
+  const [completeEvidenceFile, setCompleteEvidenceFile] = useState<File | null>(null);
+  const [completeEvidenceUrl, setCompleteEvidenceUrl] = useState('');
+  const [startEvidenceFile, setStartEvidenceFile] = useState<File | null>(null);
+  const [startEvidenceUrl, setStartEvidenceUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [pendingTasks, setPendingTasks] = useState<MaintenanceRequest[]>([]);
@@ -104,11 +109,21 @@ export default function StaffFacilitiesPage() {
     return items.filter((item) => {
       const status = normalizeMaintenanceStatus(item.status);
       const matchesStatus = filterStatus === 'all' || status === filterStatus;
+      const searchableText = [
+        item.title,
+        item.description,
+        item.facilityAssetName,
+        item.homestayName,
+        item.reportedByUserName,
+        item.assignedStaffName,
+        item.facilityAssetId,
+        item.id,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
       const matchesSearch =
-        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.facilityAssetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.id.toLowerCase().includes(searchTerm.toLowerCase());
+        searchableText.includes(searchTerm.toLowerCase());
       return matchesStatus && matchesSearch;
     });
   }, [items, filterStatus, searchTerm]);
@@ -117,10 +132,22 @@ export default function StaffFacilitiesPage() {
     () => items.filter((item) => normalizeMaintenanceStatus(item.status) === 'PENDING').length,
     [items],
   );
-  const handleStart = async (id: string) => {
+  const handleStart = async (id: string, shouldOpenModal = true) => {
+    const task = items.find((item) => item.id === id) || pendingTasks.find((item) => item.id === id) || null;
+    if (shouldOpenModal && task) {
+      setStartItem(task);
+      setStartEvidenceFile(null);
+      setStartEvidenceUrl('');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await facilityService.staffStartMaintenance(id);
+      await facilityService.staffUploadMaintenanceEvidence(id, {
+        imageFile: startEvidenceFile,
+        imageUrl: startEvidenceUrl,
+      });
       toast.success('Đã nhận bảo trì');
       await loadMaintenance(homestayId, assignedHomestayIds);
     } catch (error) {
@@ -135,6 +162,8 @@ export default function StaffFacilitiesPage() {
     setActiveItem(item);
     setCompleteActualCost(String(item.actualCost ?? item.estimatedCost ?? ''));
     setCompleteFacilityCondition(item.facilityConditionStatus ?? 'GOOD');
+    setCompleteEvidenceFile(null);
+    setCompleteEvidenceUrl('');
   };
 
   const handleComplete = async () => {
@@ -144,6 +173,10 @@ export default function StaffFacilitiesPage() {
       await facilityService.staffCompleteMaintenance(activeItem.id, {
         actualCost: completeActualCost ? Number(completeActualCost) : undefined,
         facilityConditionStatus: completeFacilityCondition,
+      });
+      await facilityService.staffUploadMaintenanceEvidence(activeItem.id, {
+        imageFile: completeEvidenceFile,
+        imageUrl: completeEvidenceUrl,
       });
       toast.success('Đã hoàn tất bảo trì');
       setActiveItem(null);
@@ -184,7 +217,7 @@ export default function StaffFacilitiesPage() {
   };
 
   const handleAcceptTaskFromModal = async (id: string) => {
-    await handleStart(id);
+    await handleStart(id, false);
     // Reload pending tasks after accepting
     const updatedTasks = pendingTasks.filter((t) => t.id !== id);
     setPendingTasks(updatedTasks);
@@ -312,7 +345,9 @@ export default function StaffFacilitiesPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <h3 className="text-base font-bold text-slate-900">{item.title}</h3>
-                          <p className="mt-1 text-xs text-slate-500">ID công việc: {item.id}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {item.homestayName || 'Homestay chưa rõ'}
+                          </p>
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
                           {statusLabel}
@@ -320,14 +355,27 @@ export default function StaffFacilitiesPage() {
                       </div>
 
                       <div className="mt-3 space-y-2 text-sm text-slate-700">
-                        <div><span className="font-medium">Tài sản:</span> {item.facilityAssetId}</div>
+                        <div><span className="font-medium">Tài sản:</span> {item.facilityAssetName || 'Không rõ'}</div>
+                        {item.reportedByUserName && <div><span className="font-medium">Người báo:</span> {item.reportedByUserName}</div>}
                         {item.description && <div><span className="font-medium">Mô tả:</span> {item.description}</div>}
-                        {item.priority && <div><span className="font-medium">Độ ưu tiên:</span> {item.priority}</div>}
-                        {item.damageLevel && <div><span className="font-medium">Mức độ hư hỏng:</span> {item.damageLevel}</div>}
-                        {item.assignedStaffId && <div><span className="font-medium">Nhân viên:</span> {item.assignedStaffId}</div>}
+                          {item.priority && <div><span className="font-medium">Độ ưu tiên:</span> {PRIORITY_LEVEL_OPTIONS.find((o) => o.value === item.priority)?.label ?? item.priority}</div>}
+                          {item.damageLevel && <div><span className="font-medium">Mức độ hư hỏng:</span> {DAMAGE_LEVEL_OPTIONS.find((o) => o.value === item.damageLevel)?.label ?? item.damageLevel}</div>}
+                        {item.assignedStaffName ? (
+                          <div><span className="font-medium">Nhân viên:</span> {item.assignedStaffName}</div>
+                        ) : null}
                         {item.estimatedCost !== undefined && <div><span className="font-medium">Chi phí dự kiến:</span> {item.estimatedCost}</div>}
                         {item.actualCost !== null && item.actualCost !== undefined && <div><span className="font-medium">Chi phí thực tế:</span> {item.actualCost}</div>}
-                        {item.facilityConditionStatus && <div><span className="font-medium">Tình trạng sau xử lý:</span> {item.facilityConditionStatus}</div>}
+                          {item.facilityConditionStatus && <div><span className="font-medium">Tình trạng sau xử lý:</span> {FACILITY_CONDITION_OPTIONS.find((o) => o.value === item.facilityConditionStatus)?.label ?? item.facilityConditionStatus}</div>}
+
+                        {(((item as any).evidenceImageUrls && (item as any).evidenceImageUrls.length) || item.evidenceImageUrl) && (
+                          <div className="mt-2 flex items-center gap-2">
+                            {(((item as any).evidenceImageUrls && (item as any).evidenceImageUrls.length ? (item as any).evidenceImageUrls : (item.evidenceImageUrl ? [item.evidenceImageUrl] : [])) as string[])
+                              .slice(0, 3)
+                              .map((url, idx) => (
+                                <img key={idx} src={url} alt={`evidence-${idx}`} className="h-12 w-12 rounded-md object-cover border" />
+                              ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="mt-4 flex flex-wrap gap-2">
@@ -402,6 +450,21 @@ export default function StaffFacilitiesPage() {
                   ))}
                 </select>
               </div>
+              <div className="space-y-2">
+                <label className="mb-1 block text-sm font-medium text-slate-700">Ảnh báo cáo hoàn tất</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setCompleteEvidenceFile(e.target.files?.[0] ?? null)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                />
+                <input
+                  value={completeEvidenceUrl}
+                  onChange={(e) => setCompleteEvidenceUrl(e.target.value)}
+                  placeholder="Hoặc dán link ảnh"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
@@ -417,6 +480,58 @@ export default function StaffFacilitiesPage() {
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
               >
                 <CheckSquare className="h-4 w-4" /> Xác nhận hoàn tất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {startItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-xl font-bold text-slate-900">Bắt đầu bảo trì</h3>
+            <p className="mt-1 text-sm text-slate-600">Công việc: {startItem.title}</p>
+
+            <div className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <label className="mb-1 block text-sm font-medium text-slate-700">Ảnh báo cáo lúc bắt đầu</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setStartEvidenceFile(e.target.files?.[0] ?? null)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                />
+                <input
+                  value={startEvidenceUrl}
+                  onChange={(e) => setStartEvidenceUrl(e.target.value)}
+                  placeholder="Hoặc dán link ảnh"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setStartItem(null)}
+                className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  if (!startItem) return;
+                  try {
+                    await handleStart(startItem.id, false);
+                    setStartItem(null);
+                  } catch (error) {
+                    console.error(error);
+                    toast.error('Không thể bắt đầu bảo trì');
+                  }
+                }}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                <PlayCircle className="h-4 w-4" /> Xác nhận bắt đầu
               </button>
             </div>
           </div>
@@ -447,7 +562,7 @@ export default function StaffFacilitiesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <h4 className="font-bold text-slate-900">{task.title}</h4>
-                        <p className="text-xs text-slate-500 mt-1">ID: {task.id}</p>
+                        {/* hide raw ID in modal list per UX request */}
                         {task.description && (
                           <p className="text-sm text-slate-700 mt-2">{task.description}</p>
                         )}

@@ -81,7 +81,14 @@ export interface UpdateFacilityPayload extends Partial<CreateFacilityPayload> {}
 export interface MaintenanceRequest {
   id: string;
   facilityAssetId: string;
+  facilityAssetName?: string;
+  homestayId?: string;
+  homestayName?: string;
+  bookingId?: string | null;
+  reportedByUserId?: string | null;
+  reportedByUserName?: string;
   assignedStaffId?: string | null;
+  assignedStaffName?: string;
   title: string;
   description?: string;
   priority?: PriorityLevel;
