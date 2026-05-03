@@ -447,6 +447,7 @@ export const apiConfig = {
       maintenance: {
         list: (homestayId: string) => `/api/manager/maintenance/homestays/${homestayId}`,
         create: '/api/manager/maintenance',
+        detail: (id: string) => `/api/manager/maintenance/${id}`,
         assignStaff: (id: string) => `/api/manager/maintenance/${id}/assign-staff`,
         updateStatus: (id: string) => `/api/manager/maintenance/${id}/status`,
       },
@@ -455,6 +456,7 @@ export const apiConfig = {
         maintenanceDetail: (id: string) => `/api/staff/maintenance/${id}`,
         start: (id: string) => `/api/staff/maintenance/${id}/start`,
         complete: (id: string) => `/api/staff/maintenance/${id}/complete`,
+        evidence: (id: string) => `/api/staff/maintenance/${id}/evidence`,
         consume: (id: string) => `/api/staff/facilities/${id}/consume`,
       },
     },
