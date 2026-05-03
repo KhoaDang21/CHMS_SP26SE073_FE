@@ -659,11 +659,11 @@ function TicketDetailPanel({
             {detail.attachmentUrl && (
               <div className="mt-3">
                 <p className="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">Ảnh đính kèm</p>
-                <a href={detail.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block">
+                <a href={detail.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block max-w-xs">
                   <img
                     src={detail.attachmentUrl}
                     alt="Ảnh khiếu nại"
-                    className="h-24 w-24 rounded-lg object-cover border border-white shadow-sm hover:opacity-90 transition-opacity"
+                    className="w-full max-w-[260px] rounded-xl object-cover border border-white shadow-sm hover:opacity-90 transition-opacity"
                   />
                 </a>
               </div>
@@ -696,19 +696,19 @@ function TicketDetailPanel({
                       ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-br-sm'
                       : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'}`}>
                     {!isMe && <p className="text-xs font-medium mb-0.5 text-blue-600">{reply.senderName}</p>}
-                    <p className="whitespace-pre-wrap break-words leading-relaxed">{reply.message}</p>
-                    <p className={`text-[10px] mt-1 ${isMe ? 'text-blue-100 text-right' : 'text-gray-400'}`}>
-                    {reply.attachmentUrl && (
-                      <a href={reply.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block mt-2">
-                        <img
-                          src={reply.attachmentUrl}
-                          alt="Ảnh đính kèm"
-                          className="h-24 w-24 rounded-lg object-cover border border-white/70 shadow-sm"
-                        />
-                      </a>
-                    )}
-                      {formatTime(reply.createdAt)}
-                    </p>
+                        {reply.message && <p className="whitespace-pre-wrap break-words leading-relaxed">{reply.message}</p>}
+                        {reply.attachmentUrl && (
+                          <a href={reply.attachmentUrl} target="_blank" rel="noreferrer" className="block mt-2">
+                            <img
+                              src={reply.attachmentUrl}
+                              alt="Ảnh đính kèm"
+                              className="w-full max-w-[240px] rounded-xl border border-white/70 shadow-sm object-cover hover:opacity-90 transition-opacity"
+                            />
+                          </a>
+                        )}
+                        <p className={`text-[10px] mt-1 ${isMe ? 'text-blue-100 text-right' : 'text-gray-400'}`}>
+                          {formatTime(reply.createdAt)}
+                        </p>
                   </div>
                 </div>
               );
@@ -968,7 +968,7 @@ export default function SupportPage() {
         {/* Main layout: list + detail */}
         <div
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-          style={{ height: 'calc(100vh - 180px)', minHeight: 560 }}
+          style={{ height: 'calc(100vh - 50px)', minHeight: 1000 }}
         >
           <div className="flex h-full">
 
