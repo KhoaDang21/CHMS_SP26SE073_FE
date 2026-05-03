@@ -45,15 +45,11 @@ export default function StaffFacilitiesPage() {
     [homestays, homestayId],
   );
 
-  const loadMaintenance = async (targetHomestayId: string, allowedHomestayIds?: string[] | null) => {
-    if (!targetHomestayId) return;
+  const loadMaintenance = async () => {
+    // Load all maintenance items available to this staff user, then filter on the client.
     setLoading(true);
     try {
-      const params: Record<string, any> = { homestayId: targetHomestayId };
-      if (Array.isArray(allowedHomestayIds) && allowedHomestayIds.length > 0) {
-        params.homestayIds = allowedHomestayIds;
-      }
-      const list = await facilityService.staffGetMaintenance(params);
+      const list = await facilityService.staffGetMaintenance();
       setItems(list);
     } catch (error) {
       console.error(error);
@@ -102,13 +98,17 @@ export default function StaffFacilitiesPage() {
 
   useEffect(() => {
     if (!homestayId) return;
-    loadMaintenance(homestayId, assignedHomestayIds);
+    loadMaintenance();
   }, [homestayId, assignedHomestayIds]);
 
   const filteredItems = useMemo(() => {
+    const allowedHomestayIds = new Set((assignedHomestayIds ?? []).map(String));
     return items.filter((item) => {
       const status = normalizeMaintenanceStatus(item.status);
       const matchesStatus = filterStatus === 'all' || status === filterStatus;
+      const itemHomestayId = String(item.homestayId ?? '');
+      const isAssignedHomestay = allowedHomestayIds.size === 0 || allowedHomestayIds.has(itemHomestayId);
+      const matchesHomestay = homestayId === 'all' || itemHomestayId === homestayId;
       const searchableText = [
         item.title,
         item.description,
@@ -124,9 +124,9 @@ export default function StaffFacilitiesPage() {
         .toLowerCase();
       const matchesSearch =
         searchableText.includes(searchTerm.toLowerCase());
-      return matchesStatus && matchesSearch;
+      return isAssignedHomestay && matchesHomestay && matchesStatus && matchesSearch;
     });
-  }, [items, filterStatus, searchTerm]);
+  }, [assignedHomestayIds, homestayId, items, filterStatus, searchTerm]);
 
   const pendingMaintenanceCount = useMemo(
     () => items.filter((item) => normalizeMaintenanceStatus(item.status) === 'PENDING').length,
@@ -149,7 +149,7 @@ export default function StaffFacilitiesPage() {
         imageUrl: startEvidenceUrl,
       });
       toast.success('Đã nhận bảo trì');
-      await loadMaintenance(homestayId, assignedHomestayIds);
+      await loadMaintenance();
     } catch (error) {
       console.error(error);
       toast.error('Không thể bắt đầu bảo trì');
@@ -180,7 +180,7 @@ export default function StaffFacilitiesPage() {
       });
       toast.success('Đã hoàn tất bảo trì');
       setActiveItem(null);
-      await loadMaintenance(homestayId, assignedHomestayIds);
+      await loadMaintenance();
     } catch (error) {
       console.error(error);
       toast.error('Không thể hoàn tất bảo trì');
@@ -197,14 +197,11 @@ export default function StaffFacilitiesPage() {
   const handleOpenAcceptModal = async () => {
     try {
       if (Array.isArray(assignedHomestayIds) && assignedHomestayIds.length > 0) {
-        // Load all PENDING tasks from all assigned homestays
-        const allTasks = await Promise.all(
-          assignedHomestayIds.map((id) =>
-            facilityService.staffGetMaintenance({ homestayId: id })
-          )
-        );
-        const flatTasks = allTasks.flat();
-        const pendingOnly = flatTasks.filter((t) => normalizeMaintenanceStatus(t.status) === 'PENDING');
+        const allowedHomestayIds = new Set(assignedHomestayIds.map(String));
+        const pendingOnly = items.filter((t) => {
+          const itemHomestayId = String(t.homestayId ?? '');
+          return allowedHomestayIds.has(itemHomestayId) && normalizeMaintenanceStatus(t.status) === 'PENDING';
+        });
         setPendingTasks(pendingOnly);
         setShowAcceptModal(true);
       } else {
@@ -293,13 +290,14 @@ export default function StaffFacilitiesPage() {
                     onChange={(e) => setHomestayId(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   >
-                    {homestays.length === 0 ? (
-                      <option value="">Chưa có homestay</option>
-                    ) : (
-                      homestays.map((homestay) => (
-                        <option key={homestay.id} value={homestay.id}>{homestay.name}</option>
-                      ))
-                    )}
+                      <option value="all">Tất cả</option>
+                      {homestays.length === 0 ? (
+                        <option value="">Chưa có homestay</option>
+                      ) : (
+                        homestays.map((homestay) => (
+                          <option key={homestay.id} value={homestay.id}>{homestay.name}</option>
+                        ))
+                      )}
                   </select>
                 </div>
                 <div>
@@ -407,7 +405,7 @@ export default function StaffFacilitiesPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => loadMaintenance(homestayId, assignedHomestayIds)}
+                          onClick={() => loadMaintenance()}
                           className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
                         >
                           <Clock3 className="h-4 w-4" /> Tải lại
