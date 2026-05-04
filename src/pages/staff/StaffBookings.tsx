@@ -174,6 +174,35 @@ export default function StaffBookings() {
     }
   };
 
+  const handleConfirmCashAndCheckIn = async (booking: Booking) => {
+    if (booking.paymentStatus !== 'deposit_paid') {
+      toast.error('Chỉ có thể xác nhận tiền mặt khi khách đã đặt cọc');
+      return;
+    }
+
+    try {
+      // Step 1: Confirm cash payment
+      const confirmResult = await staffBookingService.confirmCash(booking.id);
+      if (!confirmResult.success) {
+        toast.error(confirmResult.message || 'Không thể xác nhận thanh toán tiền mặt');
+        return;
+      }
+
+      // Step 2: Check-in immediately after confirming cash
+      const checkInResult = await staffBookingService.checkIn(booking.id);
+      if (!checkInResult.success) {
+        toast.error(checkInResult.message || 'Không thể nhận phòng booking');
+        return;
+      }
+
+      toast.success(`Xác nhận thanh toán và nhận phòng thành công: ${booking.customerName}`);
+      await loadBookings();
+    } catch (error) {
+      console.error('Confirm cash and check-in error:', error);
+      toast.error('Không thể xác nhận thanh toán và nhận phòng');
+    }
+  };
+
   const handleCheckOut = (booking: Booking) => {
     setCheckoutBooking(booking);
     setShowCheckoutModal(true);
@@ -650,7 +679,7 @@ export default function StaffBookings() {
                         </button>
                         {canCheckIn(booking) && (
                           <button
-                            onClick={() => handleCheckIn(booking)}
+                            onClick={() => booking.paymentStatus === 'deposit_paid' ? handleConfirmCashAndCheckIn(booking) : handleCheckIn(booking)}
                             type="button"
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
                           >

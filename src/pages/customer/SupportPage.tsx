@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode, type ChangeEvent, type FormEvent } from 'react';
 import {
   Plus, Send, X, ChevronRight, Clock, CheckCircle2,
   AlertCircle, Loader2, MessageSquare, Tag, Inbox,
@@ -18,7 +18,7 @@ import { signalRService } from '../../services/signalRService';
 import { subscribeTicketRealtimeEvents } from '../../services/ticketRealtimeService';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<string, { label: string; color: string; border: string; icon: React.ReactNode }> = {
+const STATUS_CONFIG: Record<string, { label: string; color: string; border: string; icon: ReactNode }> = {
   OPEN:        { label: 'Mở',             color: 'bg-blue-100 text-blue-700',    border: 'border-l-blue-500',   icon: <AlertCircle className="w-3 h-3" /> },
   IN_PROGRESS: { label: 'Đang xử lý',    color: 'bg-yellow-100 text-yellow-700', border: 'border-l-yellow-400', icon: <Clock className="w-3 h-3" /> },
   RESOLVED:    { label: 'Đã giải quyết', color: 'bg-green-100 text-green-700',  border: 'border-l-green-500',  icon: <CheckCircle2 className="w-3 h-3" /> },
@@ -134,7 +134,7 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     setStep(2);
   };
 
-  const handleSelectImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelectImage = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     if (selectedImagePreviewUrl) {
       URL.revokeObjectURL(selectedImagePreviewUrl);
@@ -155,7 +155,7 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     setSelectedImagePreviewUrl('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
@@ -556,7 +556,7 @@ function TicketDetailPanel({
     replyFileInputRef.current?.click();
   };
 
-  const handleReplyImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReplyImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     if (replyImagePreviewUrl) {
       URL.revokeObjectURL(replyImagePreviewUrl);
