@@ -21,6 +21,7 @@ const mapEquipment = (item: any): Equipment => {
   const mapped: Equipment = {
     id: asString(pick(item, 'id', 'Id')),
     homestayId: asString(pick(item, 'homestayId', 'HomestayId')),
+    homestayName: asString(pick(item, 'homestayName', 'HomestayName', 'propertyName', 'PropertyName', 'homestay', 'Homestay')?.name ?? pick(item, 'homestayName', 'HomestayName', 'propertyName', 'PropertyName')),
     name: asString(pick(item, 'name', 'Name')),
     category: asString(pick(item, 'category', 'Category')),
     quantity: Number(pick(item, 'quantity', 'Quantity', 'totalQuantity', 'TotalQuantity') ?? 0),

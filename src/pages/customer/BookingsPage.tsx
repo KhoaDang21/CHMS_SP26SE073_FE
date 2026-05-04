@@ -179,9 +179,9 @@ export default function BookingsPage() {
       }
       // Load homestay info để hiển thị đúng name/address/image
       try {
-        const homestaysRes = await publicHomestayService.list({ page: 1, pageSize: 200 });
+        const homestays = await publicHomestayService.getAllHomestays();
         const map: Record<string, Homestay> = {};
-        (homestaysRes.Items || []).forEach((h) => {
+        homestays.forEach((h) => {
           const id = String(h.id || '').trim();
           if (!id) return;
           map[id] = h;

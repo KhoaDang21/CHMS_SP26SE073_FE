@@ -199,6 +199,24 @@ export const bookingService = {
     }
   },
 
+  /**
+   * Add experiences to an existing booking via the modify endpoint.
+   * Backend expects a body like: { experiences: [{ experienceId, quantity, note }] }
+   */
+  async addExperiencesViaModify(
+    id: string,
+    experiences: Array<{ experienceId: string; quantity?: number; note?: string }>,
+  ): Promise<{ success: boolean; message?: string } | null> {
+    try {
+      const body = { experiences };
+      const response = await apiService.put<any>(apiConfig.endpoints.bookings.modify(id), body);
+      return { success: response?.success ?? true, message: response?.message };
+    } catch (error) {
+      console.error('Add experiences via modify error:', error);
+      return { success: false, message: error instanceof Error ? error.message : 'Loi khi them dich vu' };
+    }
+  },
+
   async getCancellationPolicy(id: string): Promise<CancellationPolicyResponse | null> {
     try {
       const response = await apiService.get<any>(apiConfig.endpoints.bookings.cancellationPolicy(id));
@@ -208,6 +226,7 @@ export const bookingService = {
       return null;
     }
   },
+
 
   async updateSpecialRequests(id: string, specialRequests: string): Promise<{ success: boolean; message: string }> {
     try {

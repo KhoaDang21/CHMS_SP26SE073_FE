@@ -133,6 +133,27 @@ export const publicHomestayService = {
     }
   },
 
+  async getAllHomestays(): Promise<Homestay[]> {
+    const pageSize = 300;
+    let page = 1;
+    const collected: Homestay[] = [];
+
+    while (page <= 10) {
+      const paged = await this.list({ page, pageSize });
+      const items = paged.Items || [];
+      collected.push(...items);
+
+      const totalCount = Number(paged.TotalCount || 0);
+      if (!items.length || collected.length >= totalCount) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return collected;
+  },
+
   /**
    * GET /api/homestays/{id}
    */

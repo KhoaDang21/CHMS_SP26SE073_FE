@@ -79,14 +79,14 @@ export default function LocalExperiencesPage() {
       try {
         const [provinceList, homestayResult, experienceList] = await Promise.all([
           provinceService.getAllProvinces(),
-          publicHomestayService.list({ page: 1, pageSize: 200 }),
+          publicHomestayService.getAllHomestays(),
           experienceService.list(),
         ]);
 
         if (!mounted) return;
 
         setProvinces(provinceList);
-        setHomestays(homestayResult.Items || []);
+        setHomestays(homestayResult || []);
         setExperiences((experienceList || []).filter((item) => item.isActive));
       } catch (loadError) {
         console.error('Load local experiences page error:', loadError);
