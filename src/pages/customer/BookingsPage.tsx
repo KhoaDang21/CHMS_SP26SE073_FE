@@ -1124,7 +1124,7 @@ export default function BookingsPage() {
               onClick={() => { if (!saving) setSelected(null); }}
             >
               <div
-                className="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden my-8"
+                className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden my-8"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-5 border-b border-gray-100 flex items-start justify-between gap-3">
@@ -1268,7 +1268,6 @@ export default function BookingsPage() {
                                 ? selected.depositAmount
                                 : Math.round((rentalTotal * depositPercentage) / 100);
 
-                              const remainingAmount = Number(selected.remainingAmount || 0);
                               const remainingAfterDeposit = Math.max(rentalTotal - depositAmount, 0);
 
                               return (
@@ -1300,7 +1299,7 @@ export default function BookingsPage() {
                             )}
                                 <div className="flex justify-between border-t border-blue-100 pt-2 text-gray-700">
                                   <span className="font-semibold">Chi phí phát sinh</span>
-                                  <span className="font-semibold">{remainingAmount.toLocaleString('vi-VN')}đ</span>
+                                  <span className="font-semibold">{extraTotal.toLocaleString('vi-VN')}đ</span>
                                 </div>
                               </div>
                             )}
@@ -1358,9 +1357,9 @@ export default function BookingsPage() {
                               <span className="font-semibold text-orange-700">Tổng phát sinh</span>
                               <span className="font-bold text-orange-700">{selectedFinancials?.extraTotal.toLocaleString('vi-VN')}đ</span>
                             </div>
-                            <div className="text-xs text-orange-700 bg-white border border-orange-100 rounded-lg px-3 py-2">
+                            {/* <div className="text-xs text-orange-700 bg-white border border-orange-100 rounded-lg px-3 py-2">
                               RemainingAmount (API) = Còn lại sau cọc ({selectedFinancials?.remainingAfterDeposit.toLocaleString('vi-VN')}đ) + Tổng phát sinh ({selectedFinancials?.extraTotal.toLocaleString('vi-VN')}đ)
-                            </div>
+                            </div> */}
                           </div>
                         )}
                       </div>

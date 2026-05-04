@@ -147,15 +147,15 @@ export default function ExperienceScheduleModal({ isOpen, onClose, experience }:
 
     setSaving(true);
     try {
-      const schedulesDates = getDateRangePreview(startDate, endDate, daysOfWeek);
       const result = await experienceSchedulesService.bulkCreateSchedules({
         experienceId: experience.id,
-        schedules: schedulesDates.map((date) => ({
-          date,
-          startTime,
-          endTime,
-          maxParticipants: quantity,
-        })),
+        localExperienceId: experience.id,
+        startDate: startDate,
+        endDate: endDate,
+        daysOfWeek: daysOfWeek,
+        startTime: startTime,
+        endTime: endTime,
+        maxQuantity: quantity,
       });
 
       if (!result.success) {
