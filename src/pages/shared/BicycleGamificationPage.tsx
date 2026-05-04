@@ -68,6 +68,27 @@ const homestayMatchesAnyAssignedHome = (homestay: Homestay, assignedIds: string[
   return false;
 };
 
+const loadAllPublicHomestays = async (): Promise<Homestay[]> => {
+  const pageSize = 300;
+  let page = 1;
+  const collected: Homestay[] = [];
+
+  while (page <= 10) {
+    const paged = await publicHomestayService.list({ page, pageSize });
+    const items = paged.Items || [];
+    collected.push(...items);
+
+    const totalCount = Number(paged.TotalCount || 0);
+    if (!items.length || collected.length >= totalCount) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return collected;
+};
+
 export default function BicycleGamificationPage() {
   const navigate = useNavigate();
   const user = authService.getUser();
@@ -130,8 +151,7 @@ export default function BicycleGamificationPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const paged = await publicHomestayService.list({ page: 1, pageSize: 300 });
-        const list = paged.Items || [];
+        const list = await loadAllPublicHomestays();
 
         if (role === 'staff') {
           const staffId = String(user?.id || '').trim();

@@ -23,8 +23,8 @@ import {
 import "leaflet/dist/leaflet.css";
 import { toast } from "sonner";
 import { authService } from "../../services/authService";
-import { employeeService } from "../../services/employeeService";
 import { publicHomestayService } from "../../services/publicHomestayService";
+import { managerHomestayService } from "../../services/managerHomestayService";
 import { managerBookingService } from "../../services/managerBookingService";
 import { adminBookingService } from "../../services/adminBookingService";
 import type { Booking } from "../../types/booking.types";
@@ -233,68 +233,6 @@ const RoutePolylinePreview = ({
   );
 };
 
-const normalizeText = (value: unknown): string =>
-  String(value ?? "")
-    .trim()
-    .toLowerCase();
-
-const getHomestayProvinceId = (homestay: any): string => {
-  return String(
-    homestay?.provinceId ||
-      homestay?.ProvinceId ||
-      homestay?.province?.id ||
-      homestay?.Province?.Id ||
-      "",
-  );
-};
-
-const getHomestayProvinceName = (homestay: any): string => {
-  return String(homestay?.provinceName || homestay?.ProvinceName || "").trim();
-};
-
-const pickProvinceValue = (
-  item: any,
-): { id: string | null; name: string | null } => {
-  const provinceId =
-    item?.managedProvinceId ||
-    item?.assignedProvinceId ||
-    item?.managedProvince?.id ||
-    item?.assignedProvince?.id ||
-    item?.provinceId ||
-    null;
-
-  const provinceName =
-    item?.managedProvinceName ||
-    item?.assignedProvinceName ||
-    item?.managedProvince?.name ||
-    item?.assignedProvince?.name ||
-    item?.provinceName ||
-    null;
-
-  return {
-    id: provinceId ? String(provinceId) : null,
-    name: provinceName ? String(provinceName) : null,
-  };
-};
-
-const homestayMatchesProvince = (
-  homestay: Homestay,
-  province: { id: string | null; name: string | null },
-): boolean => {
-  const homestayProvinceId = getHomestayProvinceId(homestay);
-  const homestayProvinceName = getHomestayProvinceName(homestay);
-
-  if (province.id && homestayProvinceId) {
-    return homestayProvinceId === province.id;
-  }
-
-  if (province.name && homestayProvinceName) {
-    return normalizeText(homestayProvinceName) === normalizeText(province.name);
-  }
-
-  return false;
-};
-
 export default function ManagerBicycleGamificationPage() {
   const navigate = useNavigate();
   const user = authService.getUser();
@@ -385,50 +323,23 @@ export default function ManagerBicycleGamificationPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const paged = await publicHomestayService.list({
-          page: 1,
-          pageSize: 300,
-        });
-        const list = paged.Items || [];
+        const list = isAdmin
+          ? (await publicHomestayService.list({ page: 1, pageSize: 300 })).Items || []
+          : await managerHomestayService.list();
 
-        let filtered = list;
-
-        // Manager: chỉ hiện homestay thuộc tỉnh được phân công
-        // Admin: hiện tất cả
-        if (!isAdmin) {
-          const userId = String(user?.id || "").trim();
-          const provinceSource = userId
-            ? await employeeService.getEmployeeById(userId)
-            : null;
-          const assignedProvince = provinceSource
-            ? pickProvinceValue(provinceSource)
-            : { id: null, name: null };
-
-          if (!assignedProvince.id && !assignedProvince.name) {
-            setHomestays([]);
-            setSelectedHomestayId("");
-            toast.warning("Bạn chưa được phân công tỉnh quản lý.");
-            return;
+        if (!list.length) {
+          setHomestays([]);
+          setSelectedHomestayId("");
+          if (!isAdmin) {
+            toast.warning("Không có homestay nào thuộc tỉnh bạn được phân công.");
           }
-
-          filtered = list.filter((homestay) =>
-            homestayMatchesProvince(homestay, assignedProvince),
-          );
-
-          if (filtered.length === 0) {
-            setHomestays([]);
-            setSelectedHomestayId("");
-            toast.warning(
-              "Không có homestay nào thuộc tỉnh bạn được phân công.",
-            );
-            return;
-          }
+          return;
         }
 
-        setHomestays(filtered);
+        setHomestays(list);
         setSelectedHomestayId((prev) => {
-          const stillValid = filtered.some((h) => h.id === prev);
-          return stillValid ? prev : (filtered[0]?.id ?? "");
+          const stillValid = list.some((h) => h.id === prev);
+          return stillValid ? prev : (list[0]?.id ?? "");
         });
       } catch (error) {
         console.error("Load homestays error:", error);

@@ -146,9 +146,8 @@ export default function CustomerDashboard() {
     let mounted = true;
     const load = async () => {
       try {
-        const res = await publicHomestayService.list({ page: 1, pageSize: 100 });
+        const items = await publicHomestayService.getAllHomestays();
         if (!mounted) return;
-        const items = res.Items || [];
         // Sort theo averageRating cao → thấp
         const sorted = [...items].sort((a: any, b: any) => {
           const avgA = a.averageRating ?? a.rating ?? 0;

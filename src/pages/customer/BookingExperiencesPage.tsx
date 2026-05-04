@@ -7,11 +7,6 @@ import { bookingService, type Booking } from '../../services/bookingService';
 import { experienceService } from '../../services/experienceService';
 import type { LocalExperience } from '../../types/experience.types';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
-import {
-  buildSpecialRequestsWithExperiences,
-  extractBookingExperienceData,
-  type BookingExperienceItem,
-} from '../../utils/bookingExperience';
 
 const fallbackExperienceImages = [
   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
@@ -26,6 +21,7 @@ export default function BookingExperiencesPage() {
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [experiences, setExperiences] = useState<LocalExperience[]>([]);
+  
   const [qtyMap, setQtyMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -79,12 +75,8 @@ export default function BookingExperiencesPage() {
           toast('Homestay này hiện chưa có dịch vụ thêm phù hợp.');
         }
 
-        const existing = extractBookingExperienceData(resolvedBooking.specialRequests);
-        const nextQty: Record<string, number> = {};
-        existing.items.forEach((item) => {
-          if (item.id) nextQty[item.id] = Math.max(1, item.qty);
-        });
-        setQtyMap(nextQty);
+        // Initialize qty map as empty — experiences are now managed via separate API
+        setQtyMap({});
         setError(null);
       } catch (error) {
         console.error('Load booking experiences error:', error);
@@ -116,22 +108,26 @@ export default function BookingExperiencesPage() {
   }, [selectedItems]);
 
   const handleSave = async () => {
-    if (!bookingId || !booking) return;
+    if (!bookingId) return;
 
     setSaving(true);
     try {
-      const parsed = extractBookingExperienceData(booking.specialRequests);
-      const payloadItems: BookingExperienceItem[] = selectedItems.map((x) => ({
-        id: x.item.id,
-        name: x.item.name,
-        qty: x.qty,
-        price: x.item.price,
+      // Build experiences payload (separate API, not in specialRequests)
+      const experiencesPayload = selectedItems.map((x) => ({
+        experienceId: x.item.id,
+        quantity: x.qty,
       }));
 
-      const merged = buildSpecialRequestsWithExperiences(parsed.note, payloadItems);
-      const res = await bookingService.updateSpecialRequests(bookingId, merged);
-      if (!res.success) {
-        toast.error(res.message || 'Không thể lưu dịch vụ thêm');
+      if (experiencesPayload.length === 0) {
+        toast('Vui lòng chọn ít nhất một dịch vụ');
+        setSaving(false);
+        return;
+      }
+
+      const res = await bookingService.addExperiencesViaModify(bookingId, experiencesPayload);
+      if (!res || !res.success) {
+        toast.error(res?.message || 'Không thể lưu dịch vụ thêm');
+        setSaving(false);
         return;
       }
 

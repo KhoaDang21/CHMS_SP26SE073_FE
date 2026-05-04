@@ -81,8 +81,8 @@ export default function TravelGuidesPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const homestayPaged = await publicHomestayService.list({ page: 1, pageSize: 300 });
-      setAllHomestays(homestayPaged.Items || []);
+      const homestays = await publicHomestayService.getAllHomestays();
+      setAllHomestays(homestays);
 
       const typeFilter = selectedType === 'all' ? undefined : selectedType;
       const guidesByHomestay = selectedHomestayId !== 'all'
@@ -95,8 +95,8 @@ export default function TravelGuidesPage() {
 
       setGuides(visibleGuides);
 
-      if (selectedHomestayId === 'all' && homestayPaged.Items?.length && homestayId === '') {
-        setHomestayId(homestayPaged.Items[0].id);
+      if (selectedHomestayId === 'all' && homestays.length && homestayId === '') {
+        setHomestayId(homestays[0].id);
       }
     } catch (error) {
       console.error('Load travel guides error:', error);

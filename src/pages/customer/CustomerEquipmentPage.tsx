@@ -14,6 +14,7 @@ export default function CustomerEquipmentPage() {
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [currentBookingId, setCurrentBookingId] = useState<string>('');
+  const [currentHomestayName, setCurrentHomestayName] = useState<string>('');
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
   const [borrowQuantity, setBorrowQuantity] = useState(1);
   const [borrowNote, setBorrowNote] = useState('');
@@ -53,6 +54,7 @@ export default function CustomerEquipmentPage() {
         if (selectedBooking?.id) {
           setCurrentBookingId(selectedBooking.id);
         }
+        setCurrentHomestayName((selectedBooking?.homestayName ?? '').trim());
 
         const list = await equipmentLendingService.customerGetEquipment(homestayId);
         if (!mounted) return;
@@ -340,7 +342,7 @@ export default function CustomerEquipmentPage() {
                           </div>
                           <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
                             <p className="text-xs text-slate-500">Homestay</p>
-                            <p className="mt-1 truncate text-base font-semibold text-slate-900">{eq.homestayId}</p>
+                            <p className="mt-1 truncate text-base font-semibold text-slate-900">{eq.homestayName || currentHomestayName || 'Đang cập nhật'}</p>
                           </div>
                         </div>
 
@@ -408,7 +410,7 @@ export default function CustomerEquipmentPage() {
                           </div>
 
                           <p className="mt-1 text-sm text-slate-600">
-                            Homestay: <span className="font-medium text-slate-900">{request.homestayName || request.homestayId}</span>
+                            Homestay: <span className="font-medium text-slate-900">{request.homestayName || 'Đang cập nhật'}</span>
                           </p>
                           <p className="mt-1 text-sm text-slate-600">
                             Số lượng: <span className="font-medium text-slate-900">{request.quantity}</span>
