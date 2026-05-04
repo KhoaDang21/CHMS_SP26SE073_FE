@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
   Clock,
@@ -13,6 +13,7 @@ import StaffSidebar from "../../components/staff/StaffSidebar";
 import { diningService } from "../../services/diningService";
 import type { DiningOrder } from "../../types/dining.types";
 import BackofficeNotificationBell from '../../components/common/BackofficeNotificationBell';
+import { signalRService } from "../../services/signalRService";
 
 const dateISO = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -47,18 +48,30 @@ const canTransition = (current: string, target: string): boolean => {
 
 export default function StaffDiningOrdersPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const currentUser = authService.getCurrentUser();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [date, setDate] = useState(dateISO(new Date()));
+  useEffect(() => {
+    const d = searchParams.get("date");
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      setDate(d);
+    }
+  }, [searchParams]);
+
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<DiningOrder[]>([]);
+  const previousOrderIdsRef = useRef<Set<string>>(new Set());
+  const [newSlotKey, setNewSlotKey] = useState<string | null>(null);
+  const slotRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const load = async () => {
     setLoading(true);
     try {
       const list = await diningService.staffGetOrders(date);
       setOrders(list);
+      previousOrderIdsRef.current = new Set(list.map((x) => x.id));
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Không thể tải danh sách đơn món");
@@ -73,6 +86,75 @@ export default function StaffDiningOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
+  useEffect(() => {
+    const token = authService.getToken();
+    const userId = authService.getUser()?.id;
+    if (!token) return;
+
+    let mounted = true;
+    let receiveHandler: ((notif: any) => void) | null = null;
+    let newHandler: ((notif: any) => void) | null = null;
+
+    const tryParseOrderDate = (text: string): string | null => {
+      const m = text.match(/(\d{2})\/(\d{2})/);
+      if (!m) return null;
+      const day = Number(m[1]);
+      const month = Number(m[2]);
+      const year = new Date().getFullYear();
+      const d = new Date(year, month - 1, day);
+      if (Number.isNaN(d.getTime())) return null;
+      return dateISO(d);
+    };
+
+    signalRService.connect(token).then((conn) => {
+      if (!mounted || !conn) return;
+      if (userId) conn.invoke("JoinUserGroup", userId).catch(() => {});
+
+      const onNotif = (notif: any) => {
+        const title = String(notif?.title ?? "").toLowerCase();
+        const content = String(notif?.content ?? "").toLowerCase();
+        const isDining = title.includes("dining") || content.includes("dining") || content.includes("đơn");
+        if (!isDining) return;
+
+        const nextDate = tryParseOrderDate(String(notif?.content ?? ""));
+        const targetDate = nextDate || date;
+        if (nextDate) setDate(nextDate);
+        void (async () => {
+          try {
+            const list = await diningService.staffGetOrders(targetDate);
+            const previousIds = previousOrderIdsRef.current;
+            const incomingNew = list.filter((x) => x.id && !previousIds.has(x.id));
+            if (incomingNew.length > 0) {
+              const latest = incomingNew[0];
+              setNewSlotKey(String(latest.startTime || ""));
+              setTimeout(() => setNewSlotKey(null), 8000);
+              toast.info(`Có ${incomingNew.length} đơn mới ở khung ${timeLabel(String(latest.startTime || ""))}.`);
+            } else {
+              toast.info("Có cập nhật đơn dining.");
+            }
+            setOrders(list);
+            previousOrderIdsRef.current = new Set(list.map((x) => x.id));
+          } catch {
+            void load();
+          }
+        })();
+      };
+
+      receiveHandler = onNotif;
+      newHandler = onNotif;
+      conn.on("ReceiveNotification", receiveHandler);
+      conn.on("NewNotification", newHandler);
+    }).catch(() => {});
+
+    return () => {
+      mounted = false;
+      const conn = signalRService.getConnection();
+      if (receiveHandler) conn?.off("ReceiveNotification", receiveHandler);
+      if (newHandler) conn?.off("NewNotification", newHandler);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const grouped = useMemo(() => {
     const map = new Map<string, DiningOrder[]>();
     orders.forEach((o) => {
@@ -83,6 +165,14 @@ export default function StaffDiningOrdersPage() {
     });
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [orders]);
+
+  useEffect(() => {
+    if (!newSlotKey) return;
+    const el = slotRefs.current[newSlotKey];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [grouped, newSlotKey]);
 
   const handleLogout = () => {
     authService.logout();
@@ -179,12 +269,21 @@ export default function StaffDiningOrdersPage() {
           ) : (
             <div className="space-y-6">
               {grouped.map(([startTime, list]) => (
-                <div key={startTime} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div
+                  key={startTime}
+                  ref={(el) => { slotRefs.current[startTime] = el; }}
+                  className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${newSlotKey === startTime ? "border-cyan-300 ring-2 ring-cyan-200" : "border-gray-100"}`}
+                >
                   <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                     <div className="font-bold text-gray-900 flex items-center gap-2">
                       <Clock className="w-5 h-5 text-cyan-700" />
                       {timeLabel(startTime)}
                       <span className="text-sm text-gray-500 font-medium">({list.length} món)</span>
+                      {newSlotKey === startTime && (
+                        <span className="px-2 py-1 rounded-full text-[11px] font-bold bg-cyan-100 text-cyan-800 border border-cyan-200">
+                          Đơn mới
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -209,7 +308,7 @@ export default function StaffDiningOrdersPage() {
                               <div className="min-w-0">
                                 <div className="font-bold text-gray-900 truncate">{o.comboName}</div>
                                 <div className="text-sm text-gray-600 mt-1">
-                                  {o.serveLocation === "BEACH" ? "Phục vụ: Bãi biển" : "Phục vụ: Phòng"}
+                                  {o.serveLocation === "BEACH" ? "Phục vụ: Bãi biển" : "Phục vụ: Phòng"} • {Number(o.totalAmount || o.price || 0).toLocaleString("vi-VN")}đ
                                 </div>
                                 {!!o.note && <div className="text-xs text-gray-500 mt-1 line-clamp-2">Ghi chú: {o.note}</div>}
                               </div>

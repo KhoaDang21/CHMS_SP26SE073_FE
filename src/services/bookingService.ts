@@ -28,6 +28,7 @@ export interface Booking {
   specialRequests?: string;
   contactPhone?: string;
   createdAt?: string;
+  diningOrders?: any[];
 }
 
 export interface CreateBookingRequest {
@@ -112,6 +113,10 @@ const mapBooking = (item: any): Booking => {
     specialRequests: get("specialRequests", "SpecialRequests") ?? undefined,
     contactPhone: get("contactPhone", "ContactPhone") ?? undefined,
     createdAt: get("createdAt", "CreatedAt"),
+    diningOrders: (() => {
+      const orders = get("diningOrders", "DiningOrders");
+      return Array.isArray(orders) ? orders : [];
+    })(),
   };
 };
 
