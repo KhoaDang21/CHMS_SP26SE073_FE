@@ -71,6 +71,17 @@ const mapBorrowRequest = (item: any): EquipmentBorrowRequest => ({
   id: asString(pick(item, 'id', 'Id')),
   bookingId: asString(pick(item, 'bookingId', 'BookingId')),
   customerId: asString(pick(item, 'customerId', 'CustomerId')),
+  customerName: asString(
+    pick(
+      item,
+      'customerName',
+      'CustomerName',
+      'customerFullName',
+      'CustomerFullName',
+      'customer',
+      'Customer',
+    ),
+  ),
   homestayId: asString(pick(item, 'homestayId', 'HomestayId')),
   homestayName: asString(pick(item, 'homestayName', 'HomestayName')),
   equipmentId: asString(pick(item, 'equipmentId', 'EquipmentId')),
