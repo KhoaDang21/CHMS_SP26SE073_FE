@@ -1007,6 +1007,27 @@ export default function HomestayDetail() {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Default check-in / check-out times */}
+                                {(homestay.checkInTime || homestay.checkOutTime) && (
+                                    <div className="mt-3 text-sm text-gray-700 flex items-center gap-3">
+                                        <CalendarDays className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                        <div className="text-xs text-gray-500">
+                                            {homestay.checkInTime && (
+                                              <>
+                                                Giờ nhận phòng: <span className="font-medium text-gray-900">{homestay.checkInTime}</span>
+                                                <span className="mx-2">·</span>
+                                              </>
+                                            )}
+                                            {homestay.checkOutTime && (
+                                              <>
+                                                Giờ trả phòng: <span className="font-medium text-gray-900">{homestay.checkOutTime}</span>
+                                              </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {hasDateBlocked && (
                                     <div className="mt-2 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded-lg px-3 py-2">
                                         {isCheckInOccupied && !checkOut

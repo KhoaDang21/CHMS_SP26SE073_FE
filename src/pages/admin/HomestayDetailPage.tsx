@@ -724,6 +724,24 @@ export default function HomestayDetailPage() {
                 </div>
               )}
 
+              {/* Check-in / Check-out times (admin) */}
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar className="w-6 h-6 text-blue-600" />
+                  Giờ nhận / trả phòng
+                </h2>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Giờ nhận phòng (mặc định)</p>
+                    <p className="text-gray-900 font-medium">{homestay.checkInTime || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Giờ trả phòng (mặc định)</p>
+                    <p className="text-gray-900 font-medium">{homestay.checkOutTime || '—'}</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Metadata */}
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">

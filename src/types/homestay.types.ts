@@ -90,6 +90,8 @@ export interface Homestay {
   createdAt?: string;
   updatedAt?: string;
   addedAt?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
 }
 
 export interface Booking {
@@ -169,6 +171,8 @@ export interface CreateHomestayDTO {
   latitude: number;
   longitude: number;
   images: HomestayImage[];
+  checkInTime?: string;
+  checkOutTime?: string;
 }
 
 export interface UpdateHomestayDTO {
@@ -188,4 +192,6 @@ export interface UpdateHomestayDTO {
   longitude: number;
   amenityIds: string[];
   images: HomestayImage[];
+  checkInTime?: string;
+  checkOutTime?: string;
 }

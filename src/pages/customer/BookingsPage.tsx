@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Phone, Users, XCircle, Pencil, MessageSquareText, ChevronRight, Home, Clock, CreditCard, Star, AlertCircle, Check, Plus, X, ShieldCheck, UtensilsCrossed, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -93,6 +93,8 @@ export default function BookingsPage() {
   const [editSpecialRequests, setEditSpecialRequests] = useState('');
   const [saving, setSaving] = useState(false);
   const [detailHomestay, setDetailHomestay] = useState<Homestay | null>(null);
+  const [selectedExtraCharges, setSelectedExtraCharges] = useState<ExtraCharge[]>([]);
+  const [selectedExtraLoading, setSelectedExtraLoading] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [homestayMap, setHomestayMap] = useState<Record<string, Homestay>>({});
   const [payingBooking, setPayingBooking] = useState<{
@@ -114,11 +116,11 @@ export default function BookingsPage() {
 
   const [cancelRefundBooking, setCancelRefundBooking] = useState<Booking | null>(null);
 
-  const getHomestayById = (id?: string) => {
+  const getHomestayById = useCallback((id?: string) => {
     const key = (id || '').trim();
     if (!key) return undefined;
     return homestayMap[key] || homestayMap[key.toLowerCase()];
-  };
+  }, [homestayMap]);
 
   const bookingItems = useMemo<BookingListItem[]>(() => {
     const items: BookingListItem[] = [];
@@ -266,6 +268,7 @@ export default function BookingsPage() {
     } else {
       // This is a single booking - show single detail modal
       setSelected(b);
+      setSelectedExtraCharges([]);
       setSelectedGroupBooking(null);
       setGroupBookingDetail(null);
       setEditMode(false);
@@ -277,8 +280,23 @@ export default function BookingsPage() {
         try {
           const hs = await publicHomestayService.getById(detail?.homestayId ?? b.homestayId);
           setDetailHomestay(hs);
+          // ensure homestayMap has latest homestay so UI displays updated checkInTime/checkOutTime
+          if (hs && hs.id) {
+            const key = String(hs.id).trim();
+            setHomestayMap((prev) => ({ ...prev, [key]: hs, [key.toLowerCase()]: hs }));
+          }
         } catch (e) {
           setDetailHomestay(null);
+        }
+        try {
+          setSelectedExtraLoading(true);
+          const charges = await extraChargeService.listByBooking(detail?.id ?? b.id);
+          setSelectedExtraCharges(charges);
+        } catch (e) {
+          console.error('Load selected extra charges error:', e);
+          setSelectedExtraCharges([]);
+        } finally {
+          setSelectedExtraLoading(false);
         }
         // Load preview hoàn tiền: nếu chưa hủy thì tính dự kiến, nếu đã hủy thì lấy thực tế
         if (!['REJECTED', 'COMPLETED', 'CHECKED_IN'].includes(b.status)) {
@@ -350,6 +368,35 @@ export default function BookingsPage() {
   const hasSelectedExperiences = (specialRequests?: string) => {
     return extractBookingExperienceData(specialRequests).items.length > 0;
   };
+
+  const selectedFinancials = useMemo(() => {
+    if (!selected) return null;
+
+    const totalPrice = Number(selected.totalPrice || 0);
+    const homestay = detailHomestay || getHomestayById(selected.homestayId) || null;
+    const rawDepositPercentage = Number(homestay?.depositPercentage ?? 0);
+    const depositPercentage = Number.isFinite(rawDepositPercentage) && rawDepositPercentage > 0
+      ? rawDepositPercentage
+      : 20;
+
+    const extraTotal = selectedExtraCharges.reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
+    const rentalTotal = Math.max(totalPrice - extraTotal, 0);
+    const depositAmount = typeof selected.depositAmount === 'number'
+      ? selected.depositAmount
+      : Math.round((rentalTotal * depositPercentage) / 100);
+    const remainingAmount = Number(selected.remainingAmount || 0);
+    const remainingAfterDeposit = Math.max(rentalTotal - depositAmount, 0);
+
+    return {
+      totalPrice,
+      depositPercentage,
+      depositAmount,
+      extraTotal,
+      rentalTotal,
+      remainingAmount,
+      remainingAfterDeposit,
+    };
+  }, [detailHomestay, getHomestayById, selected, selectedExtraCharges]);
 
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
@@ -551,9 +598,15 @@ export default function BookingsPage() {
                               <Calendar className="w-4 h-4" />
                               <span className="text-xs">Check-in</span>
                             </div>
-                            <div className="font-semibold text-gray-900 text-sm">
-                              {new Date(b.checkIn).toLocaleDateString('vi-VN')}
-                            </div>
+                              <div className="font-semibold text-gray-900 text-sm">
+                                {new Date(b.checkIn).toLocaleDateString('vi-VN')}
+                              </div>
+                              {b.checkInTime && (
+                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                  <span>{b.checkInTime}</span>
+                                </div>
+                              )}
                           </div>
                           <div className="bg-gray-50 rounded-lg p-3">
                             <div className="flex items-center gap-2 text-gray-600 mb-1">
@@ -563,6 +616,12 @@ export default function BookingsPage() {
                             <div className="font-semibold text-gray-900 text-sm">
                               {new Date(b.checkOut).toLocaleDateString('vi-VN')}
                             </div>
+                            {b.checkOutTime && (
+                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                <span>{b.checkOutTime}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1055,6 +1114,7 @@ export default function BookingsPage() {
                 </div>
               </div>
             </div>
+
           )}
 
           {/* Detail drawer/modal - giữ nguyên phần này từ code trước */}
@@ -1101,7 +1161,7 @@ export default function BookingsPage() {
                               />
                             </div>
                             <div className="hidden md:flex gap-2 mt-3">
-                              {(detailHomestay?.images || getHomestayById(selected.homestayId)?.images || []).slice(1, 5).map((img, i) => (
+                              {(detailHomestay?.images || getHomestayById(selected.homestayId)?.images || []).slice(1, 5).map((img: string, i: number) => (
                                 <div key={i} className="flex-1 h-20 rounded overflow-hidden cursor-pointer" onClick={() => setLightboxSrc(img ?? '')}>
                                   <ImageWithFallback src={img ?? ''} alt={`${detailHomestay?.name || selected.homestayName}-${i}`} className="w-full h-full object-cover" />
                                 </div>
@@ -1120,7 +1180,7 @@ export default function BookingsPage() {
                               <div className="pt-2">
                                 <div className="text-sm font-semibold mb-2">Tiện nghi</div>
                                 <div className="flex flex-wrap gap-2">
-                                  {(detailHomestay?.amenities || getHomestayById(selected.homestayId)?.amenities || []).slice(0, 8).map((a, i) => (
+                                  {(detailHomestay?.amenities || getHomestayById(selected.homestayId)?.amenities || []).slice(0, 8).map((a: string, i: number) => (
                                     <div key={i} className="text-sm bg-gray-100 px-3 py-1 rounded">{a}</div>
                                   ))}
                                 </div>
@@ -1168,25 +1228,65 @@ export default function BookingsPage() {
 
                         {typeof selected.totalPrice === 'number' && (
                           <div className="mt-4 pt-4 border-t border-blue-200 space-y-2">
+                            {(() => {
+                              const totalPrice = Number(selected.totalPrice || 0);
+                              const rawDepositPercentage = Number(
+                                detailHomestay?.depositPercentage ??
+                                getHomestayById(selected.homestayId)?.depositPercentage ??
+                                0,
+                              );
+                              const depositPercentage = Number.isFinite(rawDepositPercentage) && rawDepositPercentage > 0
+                                ? rawDepositPercentage
+                                : 20;
+
+                              const extraTotal = selectedExtraCharges.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+                              const rentalTotal = Math.max(totalPrice - extraTotal, 0);
+
+                              const depositAmount = typeof selected.depositAmount === 'number'
+                                ? selected.depositAmount
+                                : Math.round((rentalTotal * depositPercentage) / 100);
+
+                              const remainingAmount = Number(selected.remainingAmount || 0);
+                              const remainingAfterDeposit = Math.max(rentalTotal - depositAmount, 0);
+
+                              return (
+                                <>
                             <div className="flex items-center justify-between">
                               <div className="font-semibold text-gray-900">Tổng tiền</div>
                               <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
                                 {selected.totalPrice.toLocaleString('vi-VN')}đ
                               </div>
                             </div>
-                            {/* Breakdown cọc / còn lại */}
                             {selected.totalPrice && (
-                              <div className="text-xs text-gray-500 mt-2 space-y-1">
+                              <div className="mt-3 rounded-xl border border-blue-100 bg-white/70 p-3 space-y-2 text-xs text-gray-500">
                                 <div className="flex justify-between">
-                                  <span>Cọc ({selected.depositPercentage || 20}%)</span>
-                                  <span className="font-medium">{(selected.depositAmount || 0).toLocaleString('vi-VN')}đ</span>
+                                  <span>Tổng tiền phòng</span>
+                                  <span className="font-medium text-gray-700">{rentalTotal.toLocaleString('vi-VN')}đ</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span>Còn lại ({100 - (selected.depositPercentage || 20)}%)</span>
-                                  <span className="font-medium">{(selected.remainingAmount || 0).toLocaleString('vi-VN')}đ</span>
+                                  <span>Cọc ({depositPercentage}%)</span>
+                                  <span className="font-medium text-gray-700">{depositAmount.toLocaleString('vi-VN')}đ</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Còn lại sau cọc{selected.status !== 'CHECKED_IN' ? ' (chưa check-in)' : ''}</span>
+                                  <span className="font-medium text-gray-700">{remainingAfterDeposit.toLocaleString('vi-VN')}đ</span>
+                                </div>
+                                {!!selected.remainingAmount && (
+                              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                                Công thức: Tổng tiền thuê ({rentalTotal.toLocaleString('vi-VN')}đ) - Cọc ({depositAmount.toLocaleString('vi-VN')}đ) = Còn lại sau cọc ({remainingAfterDeposit.toLocaleString('vi-VN')}đ)
+                              </div>
+                            )}
+                                <div className="flex justify-between border-t border-blue-100 pt-2 text-gray-700">
+                                  <span className="font-semibold">Chi phí phát sinh</span>
+                                  <span className="font-semibold">{remainingAmount.toLocaleString('vi-VN')}đ</span>
                                 </div>
                               </div>
                             )}
+                            {/* {!!selected.remainingAmount && (
+                              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                                Công thức: Tổng tiền thuê ({rentalTotal.toLocaleString('vi-VN')}đ) - Cọc ({depositAmount.toLocaleString('vi-VN')}đ) = Còn lại sau cọc ({remainingAfterDeposit.toLocaleString('vi-VN')}đ)
+                              </div>
+                            )} */}
                             {selected.paymentStatus === 'UNPAID' && typeof selected.depositAmount === 'number' && (
                               <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-100">
                                 <span className="text-orange-600 font-medium">Cần cọc ngay</span>
@@ -1202,9 +1302,94 @@ export default function BookingsPage() {
                             {selected.paymentStatus === 'FULLY_PAID' && (
                               <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ Đã thanh toán đầy đủ</div>
                             )}
+                                </>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
+
+                      {/* Chi phí phát sinh */}
+                      <div className="rounded-xl border border-orange-100 bg-orange-50/70 p-4 space-y-3">
+                        <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-orange-500" />
+                          Chi phí phát sinh
+                        </div>
+                        {selectedExtraLoading ? (
+                          <div className="text-sm text-gray-500">Đang tải chi phí phát sinh...</div>
+                        ) : selectedExtraCharges.length === 0 ? (
+                          <div className="text-sm text-gray-500 bg-white border border-orange-100 rounded-xl p-4">Không có chi phí phát sinh.</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {selectedExtraCharges.map((charge) => (
+                              <div key={charge.id} className="flex items-start justify-between gap-3 rounded-xl border border-orange-100 bg-white px-4 py-3">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-800">{charge.note || 'Chi phí phát sinh'}</div>
+                                  {charge.createdAt && (
+                                    <div className="text-xs text-gray-500 mt-1">{new Date(charge.createdAt).toLocaleString('vi-VN')}</div>
+                                  )}
+                                </div>
+                                <div className="text-sm font-semibold text-orange-600">+{Number(charge.amount || 0).toLocaleString('vi-VN')}đ</div>
+                              </div>
+                            ))}
+                            <div className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-100 px-4 py-3 text-sm">
+                              <span className="font-semibold text-orange-700">Tổng phát sinh</span>
+                              <span className="font-bold text-orange-700">{selectedFinancials?.extraTotal.toLocaleString('vi-VN')}đ</span>
+                            </div>
+                            <div className="text-xs text-orange-700 bg-white border border-orange-100 rounded-lg px-3 py-2">
+                              RemainingAmount (API) = Còn lại sau cọc ({selectedFinancials?.remainingAfterDeposit.toLocaleString('vi-VN')}đ) + Tổng phát sinh ({selectedFinancials?.extraTotal.toLocaleString('vi-VN')}đ)
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Dịch vụ địa phương */}
+                      {selected.bookedExperiences && selected.bookedExperiences.length > 0 && (
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                            <Package className="w-4 h-4 text-blue-500" />
+                            Dịch vụ địa phương
+                          </div>
+                          <div className="space-y-3">
+                            {selected.bookedExperiences.map((experience) => (
+                              <div
+                                key={experience.id}
+                                className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 flex flex-col sm:flex-row gap-4"
+                              >
+                                <div className="sm:w-28 sm:h-28 w-full h-40 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                  <ImageWithFallback
+                                    src={experience.imageUrl || ''}
+                                    alt={experience.experienceName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                    <div>
+                                      <div className="font-semibold text-gray-900">{experience.experienceName}</div>
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        Ngày sử dụng: {experience.serviceDate ? new Date(experience.serviceDate).toLocaleDateString('vi-VN') : 'null'}
+                                      </div>
+                                      {experience.startTime && (
+                                        <div className="text-xs text-gray-500 mt-1">Giờ bắt đầu: {experience.startTime}</div>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-sm font-semibold text-gray-900">{experience.totalPrice.toLocaleString('vi-VN')}đ</div>
+                                      <div className="text-xs text-gray-500">{experience.quantity} x {experience.unitPrice.toLocaleString('vi-VN')}đ</div>
+                                    </div>
+                                  </div>
+                                  {experience.note && (
+                                    <div className="mt-3 text-sm text-gray-700 bg-gray-50 rounded-lg border border-gray-100 px-3 py-2 whitespace-pre-wrap">
+                                      {experience.note}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Yêu cầu đặc biệt */}
                       <div>
@@ -1423,13 +1608,20 @@ export default function BookingsPage() {
                                 }
                                 setSaving(true);
                                 try {
-                                  const res = await bookingService.modifyBooking(selected.id, {
+                                  const modifyPayload: any = {
                                     homestayId: selected.homestayId,
                                     checkIn: editCheckIn,
                                     checkOut: editCheckOut,
                                     guestsCount: editGuests,
                                     ...(editPhone ? { contactPhone: editPhone } : {}),
-                                  });
+                                  };
+                                  // only include checkInTime/checkOutTime if they have non-empty values
+                                  const checkInTime = selected.checkInTime || detailHomestay?.checkInTime;
+                                  const checkOutTime = selected.checkOutTime || detailHomestay?.checkOutTime;
+                                  if (checkInTime && checkInTime.trim()) modifyPayload.checkInTime = checkInTime;
+                                  if (checkOutTime && checkOutTime.trim()) modifyPayload.checkOutTime = checkOutTime;
+                                  console.log('Modify booking payload:', modifyPayload);
+                                  const res = await bookingService.modifyBooking(selected.id, modifyPayload);
                                   if (res?.success) {
                                     toast.success(res.message || 'Đã cập nhật booking');
                                     // update special requests via dedicated endpoint
