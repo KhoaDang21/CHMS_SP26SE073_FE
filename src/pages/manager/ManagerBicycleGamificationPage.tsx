@@ -116,6 +116,49 @@ interface RoutePoint {
   label: string;
 }
 
+const computeDistanceKm = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number => {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+const calculateRouteMetrics = (
+  points: Array<Pick<RoutePoint, "latitude" | "longitude">>,
+): { totalDistanceKm: number; estimatedMinutes: number } | null => {
+  if (points.length < 2) {
+    return null;
+  }
+
+  let totalKm = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    totalKm += computeDistanceKm(
+      points[i].latitude,
+      points[i].longitude,
+      points[i + 1].latitude,
+      points[i + 1].longitude,
+    );
+  }
+
+  return {
+    totalDistanceKm: Number(totalKm.toFixed(2)),
+    estimatedMinutes: Math.max(1, Math.round(totalKm * 5)),
+  };
+};
+
 // Single clear street basemap (Carto Voyager)
 const SINGLE_ROUTE_MAP_STYLE = {
   key: "cartoVoyager",
@@ -247,6 +290,9 @@ export default function ManagerBicycleGamificationPage() {
   const [selectedHomestayId, setSelectedHomestayId] = useState("");
 
   const [activeTab, setActiveTab] = useState<TabKey>("bicycles");
+  const visibleTabs = isAdmin
+    ? tabs
+    : tabs.filter((tab) => tab.key !== "operation");
 
   const [bicycles, setBicycles] = useState<any[]>([]);
   const [damageCatalogs, setDamageCatalogs] = useState<any[]>([]);
@@ -258,6 +304,12 @@ export default function ManagerBicycleGamificationPage() {
   const [returnDamageIds, setReturnDamageIds] = useState<string[]>([]);
   const [staffBookings, setStaffBookings] = useState<Booking[]>([]);
   const [loadingOperationData, setLoadingOperationData] = useState(false);
+
+  useEffect(() => {
+    if (!visibleTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab(visibleTabs[0]?.key ?? "bicycles");
+    }
+  }, [activeTab, visibleTabs]);
 
   const [bicycleCode, setBicycleCode] = useState("");
   const [bicycleType, setBicycleType] = useState("CITY");
@@ -350,7 +402,7 @@ export default function ManagerBicycleGamificationPage() {
     };
 
     void load();
-  }, [isAllowed, navigate]);
+  }, [isAdmin, isAllowed, navigate]);
 
   // Auto-initialize route points from homestay coordinates when homestay is selected
   useEffect(() => {
@@ -364,6 +416,8 @@ export default function ManagerBicycleGamificationPage() {
     }
   }, [selectedHomestayId, homestays]);
 
+  // calculateRouteMetrics is used only for derived preview values in this effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const startLatitude = Number(routeStartLatitude);
     const startLongitude = Number(routeStartLongitude);
@@ -601,50 +655,6 @@ export default function ManagerBicycleGamificationPage() {
           Number.isFinite(item.latitude) &&
           Number.isFinite(item.longitude),
       );
-  };
-
-  // Simple haversine distance in kilometers
-  const computeDistanceKm = (
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-  ): number => {
-    const toRad = (v: number) => (v * Math.PI) / 180;
-    const R = 6371; // km
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  const calculateRouteMetrics = (
-    points: Array<Pick<RoutePoint, "latitude" | "longitude">>,
-  ): { totalDistanceKm: number; estimatedMinutes: number } | null => {
-    if (points.length < 2) {
-      return null;
-    }
-
-    let totalKm = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      totalKm += computeDistanceKm(
-        points[i].latitude,
-        points[i].longitude,
-        points[i + 1].latitude,
-        points[i + 1].longitude,
-      );
-    }
-
-    return {
-      totalDistanceKm: Number(totalKm.toFixed(2)),
-      estimatedMinutes: Math.max(1, Math.round(totalKm * 5)),
-    };
   };
 
   // Generate polyline from 3 input coordinates and auto-calculate metrics
@@ -934,7 +944,7 @@ export default function ManagerBicycleGamificationPage() {
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-4">
-              {tabs.map((tab) => {
+              {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 const active = tab.key === activeTab;
                 return (
@@ -988,7 +998,7 @@ export default function ManagerBicycleGamificationPage() {
             </div>
           ) : (
             <div className="mt-6 space-y-6">
-              {activeTab === "operation" && (
+              {isAdmin && activeTab === "operation" && (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h2 className="text-lg font-bold text-gray-900">
