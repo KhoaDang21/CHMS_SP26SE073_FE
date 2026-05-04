@@ -51,7 +51,7 @@ export const apiConfig = {
       create: "/api/bookings",
       cancel: (id: string) => `/api/bookings/${id}/cancel`,
       calculate: "/api/bookings/calculate",
-      modify: (id: string) => `/api/bookings/${id}/modify`,
+      modify: (id: string) => `/api/bookings/${id}`,
       cancellationPolicy: (id: string) =>
         `/api/bookings/${id}/cancellation-policy`,
       specialRequests: (id: string) => `/api/bookings/${id}/special-requests`,
@@ -349,6 +349,8 @@ export const apiConfig = {
     gamificationBicycles: {
       rent: "/api/gamification-bicycles/rent",
       return: "/api/gamification-bicycles/return",
+      availableByHomestay: (homestayId: string) => `/api/gamification-bicycles/homestays/${homestayId}/available`,
+      availableByBooking: (bookingId: string) => `/api/gamification-bicycles/bookings/${bookingId}/available`,
       routes: (homestayId: string) => `/api/gamification-bicycles/routes/${homestayId}`,
       status: (bookingId: string) => `/api/gamification-bicycles/status/${bookingId}`,
       myRental: (bookingId: string) => `/api/gamification-bicycles/my-rental/${bookingId}`,

@@ -1,6 +1,7 @@
 export interface Equipment {
   id: string;
   homestayId: string;
+  homestayName?: string;
   name: string;
   category: string;
   quantity: number;

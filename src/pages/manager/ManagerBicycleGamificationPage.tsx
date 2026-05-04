@@ -23,8 +23,8 @@ import {
 import "leaflet/dist/leaflet.css";
 import { toast } from "sonner";
 import { authService } from "../../services/authService";
-import { employeeService } from "../../services/employeeService";
 import { publicHomestayService } from "../../services/publicHomestayService";
+import { managerHomestayService } from "../../services/managerHomestayService";
 import { managerBookingService } from "../../services/managerBookingService";
 import { adminBookingService } from "../../services/adminBookingService";
 import type { Booking } from "../../types/booking.types";
@@ -115,6 +115,49 @@ interface RoutePoint {
   longitude: number;
   label: string;
 }
+
+const computeDistanceKm = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number => {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+const calculateRouteMetrics = (
+  points: Array<Pick<RoutePoint, "latitude" | "longitude">>,
+): { totalDistanceKm: number; estimatedMinutes: number } | null => {
+  if (points.length < 2) {
+    return null;
+  }
+
+  let totalKm = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    totalKm += computeDistanceKm(
+      points[i].latitude,
+      points[i].longitude,
+      points[i + 1].latitude,
+      points[i + 1].longitude,
+    );
+  }
+
+  return {
+    totalDistanceKm: Number(totalKm.toFixed(2)),
+    estimatedMinutes: Math.max(1, Math.round(totalKm * 5)),
+  };
+};
 
 // Single clear street basemap (Carto Voyager)
 const SINGLE_ROUTE_MAP_STYLE = {
@@ -233,68 +276,6 @@ const RoutePolylinePreview = ({
   );
 };
 
-const normalizeText = (value: unknown): string =>
-  String(value ?? "")
-    .trim()
-    .toLowerCase();
-
-const getHomestayProvinceId = (homestay: any): string => {
-  return String(
-    homestay?.provinceId ||
-      homestay?.ProvinceId ||
-      homestay?.province?.id ||
-      homestay?.Province?.Id ||
-      "",
-  );
-};
-
-const getHomestayProvinceName = (homestay: any): string => {
-  return String(homestay?.provinceName || homestay?.ProvinceName || "").trim();
-};
-
-const pickProvinceValue = (
-  item: any,
-): { id: string | null; name: string | null } => {
-  const provinceId =
-    item?.managedProvinceId ||
-    item?.assignedProvinceId ||
-    item?.managedProvince?.id ||
-    item?.assignedProvince?.id ||
-    item?.provinceId ||
-    null;
-
-  const provinceName =
-    item?.managedProvinceName ||
-    item?.assignedProvinceName ||
-    item?.managedProvince?.name ||
-    item?.assignedProvince?.name ||
-    item?.provinceName ||
-    null;
-
-  return {
-    id: provinceId ? String(provinceId) : null,
-    name: provinceName ? String(provinceName) : null,
-  };
-};
-
-const homestayMatchesProvince = (
-  homestay: Homestay,
-  province: { id: string | null; name: string | null },
-): boolean => {
-  const homestayProvinceId = getHomestayProvinceId(homestay);
-  const homestayProvinceName = getHomestayProvinceName(homestay);
-
-  if (province.id && homestayProvinceId) {
-    return homestayProvinceId === province.id;
-  }
-
-  if (province.name && homestayProvinceName) {
-    return normalizeText(homestayProvinceName) === normalizeText(province.name);
-  }
-
-  return false;
-};
-
 export default function ManagerBicycleGamificationPage() {
   const navigate = useNavigate();
   const user = authService.getUser();
@@ -309,6 +290,9 @@ export default function ManagerBicycleGamificationPage() {
   const [selectedHomestayId, setSelectedHomestayId] = useState("");
 
   const [activeTab, setActiveTab] = useState<TabKey>("bicycles");
+  const visibleTabs = isAdmin
+    ? tabs
+    : tabs.filter((tab) => tab.key !== "operation");
 
   const [bicycles, setBicycles] = useState<any[]>([]);
   const [damageCatalogs, setDamageCatalogs] = useState<any[]>([]);
@@ -320,6 +304,12 @@ export default function ManagerBicycleGamificationPage() {
   const [returnDamageIds, setReturnDamageIds] = useState<string[]>([]);
   const [staffBookings, setStaffBookings] = useState<Booking[]>([]);
   const [loadingOperationData, setLoadingOperationData] = useState(false);
+
+  useEffect(() => {
+    if (!visibleTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab(visibleTabs[0]?.key ?? "bicycles");
+    }
+  }, [activeTab, visibleTabs]);
 
   const [bicycleCode, setBicycleCode] = useState("");
   const [bicycleType, setBicycleType] = useState("CITY");
@@ -385,50 +375,23 @@ export default function ManagerBicycleGamificationPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const paged = await publicHomestayService.list({
-          page: 1,
-          pageSize: 300,
-        });
-        const list = paged.Items || [];
+        const list = isAdmin
+          ? (await publicHomestayService.list({ page: 1, pageSize: 300 })).Items || []
+          : await managerHomestayService.list();
 
-        let filtered = list;
-
-        // Manager: chỉ hiện homestay thuộc tỉnh được phân công
-        // Admin: hiện tất cả
-        if (!isAdmin) {
-          const userId = String(user?.id || "").trim();
-          const provinceSource = userId
-            ? await employeeService.getEmployeeById(userId)
-            : null;
-          const assignedProvince = provinceSource
-            ? pickProvinceValue(provinceSource)
-            : { id: null, name: null };
-
-          if (!assignedProvince.id && !assignedProvince.name) {
-            setHomestays([]);
-            setSelectedHomestayId("");
-            toast.warning("Bạn chưa được phân công tỉnh quản lý.");
-            return;
+        if (!list.length) {
+          setHomestays([]);
+          setSelectedHomestayId("");
+          if (!isAdmin) {
+            toast.warning("Không có homestay nào thuộc tỉnh bạn được phân công.");
           }
-
-          filtered = list.filter((homestay) =>
-            homestayMatchesProvince(homestay, assignedProvince),
-          );
-
-          if (filtered.length === 0) {
-            setHomestays([]);
-            setSelectedHomestayId("");
-            toast.warning(
-              "Không có homestay nào thuộc tỉnh bạn được phân công.",
-            );
-            return;
-          }
+          return;
         }
 
-        setHomestays(filtered);
+        setHomestays(list);
         setSelectedHomestayId((prev) => {
-          const stillValid = filtered.some((h) => h.id === prev);
-          return stillValid ? prev : (filtered[0]?.id ?? "");
+          const stillValid = list.some((h) => h.id === prev);
+          return stillValid ? prev : (list[0]?.id ?? "");
         });
       } catch (error) {
         console.error("Load homestays error:", error);
@@ -439,7 +402,7 @@ export default function ManagerBicycleGamificationPage() {
     };
 
     void load();
-  }, [isAllowed, navigate]);
+  }, [isAdmin, isAllowed, navigate]);
 
   // Auto-initialize route points from homestay coordinates when homestay is selected
   useEffect(() => {
@@ -453,6 +416,8 @@ export default function ManagerBicycleGamificationPage() {
     }
   }, [selectedHomestayId, homestays]);
 
+  // calculateRouteMetrics is used only for derived preview values in this effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const startLatitude = Number(routeStartLatitude);
     const startLongitude = Number(routeStartLongitude);
@@ -690,50 +655,6 @@ export default function ManagerBicycleGamificationPage() {
           Number.isFinite(item.latitude) &&
           Number.isFinite(item.longitude),
       );
-  };
-
-  // Simple haversine distance in kilometers
-  const computeDistanceKm = (
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-  ): number => {
-    const toRad = (v: number) => (v * Math.PI) / 180;
-    const R = 6371; // km
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  const calculateRouteMetrics = (
-    points: Array<Pick<RoutePoint, "latitude" | "longitude">>,
-  ): { totalDistanceKm: number; estimatedMinutes: number } | null => {
-    if (points.length < 2) {
-      return null;
-    }
-
-    let totalKm = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      totalKm += computeDistanceKm(
-        points[i].latitude,
-        points[i].longitude,
-        points[i + 1].latitude,
-        points[i + 1].longitude,
-      );
-    }
-
-    return {
-      totalDistanceKm: Number(totalKm.toFixed(2)),
-      estimatedMinutes: Math.max(1, Math.round(totalKm * 5)),
-    };
   };
 
   // Generate polyline from 3 input coordinates and auto-calculate metrics
@@ -1023,7 +944,7 @@ export default function ManagerBicycleGamificationPage() {
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-4">
-              {tabs.map((tab) => {
+              {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 const active = tab.key === activeTab;
                 return (
@@ -1077,7 +998,7 @@ export default function ManagerBicycleGamificationPage() {
             </div>
           ) : (
             <div className="mt-6 space-y-6">
-              {activeTab === "operation" && (
+              {isAdmin && activeTab === "operation" && (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h2 className="text-lg font-bold text-gray-900">

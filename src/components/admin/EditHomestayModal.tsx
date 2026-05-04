@@ -94,6 +94,8 @@ export default function EditHomestayModal({
     depositPercentage: 20,
     cancellationPolicy: DEFAULT_CANCELLATION_POLICY,
     houseRules: DEFAULT_HOUSE_RULES,
+    checkInTime: '14:00',
+    checkOutTime: '12:00',
     districtId: '',
     address: '',
     latitude: 10.0,
@@ -218,6 +220,8 @@ export default function EditHomestayModal({
       depositPercentage: Number(homestay.depositPercentage ?? 20),
       cancellationPolicy: homestay.cancellationPolicy || DEFAULT_CANCELLATION_POLICY,
       houseRules: homestay.houseRules || DEFAULT_HOUSE_RULES,
+      checkInTime: homestay.checkInTime || '14:00',
+      checkOutTime: homestay.checkOutTime || '12:00',
       districtId: homestay.districtId || '',
       address: homestay.address || '',
       latitude: Number(homestay.latitude || 10.0),
@@ -510,6 +514,28 @@ export default function EditHomestayModal({
               onChange={(e) => setFormData((prev) => ({ ...prev, houseRules: e.target.value }))}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Giờ nhận phòng (HH:mm)</label>
+              <input
+                type="text"
+                value={formData.checkInTime || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, checkInTime: e.target.value }))}
+                placeholder="14:00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Giờ trả phòng (HH:mm)</label>
+              <input
+                type="text"
+                value={formData.checkOutTime || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, checkOutTime: e.target.value }))}
+                placeholder="12:00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           <div>

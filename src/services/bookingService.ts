@@ -7,6 +7,8 @@ export type PaymentStatus = "UNPAID" | "DEPOSIT_PAID" | "FULLY_PAID";
 export interface Booking {
   id: string;
   homestayId: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   homestayName?: string;
   homestayImage?: string;
   groupBookingId?: string | null;
@@ -28,6 +30,18 @@ export interface Booking {
   specialRequests?: string;
   contactPhone?: string;
   createdAt?: string;
+  bookedExperiences?: Array<{
+    id: string;
+    experienceName: string;
+    imageUrl?: string;
+    serviceDate: string;
+    startTime?: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    status: string;
+    note?: string;
+  }>;
 }
 
 export interface CreateBookingRequest {
@@ -52,6 +66,8 @@ export interface ModifyBookingRequest {
   homestayId: string;
   checkIn: string;
   checkOut: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   guestsCount: number;
   promotionId?: string;
   contactPhone?: string;
@@ -98,6 +114,8 @@ const mapBooking = (item: any): Booking => {
     customerName: cleanLoadingText(get("customerName", "CustomerName")),
     checkIn: String(get("checkIn", "CheckIn") ?? ""),
     checkOut: String(get("checkOut", "CheckOut") ?? ""),
+    checkInTime: String(get("checkInTime", "CheckInTime") ?? get("checkIn_time", "CheckIn_time") ?? ''),
+    checkOutTime: String(get("checkOutTime", "CheckOutTime") ?? get("check_out_time", "CheckOut_time") ?? ''),
     totalNights: get("totalNights", "TotalNights"),
     guestsCount: Number(get("guestsCount", "GuestsCount") ?? 0),
     pricePerNight: get("pricePerNight", "PricePerNight"),
@@ -112,6 +130,20 @@ const mapBooking = (item: any): Booking => {
     specialRequests: get("specialRequests", "SpecialRequests") ?? undefined,
     contactPhone: get("contactPhone", "ContactPhone") ?? undefined,
     createdAt: get("createdAt", "CreatedAt"),
+    bookedExperiences: Array.isArray(get("bookedExperiences", "BookedExperiences"))
+      ? (get("bookedExperiences", "BookedExperiences") as any[]).map((be: any) => ({
+          id: String(be?.id ?? ""),
+          experienceName: String(be?.experienceName ?? be?.name ?? ""),
+          imageUrl: be?.imageUrl ?? be?.image,
+          serviceDate: String(be?.serviceDate ?? be?.service_date ?? ""),
+          startTime: be?.startTime ?? be?.start_time,
+          quantity: Number(be?.quantity ?? 1),
+          unitPrice: Number(be?.unitPrice ?? be?.price ?? 0),
+          totalPrice: Number(be?.totalPrice ?? 0),
+          status: String(be?.status ?? ""),
+          note: be?.note ?? undefined,
+        }))
+      : undefined,
   };
 };
 
@@ -199,6 +231,24 @@ export const bookingService = {
     }
   },
 
+  /**
+   * Add experiences to an existing booking via the modify endpoint.
+   * Backend expects a body like: { experiences: [{ experienceId, quantity, note }] }
+   */
+  async addExperiencesViaModify(
+    id: string,
+    experiences: Array<{ experienceId: string; quantity?: number; note?: string }>,
+  ): Promise<{ success: boolean; message?: string } | null> {
+    try {
+      const body = { experiences };
+      const response = await apiService.put<any>(apiConfig.endpoints.bookings.modify(id), body);
+      return { success: response?.success ?? true, message: response?.message };
+    } catch (error) {
+      console.error('Add experiences via modify error:', error);
+      return { success: false, message: error instanceof Error ? error.message : 'Loi khi them dich vu' };
+    }
+  },
+
   async getCancellationPolicy(id: string): Promise<CancellationPolicyResponse | null> {
     try {
       const response = await apiService.get<any>(apiConfig.endpoints.bookings.cancellationPolicy(id));
@@ -208,6 +258,7 @@ export const bookingService = {
       return null;
     }
   },
+
 
   async updateSpecialRequests(id: string, specialRequests: string): Promise<{ success: boolean; message: string }> {
     try {

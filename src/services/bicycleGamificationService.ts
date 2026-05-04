@@ -56,7 +56,17 @@ const unwrapArray = (response: any): any[] => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.items)) return payload.items;
   if (Array.isArray(payload?.Items)) return payload.Items;
+  if (Array.isArray(payload?.availableBicycles)) return payload.availableBicycles;
+  if (Array.isArray(payload?.AvailableBicycles)) return payload.AvailableBicycles;
+  if (Array.isArray(payload?.bicycles)) return payload.bicycles;
+  if (Array.isArray(payload?.Bicycles)) return payload.Bicycles;
   if (Array.isArray(payload?.result)) return payload.result;
+  if (Array.isArray(payload?.data?.items)) return payload.data.items;
+  if (Array.isArray(payload?.data?.Items)) return payload.data.Items;
+  if (Array.isArray(payload?.data?.availableBicycles)) return payload.data.availableBicycles;
+  if (Array.isArray(payload?.data?.AvailableBicycles)) return payload.data.AvailableBicycles;
+  if (Array.isArray(payload?.data?.bicycles)) return payload.data.bicycles;
+  if (Array.isArray(payload?.data?.Bicycles)) return payload.data.Bicycles;
   return [];
 };
 
@@ -90,6 +100,26 @@ export const bicycleGamificationService = {
     if (!homestayId) return [];
     try {
       const response = await apiService.get<any>(apiConfig.endpoints.managerBicycles.list(homestayId));
+      return unwrapArray(response);
+    } catch {
+      return [];
+    }
+  },
+
+  async listAvailableByHomestay(homestayId: string): Promise<any[]> {
+    if (!homestayId) return [];
+    try {
+      const response = await apiService.get<any>(apiConfig.endpoints.gamificationBicycles.availableByHomestay(homestayId));
+      return unwrapArray(response);
+    } catch {
+      return [];
+    }
+  },
+
+  async listAvailableByBooking(bookingId: string): Promise<any[]> {
+    if (!bookingId) return [];
+    try {
+      const response = await apiService.get<any>(apiConfig.endpoints.gamificationBicycles.availableByBooking(bookingId));
       return unwrapArray(response);
     } catch {
       return [];
