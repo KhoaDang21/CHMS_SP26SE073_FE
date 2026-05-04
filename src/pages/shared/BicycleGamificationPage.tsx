@@ -68,6 +68,27 @@ const homestayMatchesAnyAssignedHome = (homestay: Homestay, assignedIds: string[
   return false;
 };
 
+const loadAllPublicHomestays = async (): Promise<Homestay[]> => {
+  const pageSize = 300;
+  let page = 1;
+  const collected: Homestay[] = [];
+
+  while (page <= 10) {
+    const paged = await publicHomestayService.list({ page, pageSize });
+    const items = paged.Items || [];
+    collected.push(...items);
+
+    const totalCount = Number(paged.TotalCount || 0);
+    if (!items.length || collected.length >= totalCount) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return collected;
+};
+
 export default function BicycleGamificationPage() {
   const navigate = useNavigate();
   const user = authService.getUser();
@@ -82,7 +103,7 @@ export default function BicycleGamificationPage() {
   const [selectedHomestayId, setSelectedHomestayId] = useState('');
   const [assignedHomestayIds, setAssignedHomestayIds] = useState<string[]>([]);
 
-  const [activeTab, setActiveTab] = useState<TabKey>('operation');
+  const [activeTab, setActiveTab] = useState<TabKey>(role === 'staff' ? 'operation' : 'bicycles');
 
   const [bicycles, setBicycles] = useState<any[]>([]);
   const [damageCatalogs, setDamageCatalogs] = useState<any[]>([]);
@@ -115,10 +136,16 @@ export default function BicycleGamificationPage() {
       : staffNavItemsGrouped;
 
   const visibleTabs = useMemo(() => {
-    if (canManage) return tabs;
+    if (canManage) return tabs.filter((tab) => tab.key !== 'operation');
     // For staff, show operation plus equipment and facilities as requested
     return tabs.filter((tab) => ['operation', 'equipment', 'facilities'].includes(tab.key));
   }, [canManage]);
+
+  useEffect(() => {
+    if (!visibleTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab(visibleTabs[0]?.key ?? 'bicycles');
+    }
+  }, [activeTab, visibleTabs]);
 
   useEffect(() => {
     if (!isAllowed) {
@@ -130,8 +157,7 @@ export default function BicycleGamificationPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const paged = await publicHomestayService.list({ page: 1, pageSize: 300 });
-        const list = paged.Items || [];
+        const list = await loadAllPublicHomestays();
 
         if (role === 'staff') {
           const staffId = String(user?.id || '').trim();
@@ -142,13 +168,15 @@ export default function BicycleGamificationPage() {
             : [];
 
           setAssignedHomestayIds(ids);
-          setHomestays(filtered);
 
           if (filtered.length > 0) {
+            setHomestays(filtered);
             setSelectedHomestayId((prev) => (filtered.some((homestay) => homestay.id === prev) ? prev : filtered[0].id));
           } else {
-            setSelectedHomestayId('');
-            toast.warning('Bạn chưa được phân công homestay nào cho chức năng này.');
+            // Fallback: nếu backend không trả assigned homestay, hiển thị toàn bộ danh sách để tránh mất UI.
+            setHomestays(list);
+            setSelectedHomestayId(list.length > 0 ? list[0].id : '');
+            toast.warning('Bạn chưa được phân công homestay nào cho chức năng này. Hiển thị toàn bộ homestay để thao tác.');
           }
         } else {
           setAssignedHomestayIds([]);
@@ -166,7 +194,7 @@ export default function BicycleGamificationPage() {
     };
 
     void load();
-  }, [isAllowed, navigate]);
+  }, [isAllowed, navigate, role, user?.id]);
 
   const refreshManagerData = async () => {
     if (!selectedHomestayId) {
@@ -179,10 +207,14 @@ export default function BicycleGamificationPage() {
     try {
       // Staff cần bicycles (để chọn xe bàn giao) và damageCatalogs (để chọn lỗi thu hồi)
       // Manager/Admin cần thêm localRoutes
-      const requests: Promise<any[]>[] = [
-        bicycleGamificationService.listBicycles(selectedHomestayId),
-        bicycleGamificationService.listDamageCatalogs(selectedHomestayId),
-      ];
+      const requests: Promise<any[]>[] = [];
+      // For staff operation we prefer the gamification "available" endpoint to list ready-to-rent bikes
+      if (role === 'staff') {
+        requests.push(bicycleGamificationService.listAvailableByHomestay(selectedHomestayId));
+      } else {
+        requests.push(bicycleGamificationService.listBicycles(selectedHomestayId));
+      }
+      requests.push(bicycleGamificationService.listDamageCatalogs(selectedHomestayId));
       if (canManage) {
         requests.push(bicycleGamificationService.listLocalRoutes(selectedHomestayId));
       }
@@ -218,8 +250,7 @@ export default function BicycleGamificationPage() {
       const filtered = bookingList.filter((booking) => {
         const hId = String(booking.homestayId ?? '');
         const status = String(booking.status ?? '').toLowerCase();
-        return hId === selectedHomestayId &&
-          (status === 'confirmed' || status === 'checked_in');
+        return hId === selectedHomestayId && status === 'checked_in';
       });
       setStaffBookings(filtered);
     } catch (error) {
@@ -514,7 +545,7 @@ export default function BicycleGamificationPage() {
             </div>
           ) : (
             <div className="mt-6 space-y-6">
-              {activeTab === 'operation' && (
+              {role === 'staff' && activeTab === 'operation' && (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h2 className="text-lg font-bold text-gray-900">Bàn giao xe cho khách</h2>

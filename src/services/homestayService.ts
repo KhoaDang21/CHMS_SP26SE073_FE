@@ -61,6 +61,8 @@ const normalizeHomestay = (it: any): Homestay => ({
   createdAt: it.createdAt ?? it.CreatedAt ?? '',
   updatedAt: it.updatedAt ?? it.UpdatedAt ?? '',
   addedAt: it.addedAt ?? it.AddedAt ?? '',
+  checkInTime: it.checkInTime ?? it.checkIn ?? it.CheckInTime ?? it.CheckIn ?? undefined,
+  checkOutTime: it.checkOutTime ?? it.checkOut ?? it.CheckOutTime ?? it.CheckOut ?? undefined,
 });
 
 export const homestayService = {

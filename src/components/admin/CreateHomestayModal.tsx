@@ -29,6 +29,8 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
     depositPercentage: 20,
     cancellationPolicy: 'Miễn phí hủy trước 24h. Sau đó phí hủy 50%.',
     houseRules: 'Không hút thuốc. Không thú cưng. Giờ nhận phòng: 14:00. Giờ trả phòng: 12:00.',
+    checkInTime: '14:00',
+    checkOutTime: '12:00',
     amenityIds: [],
     address: '',
     districtId: '',
@@ -151,6 +153,8 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
       districtId: formData.districtId!,
       cancellationPolicy: formData.cancellationPolicy!,
       houseRules: formData.houseRules!,
+      checkInTime: formData.checkInTime || '14:00',
+      checkOutTime: formData.checkOutTime || '12:00',
       latitude: formData.latitude || 10.0,
       longitude: formData.longitude || 107.0,
       amenityIds: formData.amenityIds || [],
@@ -568,6 +572,29 @@ export default function CreateHomestayModal({ isOpen, onClose, onSubmit, loading
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giờ nhận phòng (HH:mm)</label>
+                  <input
+                    type="text"
+                    value={formData.checkInTime || ''}
+                    onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })}
+                    placeholder="14:00"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giờ trả phòng (HH:mm)</label>
+                  <input
+                    type="text"
+                    value={formData.checkOutTime || ''}
+                    onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })}
+                    placeholder="12:00"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
 
               <div className="pt-4 border-t border-gray-200">
