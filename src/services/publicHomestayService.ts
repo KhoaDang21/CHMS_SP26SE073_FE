@@ -209,6 +209,8 @@ export const publicHomestayService = {
         seasonalPricings: normalizeSeasonalPricings(it),
         createdAt: it.createdAt ?? it.CreatedAt ?? "",
         updatedAt: it.updatedAt ?? it.UpdatedAt ?? "",
+        checkInTime: it.checkInTime ?? it.CheckInTime ?? it.defaultCheckInTime ?? it.DefaultCheckInTime ?? "",
+        checkOutTime: it.checkOutTime ?? it.CheckOutTime ?? it.defaultCheckOutTime ?? it.DefaultCheckOutTime ?? "",
       } as Homestay;
 
       return normalized;

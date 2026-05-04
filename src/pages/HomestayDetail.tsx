@@ -141,6 +141,8 @@ export default function HomestayDetail() {
                 setAvailablePromotions(list)
             } catch (error) {
                 console.error('Load promotions error', error)
+                // Cho phép hiển thị form ngay cả khi load promotions fail (có thể do chưa login)
+                // User có thể chọn promotion sau khi login
                 if (mounted) setAvailablePromotions([])
             } finally {
                 if (mounted) setPromotionsLoading(false)
@@ -214,7 +216,7 @@ export default function HomestayDetail() {
     }, [id])
 
     const images = homestay?.images ?? []
-    const facilities = homestay?.facilities ?? homestay?.facilityNames ?? homestay?.amenities ?? homestay?.amenityNames ?? []
+    // const facilities = homestay?.facilities ?? homestay?.facilityNames ?? homestay?.amenities ?? homestay?.amenityNames ?? []
 
     const nights = useMemo(() => {
         if (!checkIn || !checkOut) return 0
@@ -796,7 +798,38 @@ export default function HomestayDetail() {
                                     )}
                                 </div>
 
-                                <div className="mt-6">
+                                {/* Thông tin giờ nhận/trả phòng và cọc */}
+                                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {homestay.checkInTime && (
+                                        <div className="flex items-center gap-3 bg-blue-50 rounded-xl px-4 py-3 border border-blue-100">
+                                            <span className="text-2xl">🔑</span>
+                                            <div>
+                                                <p className="text-xs text-blue-600">Giờ nhận phòng</p>
+                                                <p className="font-semibold text-blue-900">( {homestay.checkInTime} )</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {homestay.checkOutTime && (
+                                        <div className="flex items-center gap-3 bg-purple-50 rounded-xl px-4 py-3 border border-purple-100">
+                                            <span className="text-2xl">🚪</span>
+                                            <div>
+                                                <p className="text-xs text-purple-600">Giờ trả phòng</p>
+                                                <p className="font-semibold text-purple-900">( {homestay.checkOutTime} )</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {homestay.depositPercentage && (
+                                        <div className="flex items-center gap-3 bg-orange-50 rounded-xl px-4 py-3 border border-orange-100">
+                                            <span className="text-2xl">💰</span>
+                                            <div>
+                                                <p className="text-xs text-orange-600">Tiền cọc</p>
+                                                <p className="font-semibold text-orange-900">{homestay.depositPercentage}% giá phòng</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* <div className="mt-6">
                                     <h4 className="font-semibold mb-3">Danh sách facility của home</h4>
                                     {facilities.length > 0 ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -810,7 +843,7 @@ export default function HomestayDetail() {
                                     ) : (
                                         <div className="text-sm text-gray-500">Không có thông tin facility</div>
                                     )}
-                                </div>
+                                </div> */}
                             </div>
 
                             {/* Reviews Section */}
@@ -928,6 +961,27 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
+                                {/* Hiển thị giờ nhận/trả phòng */}
+                                {(homestay.checkInTime || homestay.checkOutTime) && (
+                                    <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3">
+                                        <div className="text-xs font-semibold text-blue-900 mb-2">Giờ nhận / trả phòng (mặc định)</div>
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            {homestay.checkInTime && (
+                                                <div>
+                                                    <span className="text-blue-700">Giờ nhận phòng</span>
+                                                    <p className="text-blue-900 font-semibold">( {homestay.checkInTime} )</p>
+                                                </div>
+                                            )}
+                                            {homestay.checkOutTime && (
+                                                <div>
+                                                    <span className="text-blue-700">Giờ trả phòng</span>
+                                                    <p className="text-blue-900 font-semibold">( {homestay.checkOutTime} )</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Step 1: Chọn ngày */}
                                 <div className="mt-5 grid grid-cols-2 gap-3">
                                     {/* Ngày nhận */}
@@ -1008,7 +1062,7 @@ export default function HomestayDetail() {
                                     </div>
                                 </div>
 
-                                {/* Default check-in / check-out times */}
+                                {/* Default check-in / check-out times
                                 {(homestay.checkInTime || homestay.checkOutTime) && (
                                     <div className="mt-3 text-sm text-gray-700 flex items-center gap-3">
                                         <CalendarDays className="w-4 h-4 text-gray-500 flex-shrink-0" />
@@ -1026,7 +1080,7 @@ export default function HomestayDetail() {
                                             )}
                                         </div>
                                     </div>
-                                )}
+                                )} */}
 
                                 {hasDateBlocked && (
                                     <div className="mt-2 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded-lg px-3 py-2">
@@ -1051,6 +1105,22 @@ export default function HomestayDetail() {
                                         {seasonalDelta > 0
                                             ? `Giá theo mùa đang cao hơn giá niêm yết ${formatMoney(seasonalDelta)} cho ${nights} đêm đã chọn.`
                                             : `Giá theo mùa đang thấp hơn giá niêm yết ${formatMoney(Math.abs(seasonalDelta))} cho ${nights} đêm đã chọn.`}
+                                    </div>
+                                )}
+
+                                {/* Thông tin cọc */}
+                                {homestay.depositPercentage && (
+                                    <div className="mt-3 p-3 rounded-lg border border-orange-100 bg-orange-50 text-xs text-orange-900">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="font-medium">Tiền cọc (đặt cọc)</span>
+                                            <span className="font-semibold">{homestay.depositPercentage}%</span>
+                                        </div>
+                                        {nights > 0 && (
+                                            <div className="text-orange-800 font-medium">
+                                                = {formatMoney((computedTotal ?? (homestay.pricePerNight * nights)) * homestay.depositPercentage / 100)}
+                                            </div>
+                                        )}
+                                        <p className="mt-1 text-orange-700 text-xs">Thanh toán sau khi đặt phòng</p>
                                     </div>
                                 )}
 
