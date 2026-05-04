@@ -13,11 +13,17 @@ import {
   X,
   Pencil,
   Tag,
+  Clock,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import { RoleBadge } from '../../components/common/RoleBadge';
 import { experienceService } from '../../services/experienceService';
+import {
+  experienceSchedulesService,
+  type ScheduleParticipant,
+} from '../../services/experienceSchedulesService';
 import { serviceCategoryService } from '../../services/serviceCategoryService';
 import type {
   ExperienceCategory,
@@ -30,6 +36,16 @@ import AdminSidebar from '../../components/admin/AdminSidebar';
 import { homestayService } from '../../services/homestayService';
 import type { Homestay } from '../../types/homestay.types';
 import { employeeService } from '../../services/employeeService';
+
+const DAYS_OF_WEEK = [
+  { value: 0, label: 'Chủ nhật' },
+  { value: 1, label: 'Thứ 2' },
+  { value: 2, label: 'Thứ 3' },
+  { value: 3, label: 'Thứ 4' },
+  { value: 4, label: 'Thứ 5' },
+  { value: 5, label: 'Thứ 6' },
+  { value: 6, label: 'Thứ 7' },
+];
 
 const initialServiceForm: ExperiencePayload = {
   homestayId: '',
@@ -49,7 +65,7 @@ const initialCategoryForm: ServiceCategoryPayload = {
   isActive: true,
 };
 
-type ActiveTab = 'categories' | 'services';
+type ActiveTab = 'categories' | 'services' | 'schedules';
 
 const isValidHttpUrl = (value: string) => {
   if (!value.trim()) return true;
@@ -137,6 +153,21 @@ export default function ExperienceManagement() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExperienceCategory | null>(null);
   const [categoryForm, setCategoryForm] = useState<ServiceCategoryPayload>(initialCategoryForm);
+
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [scheduleFormData, setScheduleFormData] = useState({
+    experienceId: '',
+    startDate: '',
+    endDate: '',
+    daysOfWeek: [] as number[],
+    startTime: '08:00',
+    endTime: '17:00',
+    maxQuantity: 10,
+  });
+  const [creatingSchedules, setCreatingSchedules] = useState(false);
+  const [lookupScheduleId, setLookupScheduleId] = useState('');
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participants, setParticipants] = useState<ScheduleParticipant[]>([]);
 
   const groupedNavItems = isAdmin ? adminNavItemsGrouped : managerNavItemsGrouped;
 
@@ -386,6 +417,30 @@ export default function ExperienceManagement() {
     await loadData();
   };
 
+  const handleLookupParticipants = async () => {
+    const scheduleId = lookupScheduleId.trim();
+    if (!scheduleId) {
+      toast.error('Vui lòng nhập schedule ID');
+      return;
+    }
+
+    setParticipantsLoading(true);
+    try {
+      const list = await experienceSchedulesService.getScheduleParticipants(scheduleId);
+      setParticipants(list);
+      if (list.length === 0) {
+        toast.info('Không có người tham gia hoặc schedule chưa có dữ liệu');
+      } else {
+        toast.success(`Đã tải ${list.length} người tham gia`);
+      }
+    } catch (error) {
+      console.error('Lookup participants error:', error);
+      toast.error('Không thể tải danh sách người tham gia');
+    } finally {
+      setParticipantsLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     authService.logout();
     navigate('/auth/login');
@@ -465,6 +520,12 @@ export default function ExperienceManagement() {
               className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'services' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               Dịch vụ
+            </button>
+            <button
+              onClick={() => setActiveTab('schedules')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'schedules' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+            >
+              Lịch trình
             </button>
           </div>
 
@@ -572,6 +633,247 @@ export default function ExperienceManagement() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'schedules' && (
+            <div className="space-y-4">
+              {!isAdmin && (
+                <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
+                  Lịch trình cho tỉnh quản lý: {managerProvince.name || 'Chưa phân công'}
+                </div>
+              )}
+              
+              {showScheduleForm && (
+                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Tạo Lịch Trình Mới</h3>
+                    <button
+                      onClick={() => setShowScheduleForm(false)}
+                      className="p-1 hover:bg-gray-100 rounded"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!scheduleFormData.experienceId || !scheduleFormData.startDate || !scheduleFormData.endDate || scheduleFormData.daysOfWeek.length === 0) {
+                      toast.error('Vui lòng điền đầy đủ thông tin');
+                      return;
+                    }
+                    setCreatingSchedules(true);
+                    try {
+                      const result = await experienceSchedulesService.bulkCreateSchedules(scheduleFormData);
+                      if (result.success) {
+                        toast.success(result.message);
+                        setShowScheduleForm(false);
+                        setScheduleFormData({
+                          experienceId: '',
+                          startDate: '',
+                          endDate: '',
+                          daysOfWeek: [],
+                          startTime: '08:00',
+                          endTime: '17:00',
+                          maxQuantity: 10,
+                        });
+                      } else {
+                        toast.error(result.message);
+                      }
+                    } catch (error) {
+                      toast.error('Lỗi khi tạo lịch trình');
+                    } finally {
+                      setCreatingSchedules(false);
+                    }
+                  }} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Dịch vụ <span className="text-red-500">*</span></label>
+                      <select
+                        value={scheduleFormData.experienceId}
+                        onChange={(e) => setScheduleFormData(p => ({ ...p, experienceId: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      >
+                        <option value="">-- Chọn dịch vụ --</option>
+                        {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Ngày bắt đầu <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={scheduleFormData.startDate}
+                          onChange={(e) => setScheduleFormData(p => ({ ...p, startDate: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Ngày kết thúc <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={scheduleFormData.endDate}
+                          onChange={(e) => setScheduleFormData(p => ({ ...p, endDate: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Ngày trong tuần <span className="text-red-500">*</span></label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {DAYS_OF_WEEK.map(day => (
+                          <label key={day.value} className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              checked={scheduleFormData.daysOfWeek.includes(day.value)}
+                              onChange={(e) => setScheduleFormData(p => ({
+                                ...p,
+                                daysOfWeek: e.target.checked 
+                                  ? [...p.daysOfWeek, day.value]
+                                  : p.daysOfWeek.filter(d => d !== day.value)
+                              }))}
+                              className="w-4 h-4 rounded"
+                            />
+                            <span className="text-sm text-gray-700">{day.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Giờ bắt đầu <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="time"
+                          value={scheduleFormData.startTime}
+                          onChange={(e) => setScheduleFormData(p => ({ ...p, startTime: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Giờ kết thúc <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="time"
+                          value={scheduleFormData.endTime}
+                          onChange={(e) => setScheduleFormData(p => ({ ...p, endTime: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        Số lượng tối đa <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={scheduleFormData.maxQuantity}
+                        onChange={(e) => setScheduleFormData(p => ({ ...p, maxQuantity: parseInt(e.target.value) || 1 }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      />
+                    </div>
+
+                    <div className="flex gap-3 justify-end pt-4 border-t">
+                      <button type="button" onClick={() => setShowScheduleForm(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                        Hủy
+                      </button>
+                      <button type="submit" disabled={creatingSchedules} className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50">
+                        {creatingSchedules ? 'Đang tạo...' : 'Tạo Lịch Trình'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {!showScheduleForm && (
+                <div className="space-y-4">
+                  <button
+                    onClick={() => setShowScheduleForm(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Tạo Lịch Trình Mới
+                  </button>
+
+                  <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-3">Tra cứu lịch trình theo Schedule ID</h4>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Dùng API participants để xem danh sách người tham gia của một lịch trình.
+                    </p>
+
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <input
+                        value={lookupScheduleId}
+                        onChange={(e) => setLookupScheduleId(e.target.value)}
+                        placeholder="Nhập schedule ID (GUID)"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleLookupParticipants}
+                        disabled={participantsLoading}
+                        className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-50"
+                      >
+                        {participantsLoading ? 'Đang tải...' : 'Xem người tham gia'}
+                      </button>
+                    </div>
+
+                    <div className="mt-4">
+                      {participantsLoading ? (
+                        <div className="text-sm text-gray-500">Đang tải danh sách...</div>
+                      ) : participants.length === 0 ? (
+                        <div className="text-sm text-gray-500">Chưa có dữ liệu hiển thị.</div>
+                      ) : (
+                        <div className="overflow-x-auto rounded-lg border border-gray-200">
+                          <table className="w-full min-w-[680px]">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                              <tr>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Tên</th>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">SĐT</th>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Trạng thái</th>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Tham gia lúc</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {participants.map((p) => (
+                                <tr key={p.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-2 text-sm text-gray-900">{p.name || '-'}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-700">{p.email || '-'}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-700">{p.phone || '-'}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-700">{p.status || '-'}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-700">
+                                    {p.joinedAt ? new Date(p.joinedAt).toLocaleString('vi-VN') : '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center py-4 text-gray-500">
+                Tạo lịch trình mới hoặc nhập schedule ID để xem người tham gia
+              </div>
             </div>
           )}
 
