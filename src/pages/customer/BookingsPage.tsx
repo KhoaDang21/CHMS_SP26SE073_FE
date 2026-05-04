@@ -1217,6 +1217,28 @@ export default function BookingsPage() {
                           </div>
                         </div>
 
+                        {/* Giờ nhận / trả phòng */}
+                        {(detailHomestay?.checkInTime || detailHomestay?.checkOutTime || getHomestayById(selected.homestayId)?.checkInTime || getHomestayById(selected.homestayId)?.checkOutTime) && (
+                          <div className="border-t border-blue-200 pt-4 mt-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Calendar className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm font-semibold text-gray-900">Giờ nhận / trả phòng</span>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              {(detailHomestay?.checkInTime || getHomestayById(selected.homestayId)?.checkInTime) && (
+                                <div>
+                                  <span className="text-gray-700">Giờ nhận phòng (mặc định) <span className="font-semibold text-gray-900">{detailHomestay?.checkInTime || getHomestayById(selected.homestayId)?.checkInTime}</span> ( ngày check-in )</span>
+                                </div>
+                              )}
+                              {(detailHomestay?.checkOutTime || getHomestayById(selected.homestayId)?.checkOutTime) && (
+                                <div>
+                                  <span className="text-gray-700">Giờ trả phòng (mặc định) <span className="font-semibold text-gray-900">{detailHomestay?.checkOutTime || getHomestayById(selected.homestayId)?.checkOutTime}</span> ( ngày check-out )</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {selected.contactPhone && (
                           <div className="mt-4 pt-4 border-t border-blue-200">
                             <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
