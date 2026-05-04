@@ -18,13 +18,13 @@ export interface ExperienceSchedule {
 
 export interface BulkScheduleRequest {
   experienceId: string;
-  schedules: Array<{
-    date: string;
-    startTime?: string;
-    endTime?: string;
-    maxParticipants?: number;
-    price?: number;
-  }>;
+  localExperienceId?: string;
+  startDate: string;
+  endDate: string;
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+  maxQuantity: number;
 }
 
 export interface ScheduleParticipant {
@@ -36,6 +36,18 @@ export interface ScheduleParticipant {
   joinedAt?: string;
 }
 
+const normalizeTimeOnly = (value: string): string => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return raw;
+
+  // HTML time input trả về HH:mm, nhưng nhiều API .NET TimeOnly cần HH:mm:ss.
+  if (/^\d{2}:\d{2}$/.test(raw)) {
+    return `${raw}:00`;
+  }
+
+  return raw;
+};
+
 export const experienceSchedulesService = {
   /** POST /api/localexperienceschedule/bulk-create — tạo lịch trình hàng loạt */
   async bulkCreateSchedules(
@@ -46,13 +58,30 @@ export const experienceSchedulesService = {
     data?: ExperienceSchedule[];
   }> {
     try {
-      const response = await apiService.post<any>(
-        apiConfig.endpoints.experienceSchedules.bulkCreate,
-        {
-          experienceId: data.experienceId,
-          schedules: data.schedules,
-        },
-      );
+      const payload = {
+        localExperienceId: data.localExperienceId ?? data.experienceId,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        daysOfWeek: data.daysOfWeek,
+        startTime: normalizeTimeOnly(data.startTime),
+        endTime: normalizeTimeOnly(data.endTime),
+        maxQuantity: data.maxQuantity,
+      };
+
+      let response: any;
+      try {
+        response = await apiService.post<any>(
+          apiConfig.endpoints.experienceSchedules.bulkCreate,
+          payload,
+        );
+      } catch (firstError) {
+        // Fallback cho backend bind model theo tên param "request".
+        response = await apiService.post<any>(
+          apiConfig.endpoints.experienceSchedules.bulkCreate,
+          { request: payload },
+        );
+      }
+
       const items = response?.data ?? response;
       const list = Array.isArray(items) ? items : [];
       return {
@@ -60,12 +89,12 @@ export const experienceSchedulesService = {
         message: response?.message ?? "Tạo lịch trình thành công!",
         data: list.map((item: any) => ({
           id: item.id ?? "",
-          experienceId: item.experienceId ?? data.experienceId,
+          experienceId: item.experienceId ?? item.localExperienceId ?? data.experienceId,
           experience: item.experience ?? "",
           date: item.date ?? "",
           startTime: item.startTime ?? "",
           endTime: item.endTime ?? "",
-          maxParticipants: item.maxParticipants ?? 0,
+          maxParticipants: item.maxParticipants ?? item.maxQuantity ?? 0,
           currentParticipants: item.currentParticipants ?? 0,
           price: item.price ?? 0,
           status: item.status ?? "ACTIVE",
