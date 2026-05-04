@@ -127,6 +127,21 @@ export const staffBookingService = {
     return apiService.post<any>(apiConfig.endpoints.staffBookings.cancel(id));
   },
 
+  async confirmCash(id: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const res = await apiService.post<any>(apiConfig.endpoints.staffBookings.confirmCash(id));
+      return {
+        success: res?.success ?? true,
+        message: res?.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Không thể xác nhận thanh toán tiền mặt',
+      };
+    }
+  },
+
   async checkIn(id: string): Promise<{ success: boolean; message?: string }> {
     try {
       const res = await apiService.post<any>(apiConfig.endpoints.staffBookings.checkIn(id));
