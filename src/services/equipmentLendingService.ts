@@ -70,10 +70,11 @@ const mapBorrow = (item: any): EquipmentBorrow => ({
 const mapBorrowRequest = (item: any): EquipmentBorrowRequest => ({
   id: asString(pick(item, 'id', 'Id')),
   bookingId: asString(pick(item, 'bookingId', 'BookingId')),
-  customerId: asString(pick(item, 'customerId', 'CustomerId')),
-  customerName: asString(
+  customerId: asString(
     pick(
       item,
+      'customerId',
+      'CustomerId',
       'customerName',
       'CustomerName',
       'customerFullName',
@@ -119,7 +120,7 @@ const mapRequestToBorrow = (item: any): EquipmentBorrow => ({
   borrowDate: asString(pick(item, 'requestedAt', 'RequestedAt', 'borrowDate', 'BorrowDate')),
   returnDate: pick(item, 'returnedAt', 'ReturnedAt', 'returnDate', 'ReturnDate'),
   status: normalizeBorrowRequestStatus(asString(pick(item, 'status', 'Status') ?? 'pending')),
-  borrowedBy: asString(pick(item, 'customerName', 'CustomerName', 'customerId', 'CustomerId')),
+  borrowedBy: asString(pick(item, 'customerId', 'CustomerId', 'customerName', 'CustomerName')),
   returnedBy: asString(pick(item, 'returnedByStaffId', 'ReturnedByStaffId')),
   note: pick(item, 'note', 'Note'),
   condition: pick(item, 'condition', 'Condition'),
