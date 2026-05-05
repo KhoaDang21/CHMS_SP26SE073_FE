@@ -39,6 +39,19 @@ export interface ScheduleParticipant {
   joinedAt?: string;
 }
 
+export interface ScheduleStepRequest {
+  stepOrder: number;
+  stepType: string;
+  hiddenGemId?: string;
+  name: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+  checkInRadiusMeters?: number;
+  rewardPoints?: number;
+  isRequired?: boolean;
+}
+
 const normalizeTimeOnly = (value: string): string => {
   const raw = String(value ?? "").trim();
   if (!raw) return raw;
@@ -212,6 +225,31 @@ export const experienceSchedulesService = {
     } catch (error) {
       console.error("Get schedule participants error:", error);
       return [];
+    }
+  },
+
+  /** POST /api/manager/local-experience-schedules/{scheduleId}/steps — thêm chi tiết theo ngày */
+  async createScheduleStep(
+    scheduleId: string,
+    data: ScheduleStepRequest,
+  ): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const response = await apiService.post<any>(
+        apiConfig.endpoints.managerExperienceSchedules.createStep(scheduleId),
+        data,
+      );
+
+      return {
+        success: response?.success ?? true,
+        message: response?.message ?? 'Tạo chi tiết lịch trình thành công',
+        data: response?.data ?? response,
+      };
+    } catch (error) {
+      console.error('Create schedule step error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Lỗi khi tạo chi tiết lịch trình',
+      };
     }
   },
 };
