@@ -139,6 +139,7 @@ const mapBooking = (item: any): Booking => {
         get("check_out_time", "CheckOut_time") ??
         "",
     ),
+
     totalNights: get("totalNights", "TotalNights"),
     guestsCount: Number(get("guestsCount", "GuestsCount") ?? 0),
     pricePerNight: get("pricePerNight", "PricePerNight"),
@@ -153,10 +154,12 @@ const mapBooking = (item: any): Booking => {
     specialRequests: get("specialRequests", "SpecialRequests") ?? undefined,
     contactPhone: get("contactPhone", "ContactPhone") ?? undefined,
     createdAt: get("createdAt", "CreatedAt"),
+
     diningOrders: (() => {
       const orders = get("diningOrders", "DiningOrders");
       return Array.isArray(orders) ? orders : [];
     })(),
+
     bookedExperiences: Array.isArray(
       get("bookedExperiences", "BookedExperiences"),
     )
