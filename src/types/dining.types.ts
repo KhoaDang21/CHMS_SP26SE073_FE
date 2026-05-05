@@ -49,8 +49,22 @@ export interface DiningOrder {
   serveLocation: string;
   status: string;
   price: number;
+  totalAmount: number;
   paymentStatus: string;
   note?: string;
+  itemCount: number;
+  items: DiningOrderItem[];
+}
+
+export interface DiningOrderItem {
+  id: string;
+  comboId: string;
+  comboName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  imageUrl?: string;
+  maxPeople: number;
 }
 
 export interface UpdateDiningComboPayload {

@@ -1,21 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Check, Clock, MapPin, Loader2, UtensilsCrossed, XCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Check, Clock, MapPin, Loader2, UtensilsCrossed } from "lucide-react";
 import toast from "react-hot-toast";
 import MainLayout from "../../layouts/MainLayout";
 import { bookingService, type Booking } from "../../services/bookingService";
 import { publicHomestayService } from "../../services/publicHomestayService";
 import { diningService } from "../../services/diningService";
-import type { AvailableDiningTimeSlot, DiningCombo, DiningOrder, DiningServeLocation } from "../../types/dining.types";
+import type { AvailableDiningTimeSlot, DiningCombo, DiningServeLocation } from "../../types/dining.types";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
 const dateISO = (d: Date) => d.toISOString().slice(0, 10);
 const timeLabel = (startTime: string) => String(startTime || "").slice(0, 5);
-const timeRangeLabel = (start: string, end?: string) => {
-  const s = timeLabel(start);
-  const e = timeLabel(end || "");
-  return e ? `${s} - ${e}` : s;
-};
 
 const toDateOnly = (iso: string) => new Date(`${String(iso).slice(0, 10)}T00:00:00`);
 const addDaysISO = (iso: string, delta: number) => {
@@ -42,32 +37,13 @@ export default function BookingDiningPage() {
   const [slots, setSlots] = useState<AvailableDiningTimeSlot[]>([]);
 
   const [selectedComboId, setSelectedComboId] = useState<string>("");
+  const [quantity, setQuantity] = useState<number>(1);
   const [selectedSlotId, setSelectedSlotId] = useState<string>("");
   const [serveLocation, setServeLocation] = useState<DiningServeLocation>("ROOM");
   const [note, setNote] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
-
-  /** Đơn vừa tạo trong phiên — BE hiện không Include DiningOrders trong GET booking chi tiết khách */
-  const [sessionPlacedOrders, setSessionPlacedOrders] = useState<DiningOrder[]>([]);
-
-  const diningOrdersFromBooking: DiningOrder[] = useMemo(() => {
-    const anyOrders = (booking as any)?.diningOrders ?? (booking as any)?.DiningOrders ?? [];
-    return Array.isArray(anyOrders) ? (anyOrders as DiningOrder[]) : [];
-  }, [booking]);
-
-  const diningOrders: DiningOrder[] = useMemo(() => {
-    const byId = new Map<string, DiningOrder>();
-    for (const o of diningOrdersFromBooking) {
-      const oid = String((o as any)?.id ?? (o as any)?.Id ?? "");
-      if (oid) byId.set(oid, { ...o, id: oid });
-    }
-    for (const o of sessionPlacedOrders) {
-      if (o.id) byId.set(o.id, o);
-    }
-    return Array.from(byId.values());
-  }, [diningOrdersFromBooking, sessionPlacedOrders]);
 
   const dateBounds = useMemo(() => {
     const today = dateISO(new Date());
@@ -142,10 +118,6 @@ export default function BookingDiningPage() {
   };
 
   useEffect(() => {
-    setSessionPlacedOrders([]);
-  }, [bookingId]);
-
-  useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
@@ -194,19 +166,20 @@ export default function BookingDiningPage() {
       const created = await diningService.customerCreateOrder({
         bookingId,
         comboId: selectedComboId,
+        quantity,
         timeSlotId: selectedSlotId,
         orderDate: date,
         serveLocation,
         note: note.trim() || undefined,
       });
+
       if (created?.id) {
-        setSessionPlacedOrders((prev) => {
-          const next = [...prev.filter((x) => x.id !== created.id), created];
-          return next;
-        });
+        toast.success("Đặt món thành công. Tiền sẽ được cộng vào hóa đơn phòng.");
+      } else {
+        toast.error("Không thể đặt món ở khung giờ đã chọn.");
       }
-      toast.success("Đặt món thành công. Tiền sẽ được cộng vào hóa đơn phòng.");
       setNote("");
+      setQuantity(1);
       await load();
       await loadSlots(booking.homestayId, date);
     } catch (e: any) {
@@ -214,19 +187,6 @@ export default function BookingDiningPage() {
       toast.error(e?.message || "Không thể đặt món");
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const cancelOrder = async (orderId: string) => {
-    try {
-      await diningService.customerCancelOrder(orderId);
-      setSessionPlacedOrders((prev) => prev.filter((x) => x.id !== orderId));
-      toast.success("Đã hủy món. Tiền sẽ được trừ trong hóa đơn phòng.");
-      await load();
-      if (booking?.homestayId) await loadSlots(booking.homestayId, date);
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Không thể hủy món");
     }
   };
 
@@ -248,9 +208,9 @@ export default function BookingDiningPage() {
             <p className="mt-3 text-gray-600">Đang tải dữ liệu...</p>
           </div>
         ) : !booking ? null : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6">
             {/* Left: booking + order form */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6">
               <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -262,6 +222,13 @@ export default function BookingDiningPage() {
                       Không cần thanh toán ngay. Tiền sẽ được cộng vào hóa đơn phòng khi checkout.
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/customer/bookings/${bookingId}/dining/orders`)}
+                    className="px-3 py-2 text-sm font-semibold border border-cyan-200 text-cyan-700 rounded-lg hover:bg-cyan-50"
+                  >
+                    Xem danh sách đơn
+                  </button>
                   <div className="text-right text-sm text-gray-500">
                     <div>Booking</div>
                     <div className="font-medium text-gray-800">{booking.id.slice(0, 8)}</div>
@@ -431,6 +398,30 @@ export default function BookingDiningPage() {
                       })}
                     </div>
                   )}
+                  <div className="text-xs text-gray-500 mt-2">
+                    Mỗi lần đặt chiếm 1 suất trong khung giờ, bất kể số lượng combo.
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <div className="text-sm font-semibold text-gray-900 mb-2">Số lượng</div>
+                  <div className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-1">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      className="w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 font-bold text-gray-700"
+                    >
+                      -
+                    </button>
+                    <div className="min-w-10 text-center font-semibold text-gray-900">{quantity}</div>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+                      className="w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 font-bold text-gray-700"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-6">
@@ -449,14 +440,14 @@ export default function BookingDiningPage() {
                     {selectedCombo ? (
                       <>
                         <div className="font-semibold">Tạm tính</div>
-                        <div className="text-xs text-cyan-700 mt-1">{selectedCombo.name} • {timeLabel(selectedSlot?.startTime || "")} • {serveLocation === "BEACH" ? "Bãi biển" : "Phòng"}</div>
+                        <div className="text-xs text-cyan-700 mt-1">{selectedCombo.name} x{quantity} • {timeLabel(selectedSlot?.startTime || "")} • {serveLocation === "BEACH" ? "Bãi biển" : "Phòng"}</div>
                       </>
                     ) : (
                       <div className="font-semibold">Chọn món để xem tạm tính</div>
                     )}
                   </div>
                   <div className="text-cyan-900 font-black text-lg">
-                    {selectedCombo ? `${Number(selectedCombo.price || 0).toLocaleString("vi-VN")}đ` : "—"}
+                    {selectedCombo ? `${Number((selectedCombo.price || 0) * quantity).toLocaleString("vi-VN")}đ` : "—"}
                   </div>
                 </div>
 
@@ -472,94 +463,15 @@ export default function BookingDiningPage() {
               </div>
             </div>
 
-            {/* Right: existing orders */}
-            <div className="space-y-6">
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-                <h2 className="text-lg font-bold text-gray-900">Đơn đã đặt</h2>
-                <p className="text-sm text-gray-500 mt-1">Bạn có thể hủy nếu còn trong thời gian Cutoff.</p>
-
-                <div className="mt-4 space-y-3">
-                  {diningOrders.length === 0 ? (
-                    <div className="text-sm text-gray-500 bg-gray-50 border border-gray-100 rounded-2xl p-5 text-center">
-                      Chưa có đơn món nào trong booking này.
-                    </div>
-                  ) : (
-                    diningOrders
-                      .slice()
-                      .sort((a, b) => String(b.orderDate || "").localeCompare(String(a.orderDate || "")))
-                      .map((o: any) => {
-                        const id = String(o?.id ?? o?.Id ?? "");
-                        const status = String(o?.status ?? o?.Status ?? "").toUpperCase();
-                        const canCancel = status === "PENDING";
-                        return (
-                          <div key={id} className="rounded-2xl border border-gray-200 bg-white p-4">
-                            <div className="flex items-start gap-4">
-                              <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                                <ImageWithFallback
-                                  src={o?.imageUrl ?? o?.ImageUrl ?? ""}
-                                  alt={o?.comboName ?? o?.ComboName ?? "Combo"}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-bold text-gray-900 truncate">{o?.comboName ?? o?.ComboName ?? "Combo"}</div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  {String(o?.orderDate ?? o?.OrderDate ?? "").slice(0, 10)} • {timeRangeLabel(String(o?.startTime ?? o?.StartTime ?? ""), String(o?.endTime ?? o?.EndTime ?? ""))}
-                                </div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  {String(o?.serveLocation ?? o?.ServeLocation ?? "") === "BEACH" ? "Bãi biển" : "Phòng"}
-                                  <span className="text-gray-400"> • </span>
-                                  <span className="font-semibold">{Number(o?.price ?? o?.Price ?? 0).toLocaleString("vi-VN")}đ</span>
-                                </div>
-                                {!!(o?.note ?? o?.Note) && (
-                                  <div className="text-xs text-gray-500 mt-1 line-clamp-2">Ghi chú: {o?.note ?? o?.Note}</div>
-                                )}
-                              </div>
-                              <div className="flex flex-col items-end gap-2">
-                                <span
-                                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${status === "SERVED"
-                                    ? "bg-green-100 text-green-700 border-green-200"
-                                    : status === "PREPARING"
-                                      ? "bg-blue-100 text-blue-700 border-blue-200"
-                                      : status === "CANCELLED"
-                                        ? "bg-gray-100 text-gray-600 border-gray-200"
-                                        : "bg-yellow-100 text-yellow-700 border-yellow-200"
-                                    }`}
-                                >
-                                  {status === "SERVED" ? "Đã phục vụ" : status === "PREPARING" ? "Đang làm" : status === "CANCELLED" ? "Đã hủy" : "Chờ xác nhận"}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => cancelOrder(id)}
-                                  disabled={!canCancel}
-                                  title={!canCancel ? "Chỉ hủy được khi đang chờ xác nhận" : "Hủy đơn và hoàn tiền vào hóa đơn phòng"}
-                                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${canCancel
-                                    ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                                    : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                    }`}
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                  Hủy
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-                <div className="text-sm text-gray-600">
-                  <div className="font-semibold text-gray-900 mb-2">Lưu ý</div>
-                  <ul className="space-y-2">
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0" />
-                      <span>Chỉ hủy được khi đơn đang "Chờ xác nhận" và chưa quá giờ chốt.</span>
-                    </li>
-                  </ul>
-                </div>
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <div className="text-sm text-gray-600">
+                <div className="font-semibold text-gray-900 mb-2">Lưu ý</div>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1 w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0" />
+                    <span>Danh sách đơn món được quản lý ở trang riêng để dễ theo dõi trạng thái.</span>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>

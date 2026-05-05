@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { notificationService, type Notification } from '../../services/notificationService';
 import { signalRService } from '../../services/signalRService';
@@ -27,6 +28,7 @@ export default function BackofficeNotificationBell({
   iconClassName = 'w-6 h-6 text-gray-600',
   buttonClassName = 'p-2 hover:bg-gray-100 rounded-lg relative',
 }: BackofficeNotificationBellProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -167,6 +169,32 @@ export default function BackofficeNotificationBell({
     }
   };
 
+  const getDateFromNotification = (content?: string) => {
+    const text = String(content || '');
+    const m = text.match(/(\d{2})\/(\d{2})/);
+    if (!m) return '';
+    const day = Number(m[1]);
+    const month = Number(m[2]);
+    const year = new Date().getFullYear();
+    const d = new Date(year, month - 1, day);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10);
+  };
+
+  const handleNotificationClick = (notif: Notification) => {
+    if (!notif?.isRead) {
+      void handleMarkAsRead(notif.id);
+    }
+    const role = authService.getUser()?.role;
+    const text = `${notif.title ?? ''} ${notif.content ?? ''}`.toLowerCase();
+    const isDining = text.includes('dining') || text.includes('đơn');
+    if (role === 'staff' && isDining) {
+      const date = getDateFromNotification(notif.content);
+      navigate(date ? `/staff/dining/orders?date=${date}` : '/staff/dining/orders');
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className="relative" ref={containerRef}>
       <button onClick={handleOpen} className={buttonClassName} type="button">
@@ -206,11 +234,7 @@ export default function BackofficeNotificationBell({
               notifications.slice(0, 10).map((notif) => (
                 <div
                   key={notif.id}
-                  onClick={() => {
-                    if (!notif.isRead) {
-                      void handleMarkAsRead(notif.id);
-                    }
-                  }}
+                  onClick={() => handleNotificationClick(notif)}
                   className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors group ${
                     !notif.isRead ? 'bg-blue-50/50' : ''
                   }`}
