@@ -151,6 +151,7 @@ export const apiConfig = {
       checkOut: (id: string) => `/api/staff/bookings/${id}/check-out`,
       extend: (id: string) => `/api/staff/bookings/${id}/extend`,
       confirmCash: (id: string) => `/api/staff/bookings/${id}/confirm-cash`,
+      confirmFinalPayment: (id: string) => `/api/staff/bookings/${id}/confirm-final-payment`,
       // Legacy alias: BE uses check-in endpoint for cash-payment confirmation flow.
       confirmPayment: (id: string) => `/api/staff/bookings/${id}/check-in`,
     },

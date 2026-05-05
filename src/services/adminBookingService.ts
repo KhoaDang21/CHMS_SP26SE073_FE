@@ -100,7 +100,12 @@ const toBooking = (item: any): Booking => {
       item?.homestayName || item?.name || item?.propertyName || "Homestay",
     ),
     homestayImage:
-      item?.homestayImage || item?.imageUrl || item?.homestay?.imageUrls?.[0],
+      item?.homestayImage || 
+      item?.imageUrl || 
+      item?.homestay?.imageUrls?.[0] ||
+      item?.homestay?.images?.[0] ||
+      (Array.isArray(item?.homestayImages) ? item.homestayImages[0] : undefined) ||
+      (Array.isArray(item?.homestayImageUrls) ? item.homestayImageUrls[0] : undefined),
     customerId: item?.customerId ? String(item.customerId) : undefined,
     customerName: String(item?.customerName || item?.guestName || "Khách hàng"),
     customerEmail: String(
@@ -312,8 +317,37 @@ export const adminBookingService = {
       const res = await this.detail(id);
       const payload = res?.data ?? res?.result ?? res;
       if (!payload) return null;
-      return toBooking(payload);
-    } catch {
+      
+      const booking = toBooking(payload);
+      
+      // Always try to enrich homestay image for better reliability
+      if (booking.homestayId) {
+        try {
+          // Check cache first
+          const cachedImage = homestayImageCache.get(String(booking.homestayId));
+          if (cachedImage && !booking.homestayImage) {
+            return { ...booking, homestayImage: cachedImage };
+          }
+          
+          // If no image or want to refresh, fetch from homestay service
+          if (!booking.homestayImage) {
+            // Try to get single homestay first (more efficient)
+            const homestay = await homestayService.getAdminHomestayById(String(booking.homestayId));
+            const image = resolveHomestayImage(homestay);
+            
+            if (image) {
+              homestayImageCache.set(String(booking.homestayId), image);
+              return { ...booking, homestayImage: image };
+            }
+          }
+        } catch (error) {
+          console.error('Failed to enrich homestay image:', error);
+        }
+      }
+      
+      return booking;
+    } catch (error) {
+      console.error('Failed to get booking by id:', error);
       return null;
     }
   },

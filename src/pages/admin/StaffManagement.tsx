@@ -1103,100 +1103,120 @@ export default function StaffManagement({ mode = 'admin' }: StaffManagementProps
       )}
 
       {isAssignModalOpen && assigningStaff && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-gray-900 text-xl mb-1">Phân công khu vực cho nhân viên</h3>
-            <p className="text-sm text-gray-600 mb-5">
-              Nhân viên: <span className="font-semibold">{assigningStaff.name}</span>
-            </p>
-
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {assigningStaff.role === 'staff' ? 'Chọn tỉnh để lọc homestay' : 'Tỉnh phụ trách'}
-                </label>
-                <select
-                  value={selectedProvinceId}
-                  onChange={(e) => {
-                    const nextProvinceId = e.target.value;
-                    setSelectedProvinceId(nextProvinceId);
-                    const selectedProvince = provinceOptions.find((p) => p.id === nextProvinceId);
-                    const provinceName = normalizeText(selectedProvince?.name);
-
-                    setSelectedHomestayIds((prev) =>
-                      prev.filter((id) => {
-                        const found = homestayOptions.find((h) => h.id === id);
-                        return found ? normalizeText(found.provinceName) === provinceName : false;
-                      }),
-                    );
-                  }}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={assignmentLoading || assigningSubmitting}
-                >
-                  <option value="">Chọn tỉnh</option>
-                  {provinceOptions.map((province) => (
-                    <option key={province.id} value={province.id}>
-                      {province.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {assigningStaff.role === 'staff' && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">Homestay phụ trách (chọn nhiều)</label>
-                  <span className="text-xs text-gray-500">Đã chọn: {selectedHomestayIds.length}</span>
-                </div>
-
-                {!selectedProvinceId ? (
-                  <div className="px-4 py-6 rounded-lg border border-dashed border-gray-300 text-sm text-gray-500 text-center">
-                    Vui lòng chọn tỉnh trước khi chọn homestay.
-                  </div>
-                ) : homestaysByProvince.length === 0 ? (
-                  <div className="px-4 py-6 rounded-lg border border-dashed border-gray-300 text-sm text-gray-500 text-center">
-                    Không có homestay nào thuộc tỉnh đã chọn.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-72 overflow-y-auto border border-gray-200 rounded-lg p-3">
-                    {homestaysByProvince.map((homestay) => {
-                      const isSelected = selectedHomestayIds.includes(homestay.id);
-                      return (
-                        <button
-                          type="button"
-                          key={homestay.id}
-                          onClick={() => handleToggleHomestay(homestay.id)}
-                          className={`flex items-center justify-between text-left px-3 py-2 rounded-lg border transition-colors ${
-                            isSelected
-                              ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                              : 'border-gray-200 hover:bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          <span className="text-sm font-medium">{homestay.name}</span>
-                          {isSelected && <Check className="w-4 h-4" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-              )}
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setIsAssignModalOpen(false);
+            setAssigningStaff(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 rounded-t-2xl">
+              <h3 className="font-bold text-white text-xl mb-1">Phân công khu vực cho nhân viên</h3>
+              <p className="text-sm text-emerald-50">
+                Nhân viên: <span className="font-semibold text-white">{assigningStaff.name}</span>
+              </p>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {assigningStaff.role === 'staff' ? 'Chọn tỉnh để lọc homestay' : 'Tỉnh phụ trách'}
+                  </label>
+                  <select
+                    value={selectedProvinceId}
+                    onChange={(e) => {
+                      const nextProvinceId = e.target.value;
+                      setSelectedProvinceId(nextProvinceId);
+                      const selectedProvince = provinceOptions.find((p) => p.id === nextProvinceId);
+                      const provinceName = normalizeText(selectedProvince?.name);
+
+                      setSelectedHomestayIds((prev) =>
+                        prev.filter((id) => {
+                          const found = homestayOptions.find((h) => h.id === id);
+                          return found ? normalizeText(found.provinceName) === provinceName : false;
+                        }),
+                      );
+                    }}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    disabled={assignmentLoading || assigningSubmitting}
+                  >
+                    <option value="">Chọn tỉnh</option>
+                    {provinceOptions.map((province) => (
+                      <option key={province.id} value={province.id}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {assigningStaff.role === 'staff' && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-semibold text-gray-700">Homestay phụ trách (chọn nhiều)</label>
+                    <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                      Đã chọn: {selectedHomestayIds.length}
+                    </span>
+                  </div>
+
+                  {!selectedProvinceId ? (
+                    <div className="px-4 py-8 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500 text-center">
+                      <div className="text-gray-400 mb-2">📍</div>
+                      Vui lòng chọn tỉnh trước khi chọn homestay.
+                    </div>
+                  ) : homestaysByProvince.length === 0 ? (
+                    <div className="px-4 py-8 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500 text-center">
+                      <div className="text-gray-400 mb-2">🏠</div>
+                      Không có homestay nào thuộc tỉnh đã chọn.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto border-2 border-gray-100 rounded-xl p-4 bg-gray-50">
+                      {homestaysByProvince.map((homestay) => {
+                        const isSelected = selectedHomestayIds.includes(homestay.id);
+                        return (
+                          <button
+                            type="button"
+                            key={homestay.id}
+                            onClick={() => handleToggleHomestay(homestay.id)}
+                            className={`flex items-center justify-between text-left px-4 py-3 rounded-lg border-2 transition-all ${
+                              isSelected
+                                ? 'border-emerald-400 bg-emerald-50 text-emerald-700 shadow-sm'
+                                : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 text-gray-700'
+                            }`}
+                          >
+                            <span className="text-sm font-medium">{homestay.name}</span>
+                            {isSelected && <Check className="w-5 h-5 text-emerald-600" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-100 px-6 py-4 bg-gray-50 rounded-b-2xl flex gap-3">
               <button
                 onClick={() => {
                   setIsAssignModalOpen(false);
                   setAssigningStaff(null);
                 }}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-5 py-3 border-2 border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-white hover:border-gray-400 transition-all disabled:opacity-50"
                 disabled={assigningSubmitting}
               >
                 Hủy
               </button>
               <button
                 onClick={() => void handleSaveAssignment()}
-                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                className="flex-1 px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-medium rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all disabled:opacity-60 shadow-lg shadow-emerald-200"
                 disabled={assignmentLoading || assigningSubmitting}
               >
                 {assigningSubmitting

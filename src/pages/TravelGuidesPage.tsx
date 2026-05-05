@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, ImagePlus, Loader2, Menu, MessageSquare, PlusCircle, Sparkles, X } from 'lucide-react';
+import { BookOpen, Building2, ImagePlus, Loader2, LogOut, Menu, MessageSquare, PlusCircle, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 import MainLayout from '../layouts/MainLayout';
 import { authService } from '../services/authService';
@@ -10,6 +10,8 @@ import type { Homestay } from '../types/homestay.types';
 import { adminNavItemsGrouped, managerNavItemsGrouped } from '../config/adminNavItemsGrouped';
 import { staffNavItemsGrouped } from '../config/staffNavItems';
 import StaffSidebar from '../components/staff/StaffSidebar';
+import AdminSidebar from '../components/admin/AdminSidebar';
+import { RoleBadge } from '../components/common/RoleBadge';
 
 const vndDate = new Intl.DateTimeFormat('vi-VN', {
   dateStyle: 'medium',
@@ -618,17 +620,60 @@ export default function TravelGuidesPage() {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
-        <StaffSidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          currentPath="/travel-guides"
-          userName={currentUser?.name}
-          userRole={currentUser?.role || (role === 'manager' ? 'manager' : 'admin')}
-          onLogout={handleLogout}
-          groupedItems={backofficeGroupedNavItems}
-          title={`CHMS ${role === 'manager' ? 'Manager' : 'Admin'}`}
-          subtitle="Management System"
-        />
+        <aside
+          className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } bg-white shadow-lg w-64 lg:translate-x-0`}
+        >
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-8 h-8 text-blue-600" />
+              <div>
+                <h1 className="font-bold text-gray-900">
+                  {role === 'admin' ? 'CHMS Admin' : 'CHMS Manager'}
+                </h1>
+                <p className="text-xs text-gray-500">
+                  {role === 'admin' ? 'Management System' : 'Quản lý vận hành'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-gray-500 hover:text-gray-700"
+              type="button"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+            <AdminSidebar groupedItems={backofficeGroupedNavItems} />
+          </nav>
+
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold">
+                {currentUser?.name?.charAt(0)?.toUpperCase() ?? 'U'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 truncate">
+                  {currentUser?.name ?? 'User'}
+                </p>
+                <div className="mt-1">
+                  {currentUser?.role && <RoleBadge role={currentUser.role} size="sm" />}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Đăng xuất</span>
+            </button>
+          </div>
+        </aside>
 
         <div className={`transition-all ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
           <header className="bg-white shadow-sm sticky top-0 z-30">
