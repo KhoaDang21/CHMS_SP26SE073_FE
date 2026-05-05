@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Ticket,
   UtensilsCrossed,
+  MapPin,
 } from 'lucide-react';
 
 export interface StaffNavItem {
@@ -48,6 +49,7 @@ export const staffNavItemsGrouped: StaffNavSection[] = [
       { id: 'equipment', label: 'Đồ dùng', icon: Package, path: '/staff/equipment' },
       { id: 'facilities', label: 'Bảo trì', icon: Home, path: '/staff/facilities' },
       { id: 'bicycles', label: 'Mini-game xe đạp', icon: Bike, path: '/staff/bicycles' },
+      { id: 'local-experience', label: 'Lịch dẫn tour', icon: MapPin, path: '/staff/local-experience' },
       { id: 'travel-guides', label: 'Cẩm nang du lịch', icon: BookOpen, path: '/travel-guides' },
     ],
   },
