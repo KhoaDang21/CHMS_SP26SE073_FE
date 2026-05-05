@@ -40,6 +40,7 @@ import MyReviewsPage from '../pages/customer/MyReviewsPage';
 import NotificationsPage from '../pages/customer/NotificationsPage';
 import BookingExperiencesPage from '../pages/customer/BookingExperiencesPage';
 import BookingDiningPage from '../pages/customer/BookingDiningPage';
+import BookingDiningOrdersPage from '../pages/customer/BookingDiningOrdersPage';
 import CustomerEquipmentPage from '../pages/customer/CustomerEquipmentPage';
 import LocalExperiencesPage from '../pages/customer/LocalExperiencesPage';
 import TravelGuidesPage from '../pages/TravelGuidesPage';
@@ -172,6 +173,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <BookingDiningPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/bookings/:bookingId/dining/orders"
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <BookingDiningOrdersPage />
           </ProtectedRoute>
         }
       />
