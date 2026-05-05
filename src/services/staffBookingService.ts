@@ -195,6 +195,28 @@ export const staffBookingService = {
     }
   },
 
+  async confirmFinalPayment(
+    id: string,
+    paymentMethod: 'CASH' | 'BANK_TRANSFER' = 'CASH',
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      const endpoint = `${apiConfig.endpoints.staffBookings.confirmFinalPayment(id)}?paymentMethod=${paymentMethod}`;
+      const res = await apiService.post<any>(endpoint);
+      return {
+        success: res?.success ?? true,
+        message: res?.message || 'Xác nhận thanh toán hoàn tất thành công',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Không thể xác nhận thanh toán hoàn tất',
+      };
+    }
+  },
+
   async getAllBookings(params?: Record<string, any>): Promise<Booking[]> {
     const raw = await this.list<any>(params);
     return raw

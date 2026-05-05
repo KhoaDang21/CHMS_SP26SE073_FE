@@ -65,8 +65,8 @@ export default function StaffSidebar({
 
         <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
           {sections.map((section) => (
-            <div key={section.section} className="space-y-1">
-              <h3 className="px-4 text-xs font-bold text-cyan-200 uppercase tracking-wider">
+            <div key={section.section} className="space-y-1.5">
+              <h3 className="px-4 py-2 text-xs font-bold text-cyan-200 uppercase tracking-wider">
                 {section.section}
               </h3>
               {section.items.map((item) => {
@@ -78,12 +78,12 @@ export default function StaffSidebar({
                     key={item.id}
                     onClick={() => navigate(item.path)}
                     type="button"
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      active ? 'bg-white/20 text-white font-medium' : 'text-cyan-100 hover:bg-white/10'
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all min-h-[44px] ${
+                      active ? 'bg-white/20 text-white font-medium shadow-sm' : 'text-cyan-100 hover:bg-white/10'
                     }`}
                   >
                     <Icon className="w-5 h-5 flex-shrink-0" />
-                    <span>{item.label}</span>
+                    <span className="text-sm text-left leading-tight">{item.label}</span>
                   </button>
                 );
               })}
