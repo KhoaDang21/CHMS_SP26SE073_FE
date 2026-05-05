@@ -381,6 +381,8 @@ export const apiConfig = {
     managerExperienceSchedules: {
       createStep: (scheduleId: string) =>
         `/api/manager/local-experience-schedules/${scheduleId}/steps`,
+      createHiddenGemStep: (scheduleId: string) =>
+        `/api/manager/local-experience-schedules/${scheduleId}/steps/hidden-gem`,
     },
     managerHiddenGems: {
       list: "/api/manager/hidden-gems",

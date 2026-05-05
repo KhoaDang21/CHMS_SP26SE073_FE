@@ -129,9 +129,9 @@ const computeDistanceKm = (
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
@@ -243,36 +243,67 @@ const RoutePolylinePreview = ({
   }
 
   return (
-    <div className="mt-2 h-48 overflow-hidden rounded-lg border border-slate-200">
-      <MapContainer center={points[0]} zoom={13} className="h-full w-full">
-        <TileLayer attribution={tileAttribution} url={tileUrl} />
-        <RouteMapAutoFit
-          points={points.map((point) => ({
-            latitude: point[0],
-            longitude: point[1],
-          }))}
-          trigger={points.length}
-        />
-        {points.length > 1 && (
-          <Polyline
-            positions={points}
-            pathOptions={{ color: "#0891b2", weight: 4 }}
+    <>
+      <div className="mt-2 h-48 overflow-hidden rounded-lg border border-slate-200">
+        <MapContainer center={points[0]} zoom={13} className="h-full w-full">
+          <TileLayer attribution={tileAttribution} url={tileUrl} />
+          <RouteMapAutoFit
+            points={points.map((point) => ({
+              latitude: point[0],
+              longitude: point[1],
+            }))}
+            trigger={points.length}
           />
-        )}
-        {points.map((point, index) => (
-          <CircleMarker
-            key={`${point[0]}-${point[1]}-${index}`}
-            center={point}
-            radius={4}
-            pathOptions={{
-              color: "#1d4ed8",
-              fillColor: "#2563eb",
-              fillOpacity: 0.9,
-            }}
-          />
-        ))}
-      </MapContainer>
-    </div>
+          {points.length > 1 && (
+            <Polyline
+              positions={points}
+              pathOptions={{ color: "#0891b2", weight: 4 }}
+            />
+          )}
+          {points.map((point, index) => {
+            const isStart = index === 0;
+            const isEnd = index === points.length - 1;
+            // Điểm bắt đầu: xanh lá | Điểm kết thúc: xanh dương | Điểm dừng giữa: vàng
+            const color = isStart
+              ? "#16a34a"
+              : isEnd
+                ? "#2563eb"
+                : "#ca8a04";
+            const fillColor = isStart
+              ? "#22c55e"
+              : isEnd
+                ? "#3b82f6"
+                : "#eab308";
+            return (
+              <CircleMarker
+                key={`${point[0]}-${point[1]}-${index}`}
+                center={point}
+                radius={isStart || isEnd ? 6 : 5}
+                pathOptions={{
+                  color,
+                  fillColor,
+                  fillOpacity: 0.9,
+                }}
+              />
+            );
+          })}
+        </MapContainer>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-600">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full bg-green-500" />
+          Điểm bắt đầu
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full bg-yellow-400" />
+          Điểm dừng
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full bg-blue-500" />
+          Điểm kết thúc
+        </span>
+      </div>
+    </>
   );
 };
 
@@ -952,11 +983,10 @@ export default function ManagerBicycleGamificationPage() {
                     key={tab.key}
                     type="button"
                     onClick={() => setActiveTab(tab.key)}
-                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                      active
-                        ? "border-cyan-300 bg-cyan-50 text-cyan-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700"
-                    }`}
+                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${active
+                      ? "border-cyan-300 bg-cyan-50 text-cyan-700"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700"
+                      }`}
                   >
                     <p className="flex items-center gap-2 text-sm font-semibold">
                       <Icon className="h-4 w-4" />
@@ -1677,11 +1707,10 @@ export default function ManagerBicycleGamificationPage() {
                                 return next;
                               });
                             }}
-                            className={`rounded-lg px-3 py-2 text-xs font-semibold ${
-                              enableHiddenGems
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-gray-100 text-gray-700"
-                            }`}
+                            className={`rounded-lg px-3 py-2 text-xs font-semibold ${enableHiddenGems
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-100 text-gray-700"
+                              }`}
                           >
                             {enableHiddenGems ? "Đang bật" : "Bật hidden gems"}
                           </button>
