@@ -52,6 +52,49 @@ export interface ScheduleStepRequest {
   isRequired?: boolean;
 }
 
+export interface HiddenGemStepRequest {
+  localRouteId?: string;
+  name: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  rewardPoints?: number;
+  createStep?: boolean;
+  stepOrder?: number;
+  checkInRadiusMeters?: number;
+  isRequired?: boolean;
+}
+
+export interface ScheduleHiddenGem {
+  stepId: string;
+  stepOrder: number;
+  hiddenGemId: string;
+  localRouteId?: string;
+  localRouteName?: string;
+  name: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  checkInRadiusMeters?: number;
+  rewardPoints?: number;
+  isRequired?: boolean;
+}
+
+const mapScheduleHiddenGem = (item: any): ScheduleHiddenGem => ({
+  stepId: item?.stepId ?? item?.id ?? '',
+  stepOrder: item?.stepOrder ?? 0,
+  hiddenGemId: item?.hiddenGemId ?? '',
+  localRouteId: item?.localRouteId ?? undefined,
+  localRouteName: item?.localRouteName ?? undefined,
+  name: item?.name ?? '',
+  description: item?.description ?? undefined,
+  latitude: item?.latitude ?? 0,
+  longitude: item?.longitude ?? 0,
+  checkInRadiusMeters: item?.checkInRadiusMeters ?? undefined,
+  rewardPoints: item?.rewardPoints ?? undefined,
+  isRequired: item?.isRequired ?? true,
+});
+
 const normalizeTimeOnly = (value: string): string => {
   const raw = String(value ?? "").trim();
   if (!raw) return raw;
@@ -249,6 +292,68 @@ export const experienceSchedulesService = {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Lỗi khi tạo chi tiết lịch trình',
+      };
+    }
+  },
+
+  /** POST /api/manager/local-experience-schedules/{scheduleId}/steps/hidden-gem
+   *  Tạo hidden gem mới và tạo luôn HIDDEN_GEM step trong một lần gọi */
+  async createHiddenGemStep(
+    scheduleId: string,
+    data: HiddenGemStepRequest,
+  ): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const response = await apiService.post<any>(
+        apiConfig.endpoints.managerExperienceSchedules.createHiddenGemStep(scheduleId),
+        data,
+      );
+
+      return {
+        success: response?.success ?? true,
+        message: response?.message ?? 'Tạo hidden gem step thành công',
+        data: response?.data ?? response,
+      };
+    } catch (error) {
+      console.error('Create hidden gem step error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Lỗi khi tạo hidden gem step',
+      };
+    }
+  },
+
+  /** GET /api/manager/local-experience-schedules/{scheduleId}/hidden-gems
+   *  Lấy danh sách hidden gems (điểm check-in) đã gắn vào schedule */
+  async getHiddenGemsBySchedule(scheduleId: string): Promise<{
+    success: boolean;
+    scheduleId: string;
+    total: number;
+    hiddenGems: ScheduleHiddenGem[];
+    message?: string;
+  }> {
+    try {
+      const response = await apiService.get<any>(
+        apiConfig.endpoints.managerHiddenGems.bySchedule(scheduleId),
+      );
+      const raw = response as any;
+      const inner = raw?.data ?? raw;
+      const gems = inner?.hiddenGems ?? inner?.data ?? unwrapArrayResponse(inner);
+
+      return {
+        success: raw?.success ?? true,
+        scheduleId: inner?.scheduleId ?? scheduleId,
+        total: inner?.total ?? (Array.isArray(gems) ? gems.length : 0),
+        hiddenGems: Array.isArray(gems) ? gems.map(mapScheduleHiddenGem) : [],
+        message: raw?.message,
+      };
+    } catch (error) {
+      console.error('Get hidden gems by schedule error:', error);
+      return {
+        success: false,
+        scheduleId,
+        total: 0,
+        hiddenGems: [],
+        message: error instanceof Error ? error.message : 'Lỗi khi tải điểm đến',
       };
     }
   },
