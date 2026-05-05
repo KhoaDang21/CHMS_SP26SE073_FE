@@ -56,6 +56,7 @@ import CancellationPoliciesPage from '../pages/admin/CancellationPoliciesPage';
 import AdminRefundsPage from '../pages/admin/AdminRefundsPage';
 import StaffDiningOrdersPage from '../pages/staff/StaffDiningOrdersPage';
 import StaffEquipmentPage from '../pages/staff/StaffEquipmentPage';
+import StaffLocalExperiencePage from '../pages/staff/StaffLocalExperiencePage';
 
 const ROLE_HOME_PATHS: Record<'customer' | 'manager' | 'staff' | 'admin', string> = {
   customer: '/customer/dashboard',
@@ -392,6 +393,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['staff']}>
             <StaffDiningOrdersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/local-experience"
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <StaffLocalExperiencePage />
           </ProtectedRoute>
         }
       />

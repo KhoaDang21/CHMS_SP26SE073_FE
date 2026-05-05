@@ -485,5 +485,10 @@ export const apiConfig = {
         consume: (id: string) => `/api/staff/facilities/${id}/consume`,
       },
     },
+    staffLocalExperience: {
+      assigned: '/api/staff/local-experience-schedules/assigned',
+      start: (scheduleId: string) => `/api/staff/local-experience-schedules/${scheduleId}/start`,
+      complete: (scheduleId: string) => `/api/staff/local-experience-schedules/${scheduleId}/complete`,
+    },
   },
 };
