@@ -278,7 +278,7 @@ export default function StaffDiningOrdersPage() {
                     <div className="font-bold text-gray-900 flex items-center gap-2">
                       <Clock className="w-5 h-5 text-cyan-700" />
                       {timeLabel(startTime)}
-                      <span className="text-sm text-gray-500 font-medium">({list.length} món)</span>
+                      <span className="text-sm text-gray-500 font-medium">({list.length} đơn)</span>
                       {newSlotKey === startTime && (
                         <span className="px-2 py-1 rounded-full text-[11px] font-bold bg-cyan-100 text-cyan-800 border border-cyan-200">
                           Đơn mới
