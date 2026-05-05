@@ -9,6 +9,7 @@ import type { Homestay } from '../types/homestay.types'
 import { bookingService } from '../services/bookingService'
 import { authService } from '../services/authService'
 import { promotionService } from '../services/promotionService'
+import { experienceSchedulesService, type ExperienceSchedule } from '../services/experienceSchedulesService'
 import PaymentModal from './customer/PaymentModal'
 import toast from 'react-hot-toast'
 import { apiService } from '../services/apiService'
@@ -23,6 +24,14 @@ import { getActiveSeasonalPricing, getSeasonalPricingForStay } from '../utils/ho
 import { DayPicker } from 'react-day-picker'
 import { format, startOfDay, addDays } from 'date-fns'
 import 'react-day-picker/src/style.css'
+
+const formatDateVi = (value?: string) => {
+    const raw = String(value ?? '').slice(0, 10)
+    if (!raw) return '—'
+    const [year, month, day] = raw.split('-')
+    if (!year || !month || !day) return raw
+    return `${day}/${month}/${year}`
+}
 
 export default function HomestayDetail() {
     const { id } = useParams()
@@ -46,6 +55,9 @@ export default function HomestayDetail() {
     const [experiences, setExperiences] = useState<LocalExperience[]>([])
     const [experiencesLoading, setExperiencesLoading] = useState(false)
     const [selectedExperienceQty, setSelectedExperienceQty] = useState<Record<string, number>>({})
+    const [experienceSchedules, setExperienceSchedules] = useState<Record<string, ExperienceSchedule[]>>({})
+    const [selectedExperienceScheduleIds, setSelectedExperienceScheduleIds] = useState<Record<string, string>>({})
+    const [experienceSchedulesLoading, setExperienceSchedulesLoading] = useState(false)
     const [previewExperience, setPreviewExperience] = useState<LocalExperience | null>(null)
     const [isCalculating, setIsCalculating] = useState(false)
     const [calcResult, setCalcResult] = useState<number | null>(null)
@@ -462,12 +474,129 @@ export default function HomestayDetail() {
         return experiences.filter((item) => String(item.homestayId || '').trim() === String(homestay.id).trim())
     }, [experiences, homestay?.id])
 
+    useEffect(() => {
+        let mounted = true
+
+        const loadExperienceSchedules = async () => {
+            if (!checkIn || !checkOut || availableExperiences.length === 0) {
+                setExperienceSchedules({})
+                setSelectedExperienceScheduleIds({})
+                return
+            }
+
+            setExperienceSchedulesLoading(true)
+            try {
+                const checkInDate = String(checkIn).slice(0, 10)
+                const checkOutDate = String(checkOut).slice(0, 10)
+
+                const results = await Promise.all(
+                    availableExperiences.map(async (experience) => {
+                        try {
+                            const list = await experienceSchedulesService.getSchedulesByExperienceId(experience.id)
+                            const filtered = list.filter((schedule) => {
+                                const scheduleDate = String(schedule.date ?? schedule.availableDate ?? schedule.serviceDate ?? '').slice(0, 10)
+                                return Boolean(scheduleDate) && scheduleDate >= checkInDate && scheduleDate <= checkOutDate
+                            })
+                            return [experience.id, filtered] as const
+                        } catch {
+                            return [experience.id, [] as ExperienceSchedule[]] as const
+                        }
+                    }),
+                )
+
+                if (!mounted) return
+
+                const nextMap: Record<string, ExperienceSchedule[]> = {}
+                results.forEach(([experienceId, schedules]) => {
+                    nextMap[experienceId] = schedules
+                })
+
+                setExperienceSchedules(nextMap)
+                setSelectedExperienceScheduleIds((prev) => {
+                    const next: Record<string, string> = {}
+                    Object.entries(prev).forEach(([experienceId, scheduleId]) => {
+                        if (nextMap[experienceId]?.some((schedule) => schedule.id === scheduleId)) {
+                            next[experienceId] = scheduleId
+                        }
+                    })
+                    return next
+                })
+            } finally {
+                if (mounted) setExperienceSchedulesLoading(false)
+            }
+        }
+
+        loadExperienceSchedules()
+
+        return () => {
+            mounted = false
+        }
+    }, [checkIn, checkOut, availableExperiences])
+
+    const handleViewSchedules = async (experienceId: string) => {
+        if (!checkIn || !checkOut) {
+            toast('Vui lòng chọn ngày nhận và trả phòng trước')
+            return
+        }
+
+        setExperienceSchedulesLoading(true)
+        try {
+            const parsed = await experienceSchedulesService.getSchedulesByExperienceId(experienceId)
+            const checkInDate = String(checkIn).slice(0, 10)
+            const checkOutDate = String(checkOut).slice(0, 10)
+            const filtered = parsed.filter((schedule) => {
+                const scheduleDate = String(schedule.date ?? schedule.availableDate ?? schedule.serviceDate ?? '').slice(0, 10)
+                return Boolean(scheduleDate) && scheduleDate >= checkInDate && scheduleDate <= checkOutDate
+            })
+            setExperienceSchedules((prev) => ({ ...prev, [experienceId]: filtered }))
+        } catch (err) {
+            console.error('View schedules error', err)
+            toast.error('Không thể tải lịch trình')
+        } finally {
+            setExperienceSchedulesLoading(false)
+        }
+    }
+
     const selectedExperienceItems = useMemo(
         () => availableExperiences
             .filter((item) => (selectedExperienceQty[item.id] ?? 0) > 0)
             .map((item) => ({ item, qty: selectedExperienceQty[item.id] ?? 0 })),
         [availableExperiences, selectedExperienceQty],
     )
+
+    useEffect(() => {
+        setSelectedExperienceScheduleIds((prev) => {
+            let changed = false
+            const next = { ...prev }
+
+            Object.entries(selectedExperienceQty).forEach(([experienceId, qty]) => {
+                const scheduleList = experienceSchedules[experienceId] ?? []
+
+                if (qty <= 0 || scheduleList.length === 0) {
+                    if (next[experienceId]) {
+                        delete next[experienceId]
+                        changed = true
+                    }
+                    return
+                }
+
+                if (!next[experienceId]) {
+                    const firstAvailable = scheduleList.find((schedule) => {
+                        const remainingSlots = typeof schedule.remainingSlots === 'number'
+                            ? schedule.remainingSlots
+                            : typeof schedule.currentParticipants === 'number' && typeof schedule.maxParticipants === 'number'
+                                ? Math.max(schedule.maxParticipants - schedule.currentParticipants, 0)
+                                : 1
+                        return remainingSlots > 0
+                    }) ?? scheduleList[0]
+                    next[experienceId] = firstAvailable.id
+                    changed = true
+                }
+            })
+
+            return changed ? next : prev
+        })
+    }, [experienceSchedules, selectedExperienceQty])
 
     const selectedExperiencesEstimate = useMemo(
         () => selectedExperienceItems.reduce((sum, entry) => sum + ((entry.item.price ?? 0) * entry.qty), 0),
@@ -532,12 +661,21 @@ export default function HomestayDetail() {
             }
         }
 
+        const missingScheduleExperience = selectedExperienceItems.find(
+            (entry) => !selectedExperienceScheduleIds[entry.item.id],
+        )
+        if (missingScheduleExperience) {
+            toast.error(`Vui lòng chọn lịch trình cho dịch vụ: ${missingScheduleExperience.item.name}`)
+            return
+        }
+
         setIsBooking(true)
         try {
             // Build experiences payload for separate API (not embedded in specialRequests)
             const experiencesPayload = selectedExperienceItems.map((entry) => ({
                 experienceId: entry.item.id,
                 quantity: entry.qty,
+                localExperienceScheduleId: selectedExperienceScheduleIds[entry.item.id],
             }))
 
             const payload = {
@@ -1187,10 +1325,18 @@ export default function HomestayDetail() {
                                                                         type="checkbox"
                                                                         checked={checked}
                                                                         onChange={(e) => {
+                                                                            const isChecked = e.target.checked
                                                                             setSelectedExperienceQty((prev) => ({
                                                                                 ...prev,
-                                                                                [item.id]: e.target.checked ? Math.max(1, prev[item.id] ?? 1) : 0,
+                                                                                [item.id]: isChecked ? Math.max(1, prev[item.id] ?? 1) : 0,
                                                                             }))
+                                                                            if (!isChecked) {
+                                                                                setSelectedExperienceScheduleIds((prev) => {
+                                                                                    const next = { ...prev }
+                                                                                    delete next[item.id]
+                                                                                    return next
+                                                                                })
+                                                                            }
                                                                         }}
                                                                         className="mt-1 flex-shrink-0"
                                                                     />
@@ -1215,11 +1361,26 @@ export default function HomestayDetail() {
                                                                     </button>
                                                                     <button
                                                                         type="button"
+                                                                        onClick={() => handleViewSchedules(item.id)}
+                                                                        className="p-1 rounded text-cyan-500 hover:bg-cyan-50 transition-colors"
+                                                                        title="Xem lịch trình"
+                                                                    >
+                                                                        <CalendarDays className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
                                                                         onClick={() => {
                                                                             setSelectedExperienceQty((prev) => ({
                                                                                 ...prev,
                                                                                 [item.id]: Math.max(0, (prev[item.id] ?? 0) - 1),
                                                                             }))
+                                                                            if ((selectedExperienceQty[item.id] ?? 0) <= 1) {
+                                                                                setSelectedExperienceScheduleIds((prev) => {
+                                                                                    const next = { ...prev }
+                                                                                    delete next[item.id]
+                                                                                    return next
+                                                                                })
+                                                                            }
                                                                         }}
                                                                         className="w-7 h-7 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
                                                                     >
@@ -1239,8 +1400,70 @@ export default function HomestayDetail() {
                                                                         +
                                                                     </button>
                                                                 </div>
-                                                            </div>
                                                         </div>
+                                                        {selectedExperienceQty[item.id] > 0 && (
+                                                            <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/60 p-3">
+                                                                <div className="flex items-center justify-between gap-2 mb-2">
+                                                                    <div className="text-xs font-semibold text-cyan-900">
+                                                                        Lịch trình phù hợp với ngày booking
+                                                                    </div>
+                                                                    {experienceSchedulesLoading && (
+                                                                        <div className="text-[11px] text-cyan-700">Đang tải...</div>
+                                                                    )}
+                                                                </div>
+                                                                {!checkIn || !checkOut ? (
+                                                                    <div className="text-xs text-gray-600">
+                                                                        Vui lòng chọn ngày nhận và trả phòng trước để xem lịch trình.
+                                                                    </div>
+                                                                ) : (experienceSchedules[item.id]?.length ?? 0) === 0 ? (
+                                                                    <div className="text-xs text-gray-600">
+                                                                        Hiện chưa có lịch trình nào trong khoảng ngày bạn đã chọn.
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="space-y-2">
+                                                                        {experienceSchedules[item.id].map((schedule) => {
+                                                                            const remainingSlots = typeof schedule.currentParticipants === 'number' && typeof schedule.maxParticipants === 'number'
+                                                                                ? Math.max(schedule.maxParticipants - schedule.currentParticipants, 0)
+                                                                                : typeof schedule.remainingSlots === 'number'
+                                                                                    ? schedule.remainingSlots
+                                                                                    : schedule.maxParticipants ?? 0
+                                                                            const scheduleDateRaw = schedule.date ?? schedule.availableDate ?? schedule.serviceDate
+                                                                            const isSelected = selectedExperienceScheduleIds[item.id] === schedule.id
+
+                                                                            return (
+                                                                                <label
+                                                                                    key={schedule.id}
+                                                                                    className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${isSelected ? 'border-cyan-300 bg-white' : 'border-cyan-100 bg-white/80 hover:bg-white'}`}
+                                                                                >
+                                                                                    <input
+                                                                                        type="radio"
+                                                                                        name={`schedule-${item.id}`}
+                                                                                        checked={isSelected}
+                                                                                        onChange={() => setSelectedExperienceScheduleIds((prev) => ({ ...prev, [item.id]: schedule.id }))}
+                                                                                        className="mt-1"
+                                                                                    />
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <div className="text-sm font-medium text-gray-900">
+                                                                                            {formatDateVi(scheduleDateRaw)}
+                                                                                        </div>
+                                                                                        <div className="text-xs text-gray-600 mt-1">
+                                                                                            {schedule.startTime ?? '—'} - {schedule.endTime ?? '—'}
+                                                                                            {typeof schedule.price === 'number' && schedule.price > 0 ? ` • ${schedule.price.toLocaleString('vi-VN')}đ` : ''}
+                                                                                        </div>
+                                                                                        <div className="text-[11px] text-gray-500 mt-1">
+                                                                                            Còn {remainingSlots} chỗ
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </label>
+                                                                            )
+                                                                        })}
+
+                                                                        {null}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     )
                                                 })}
                                             </div>

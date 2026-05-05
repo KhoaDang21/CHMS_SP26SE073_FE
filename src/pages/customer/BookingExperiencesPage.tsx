@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import MainLayout from '../../layouts/MainLayout';
 import { bookingService, type Booking } from '../../services/bookingService';
 import { experienceService } from '../../services/experienceService';
+import { experienceSchedulesService } from '../../services/experienceSchedulesService';
 import type { LocalExperience } from '../../types/experience.types';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
@@ -40,6 +41,8 @@ export default function BookingExperiencesPage() {
   const [experiences, setExperiences] = useState<LocalExperience[]>([]);
   
   const [qtyMap, setQtyMap] = useState<Record<string, number>>({});
+  const [originalBookedQtyMap, setOriginalBookedQtyMap] = useState<Record<string, number>>({});
+  const [originalBookedScheduleMap, setOriginalBookedScheduleMap] = useState<Record<string, { scheduleId: string; serviceDate?: string; startTime?: string; endTime?: string }>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -106,45 +109,118 @@ export default function BookingExperiencesPage() {
           toast('Homestay này hiện chưa có dịch vụ thêm phù hợp.');
         }
 
-        // Initialize qty map as empty — experiences are now managed via separate API
-        setQtyMap({});
+        // Prefill qty map and booked schedule info from booking.bookedExperiences
+        const initialQty: Record<string, number> = {};
+        const originalMap: Record<string, number> = {};
+        const bookedScheduleMap: Record<string, { scheduleId: string; serviceDate?: string; startTime?: string; endTime?: string }> = {};
+        const booked = (resolvedBooking.bookedExperiences ?? []) as any[];
+        if (Array.isArray(booked) && booked.length > 0) {
+          booked.forEach((be) => {
+            const matched = filteredByHomestay.find((exp) => {
+              if (be?.experienceId && String(exp.id).toLowerCase() === String(be.experienceId).toLowerCase()) return true;
+              if (be?.experienceName && String(exp.name).toLowerCase() === String(be.experienceName).toLowerCase()) return true;
+              return false;
+            });
+            if (matched) {
+              const qty = Number(be.quantity ?? 0) || 0;
+              if (qty > 0) {
+                initialQty[matched.id] = qty;
+                originalMap[matched.id] = qty;
+              }
+              const scheduleId = be?.localExperienceScheduleId ?? be?.localExperienceSchedule ?? be?.localScheduleId ?? be?.scheduleId;
+              if (scheduleId) {
+                bookedScheduleMap[matched.id] = {
+                  scheduleId: String(scheduleId),
+                  serviceDate: be?.serviceDate ?? be?.service_date ?? be?.date,
+                  startTime: be?.startTime ?? be?.start_time,
+                  endTime: be?.endTime ?? be?.end_time,
+                };
+              }
+            }
+          });
+        }
+        setQtyMap(initialQty);
+        setOriginalBookedQtyMap(originalMap);
+        setOriginalBookedScheduleMap(bookedScheduleMap);
         setError(null);
-        // preload available schedules for this booking (if any)
+        // preload available schedules for this booking + schedules by experienceId
         try {
           setSchedulesLoading(true);
-          const av = await bookingService.getAvailableExperienceSchedules(bookingId);
-          const rawItems = av?.data ?? av ?? [];
-          const items = Array.isArray(rawItems) ? rawItems : [];
           const checkInDate = toDateOnly(resolvedBooking.checkIn);
           const checkOutDate = toDateOnly(resolvedBooking.checkOut);
 
-          const normalizedSchedules: AvailableExperienceSchedule[] = items
-            .map((s: any) => ({
-              id: String(s?.id ?? s?.scheduleId ?? ''),
-              localExperienceId: s?.localExperienceId ?? s?.experienceId,
-              experienceId: s?.experienceId,
-              experienceName: s?.experienceName ?? s?.name,
-              imageUrl: s?.imageUrl,
-              availableDate: s?.availableDate ?? s?.date,
-              date: s?.date,
-              startTime: s?.startTime ?? s?.start_time,
-              endTime: s?.endTime ?? s?.end_time,
-              price: Number(s?.price ?? 0),
-              remainingSlots: s?.remainingSlots,
-              availableQuantity: s?.availableQuantity,
-            }))
-            .filter((s) => Boolean(s.id));
+          const normalizeSchedule = (s: any): AvailableExperienceSchedule => ({
+            id: String(s?.id ?? s?.scheduleId ?? ''),
+            localExperienceId: s?.localExperienceId ?? s?.experienceId,
+            experienceId: s?.experienceId ?? s?.localExperienceId,
+            experienceName: s?.experienceName ?? s?.name,
+            imageUrl: s?.imageUrl,
+            availableDate: s?.availableDate ?? s?.date,
+            date: s?.date,
+            startTime: s?.startTime ?? s?.start_time,
+            endTime: s?.endTime ?? s?.end_time,
+            price: Number(s?.price ?? 0),
+            remainingSlots: s?.remainingSlots ?? s?.maxParticipants,
+            availableQuantity: s?.availableQuantity,
+          });
 
-          // Extra client-side safety filter by booking date range.
-          const filteredByBookingDate = normalizedSchedules.filter((s) => {
+          const fromBookingApiPromise = bookingService
+            .getAvailableExperienceSchedules(bookingId)
+            .then((av) => {
+              const rawItems = av?.data ?? av ?? [];
+              const items = Array.isArray(rawItems) ? rawItems : [];
+              return items.map(normalizeSchedule).filter((s) => Boolean(s.id));
+            })
+            .catch((err) => {
+              console.debug('No available schedules from booking endpoint', err);
+              return [] as AvailableExperienceSchedule[];
+            });
+
+          const fromExperienceApiPromise = Promise.all(
+            filteredByHomestay.map(async (exp) => {
+              try {
+                const list = await experienceSchedulesService.getSchedulesByExperienceId(exp.id);
+                return list
+                  .map((s) => normalizeSchedule({
+                    ...s,
+                    experienceId: s.experienceId || exp.id,
+                    localExperienceId: s.experienceId || exp.id,
+                    experienceName: s.experience || exp.name,
+                    availableDate: s.date,
+                    remainingSlots: s.currentParticipants !== undefined && s.maxParticipants !== undefined
+                      ? Math.max((s.maxParticipants ?? 0) - (s.currentParticipants ?? 0), 0)
+                      : s.maxParticipants,
+                  }))
+                  .filter((s) => Boolean(s.id));
+              } catch {
+                return [] as AvailableExperienceSchedule[];
+              }
+            }),
+          ).then((groups) => groups.flat());
+
+          const [fromBookingApi, fromExperienceApi] = await Promise.all([
+            fromBookingApiPromise,
+            fromExperienceApiPromise,
+          ]);
+
+          const mergedMap = new Map<string, AvailableExperienceSchedule>();
+          [...fromBookingApi, ...fromExperienceApi].forEach((s) => {
+            if (!s.id) return;
+            if (!mergedMap.has(s.id)) mergedMap.set(s.id, s);
+          });
+
+          const mergedSchedules = Array.from(mergedMap.values());
+          // Filter strictly: only show schedules within booking date range
+          const filteredByBookingDate = mergedSchedules.filter((s) => {
             const d = toDateOnly(s.availableDate ?? s.date);
-            if (!d || !checkInDate || !checkOutDate) return true;
+            // Must have a valid date AND fall within booking dates
+            if (!d || !checkInDate || !checkOutDate) return false;
             return d >= checkInDate && d <= checkOutDate;
           });
 
           setAllAvailableSchedules(filteredByBookingDate);
         } catch (err) {
-          console.debug('No available schedules or failed to load', err);
+          console.debug('Failed to load schedules', err);
           setAllAvailableSchedules([]);
         } finally {
           setSchedulesLoading(false);
@@ -311,6 +387,12 @@ export default function BookingExperiencesPage() {
                             {item.description && (
                               <div className="text-sm text-gray-600 mt-2 leading-6">{item.description}</div>
                             )}
+                            {originalBookedQtyMap[item.id] ? (
+                              <div className="text-xs text-green-700 mt-2">Đã đặt: {originalBookedQtyMap[item.id]}</div>
+                            ) : null}
+                            {originalBookedScheduleMap[item.id] ? (
+                              <div className="text-xs text-cyan-700 mt-1">Đã chọn lịch: {originalBookedScheduleMap[item.id]?.serviceDate ? new Date(originalBookedScheduleMap[item.id]!.serviceDate as string).toLocaleDateString('vi-VN') : ''} {originalBookedScheduleMap[item.id]?.startTime ? `• ${originalBookedScheduleMap[item.id]!.startTime}` : ''}</div>
+                            ) : null}
                             <div className="mt-3">
                               <button
                                 type="button"
@@ -338,38 +420,57 @@ export default function BookingExperiencesPage() {
                                 ) : getSchedulesForExperience(item).length === 0 ? (
                                   <div className="text-sm text-gray-500">Hiện chưa có lịch trình trong khoảng ngày của booking.</div>
                                 ) : (
-                                  getSchedulesForExperience(item).map((sch) => (
-                                    <div key={sch.id} className="rounded-md border bg-white p-3 flex items-center justify-between gap-3">
-                                      <div>
-                                        <div className="font-medium text-sm">{(sch.availableDate ?? sch.date) ? new Date(sch.availableDate ?? sch.date ?? '').toLocaleDateString('vi-VN') : '-'}</div>
-                                        <div className="text-xs text-gray-600 flex items-center gap-2 mt-1">
-                                          <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {sch.startTime ?? '-'} - {sch.endTime ?? '-'}</span>
-                                          {sch.price ? <span>• {Number(sch.price).toLocaleString('vi-VN')}đ</span> : null}
+                                  getSchedulesForExperience(item).map((sch) => {
+                                    const bookedInfo = originalBookedScheduleMap[item.id];
+                                    const isBooked = (() => {
+                                      if (!bookedInfo) return false;
+                                      const bookedId = String(bookedInfo.scheduleId ?? '').trim();
+                                      const candidates = [sch.id, sch.localExperienceId, sch.experienceId].map((v) => String(v ?? '').trim());
+                                      if (bookedId && candidates.includes(bookedId)) return true;
+                                      // fallback: match by date + startTime
+                                      const bookedDate = String(bookedInfo.serviceDate ?? '').slice(0, 10);
+                                      const schDate = String(sch.availableDate ?? sch.date ?? '').slice(0, 10);
+                                      const bookedStart = String(bookedInfo.startTime ?? '').slice(0, 8);
+                                      const schStart = String(sch.startTime ?? '').slice(0, 8);
+                                      return bookedDate && schDate && bookedDate === schDate && bookedStart && schStart && bookedStart === schStart;
+                                    })();
+                                    return (
+                                      <div key={sch.id} className={`rounded-md border ${isBooked ? 'border-green-300 bg-green-50' : 'bg-white'} p-3 flex items-center justify-between gap-3`}>
+                                        <div>
+                                          <div className="font-medium text-sm">{(sch.availableDate ?? sch.date) ? new Date(sch.availableDate ?? sch.date ?? '').toLocaleDateString('vi-VN') : '-'}</div>
+                                          <div className="text-xs text-gray-600 flex items-center gap-2 mt-1">
+                                            <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {sch.startTime ?? '-'} - {sch.endTime ?? '-'}</span>
+                                            {sch.price ? <span>• {Number(sch.price).toLocaleString('vi-VN')}đ</span> : null}
+                                          </div>
+                                          <div className="text-xs text-gray-500 mt-1">Còn: {sch.remainingSlots ?? sch.availableQuantity ?? '-'}</div>
                                         </div>
-                                        <div className="text-xs text-gray-500 mt-1">Còn: {sch.remainingSlots ?? sch.availableQuantity ?? '-'}</div>
+                                        {isBooked ? (
+                                          <div className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm">Đã chọn</div>
+                                        ) : (
+                                          <button
+                                            onClick={async () => {
+                                              try {
+                                                const qtyForExperience = Math.max(1, qtyMap[item.id] ?? 1);
+                                                await bookingService.addExperienceToBooking(bookingId!, {
+                                                  localExperienceScheduleId: sch.id,
+                                                  quantity: qtyForExperience,
+                                                });
+                                                toast.success('Đã thêm lịch trình vào booking');
+                                                setExpandedScheduleExperienceId(null);
+                                                navigate('/customer/bookings');
+                                              } catch (err) {
+                                                console.error('Add schedule to booking error', err);
+                                                toast.error('Không thể thêm lịch trình.');
+                                              }
+                                            }}
+                                            className="px-3 py-1.5 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 text-sm"
+                                          >
+                                            Chọn
+                                          </button>
+                                        )}
                                       </div>
-                                      <button
-                                        onClick={async () => {
-                                          try {
-                                            const qtyForExperience = Math.max(1, qtyMap[item.id] ?? 1);
-                                            await bookingService.addExperienceToBooking(bookingId!, {
-                                              localExperienceScheduleId: sch.id,
-                                              quantity: qtyForExperience,
-                                            });
-                                            toast.success('Đã thêm lịch trình vào booking');
-                                            setExpandedScheduleExperienceId(null);
-                                            navigate('/customer/bookings');
-                                          } catch (err) {
-                                            console.error('Add schedule to booking error', err);
-                                            toast.error('Không thể thêm lịch trình.');
-                                          }
-                                        }}
-                                        className="px-3 py-1.5 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 text-sm"
-                                      >
-                                        Chọn
-                                      </button>
-                                    </div>
-                                  ))
+                                    )
+                                  })
                                 )}
                               </div>
                             )}
