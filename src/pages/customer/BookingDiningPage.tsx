@@ -6,7 +6,7 @@ import MainLayout from "../../layouts/MainLayout";
 import { bookingService, type Booking } from "../../services/bookingService";
 import { publicHomestayService } from "../../services/publicHomestayService";
 import { diningService } from "../../services/diningService";
-import type { AvailableDiningTimeSlot, DiningCombo, DiningServeLocation } from "../../types/dining.types";
+import type { AvailableDiningTimeSlot, DiningCombo, DiningOrder, DiningServeLocation } from "../../types/dining.types";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
 const dateISO = (d: Date) => d.toISOString().slice(0, 10);
