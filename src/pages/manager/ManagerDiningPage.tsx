@@ -403,28 +403,31 @@ export default function ManagerDiningPage() {
                     <p className="text-sm text-gray-500">Bật/tắt hiển thị món bằng switch. Nhấn bút chì để sửa.</p>
                   </div>
                   {/* Create form */}
-                  <div className="rounded-xl border border-gray-200 p-4 bg-gray-50 mb-5">
-                    <div className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><Plus className="w-4 h-4" />Tạo món mới</div>
+                  <div className="rounded-xl border border-gray-200 p-4 bg-gradient-to-br from-gray-50 to-white mb-5">
+                    <div className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-blue-600" />
+                      <span>Tạo món mới</span>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Tên món <span className="text-red-500">*</span></label>
-                        <input value={comboName} onChange={(e) => setComboName(e.target.value)} placeholder="VD: Cơm gà xối mỡ" className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white" />
+                        <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Tên món <span className="text-red-500">*</span></label>
+                        <input value={comboName} onChange={(e) => setComboName(e.target.value)} placeholder="VD: Cơm gà xối mỡ" className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Giá (VNĐ) <span className="text-red-500">*</span></label>
-                        <input value={comboPrice} onChange={(e) => setComboPrice(Number(e.target.value))} type="number" min={0} placeholder="VD: 150000" className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white" />
+                        <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Giá (VNĐ) <span className="text-red-500">*</span></label>
+                        <input value={comboPrice} onChange={(e) => setComboPrice(Number(e.target.value))} type="number" min={0} placeholder="VD: 150000" className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Tối đa (người) <span className="text-red-500">*</span></label>
-                        <input value={comboMaxPeople} onChange={(e) => setComboMaxPeople(Number(e.target.value))} type="number" min={1} className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white" />
+                        <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Tối đa (người) <span className="text-red-500">*</span></label>
+                        <input value={comboMaxPeople} onChange={(e) => setComboMaxPeople(Number(e.target.value))} type="number" min={1} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Mô tả</label>
-                        <input value={comboDesc} onChange={(e) => setComboDesc(e.target.value)} placeholder="VD: Gà ta, cơm trắng..." className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white" />
+                        <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Mô tả</label>
+                        <input value={comboDesc} onChange={(e) => setComboDesc(e.target.value)} placeholder="VD: Gà ta, cơm trắng..." className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                       </div>
                       <div className="md:col-span-2">
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Ảnh món ăn</label>
-                        <label className="flex items-center gap-3 px-3 py-2 border border-dashed border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50">
+                        <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Ảnh món ăn</label>
+                        <label className="flex items-center gap-3 px-3 py-2.5 border border-dashed border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50 hover:border-blue-400 transition-colors">
                           <ImageIcon className="w-4 h-4 text-gray-500" />
                           <span className="text-sm text-gray-700">{comboImage ? comboImage.name : "Nhấn để chọn ảnh"}</span>
                           <input type="file" accept="image/*" className="hidden" onChange={(e) => setComboImage(e.target.files?.[0] ?? null)} />
@@ -432,42 +435,75 @@ export default function ManagerDiningPage() {
                       </div>
                     </div>
                     <button onClick={createCombo} disabled={creatingCombo} type="button"
-                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold hover:from-blue-700 hover:to-cyan-700 disabled:opacity-60">
-                      <Plus className="w-4 h-4" />{creatingCombo ? "Đang tạo..." : "Tạo món"}
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold hover:from-blue-700 hover:to-cyan-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md transition-all">
+                      {creatingCombo ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Đang tạo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4" />
+                          <span>Tạo món</span>
+                        </>
+                      )}
                     </button>
                   </div>
                   {/* List */}
                   <div className="space-y-3">
-                    {combos.length === 0 ? <div className="text-sm text-gray-500 text-center py-6">Chưa có món nào.</div> : combos.map((c) => (
-                      <div key={c.id} className="rounded-xl border border-gray-200 bg-white p-4 flex items-start gap-4">
-                        <div className="w-20 h-20 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                          {c.imageUrl ? <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><ImageIcon className="w-6 h-6" /></div>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <div className="font-bold text-gray-900 truncate">{c.name}</div>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${c.isActive ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>{c.isActive ? "Đang hiển thị" : "Đã ẩn"}</span>
+                    {combos.length === 0 ? (
+                      <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-xl border border-gray-100">
+                        <UtensilsCrossed className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                        <p>Chưa có món nào.</p>
+                      </div>
+                    ) : combos.map((c) => (
+                      <div key={c.id} className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="w-20 h-20 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
+                            {c.imageUrl ? (
+                              <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                <ImageIcon className="w-6 h-6" />
                               </div>
-                              <div className="text-sm text-gray-600 mt-1 line-clamp-2">{c.description}</div>
-                              <div className="text-sm text-gray-700 mt-2 flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">{Number(c.price || 0).toLocaleString("vi-VN")}đ</span>
-                                <span className="text-gray-400">•</span>
-                                <span>Tối đa {c.maxPeople} người</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <div className="font-bold text-gray-900 truncate">{c.name}</div>
+                                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${c.isActive ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>
+                                    {c.isActive ? "Hiển thị" : "Đã ẩn"}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600 line-clamp-2 mb-2">{c.description}</div>
+                                <div className="text-sm text-gray-700 flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
+                                    {Number(c.price || 0).toLocaleString("vi-VN")}đ
+                                  </span>
+                                  <span className="text-gray-400">•</span>
+                                  <span className="text-gray-600">Tối đa {c.maxPeople} người</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-500 font-medium">Hiển thị</span>
+                                  <Switch checked={c.isActive} onCheckedChange={() => toggleCombo(c.id)} />
+                                </div>
                               </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-500">Hiển thị</span>
-                                <Switch checked={c.isActive} onCheckedChange={() => toggleCombo(c.id)} />
-                              </div>
-                              <button onClick={() => openEditCombo(c)} type="button" className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 underline underline-offset-2"><Pencil className="w-3 h-3" />Sửa</button>
-                              <label className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer underline underline-offset-2">
-                                Đổi ảnh
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button onClick={() => openEditCombo(c)} type="button" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition-colors">
+                                <Pencil className="w-3 h-3" />Sửa
+                              </button>
+                              <label className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 font-semibold text-xs cursor-pointer transition-colors">
+                                <ImageIcon className="w-3 h-3" />Đổi ảnh
                                 <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadComboImage(c.id, f); }} />
                               </label>
-                              <button onClick={() => deleteCombo(c.id)} type="button" className="text-xs text-red-600 hover:text-red-800 underline underline-offset-2">Xóa món</button>
+                              <button onClick={() => deleteCombo(c.id)} type="button" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 font-semibold text-xs transition-colors">
+                                <Trash2 className="w-3 h-3" />Xóa
+                              </button>
                             </div>
                           </div>
                         </div>

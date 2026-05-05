@@ -109,7 +109,13 @@ export default function BookingManagement() {
       const detailedBooking = await adminBookingService.getBookingById(booking.id);
       if (detailedBooking) {
         const extraCharges = await adminBookingService.getExtraCharges(booking.id);
-        setSelectedBooking({ ...detailedBooking, extraCharges });
+        // Fallback to list booking image if detail doesn't have one
+        const finalBooking = {
+          ...detailedBooking,
+          homestayImage: detailedBooking.homestayImage || booking.homestayImage,
+          extraCharges
+        };
+        setSelectedBooking(finalBooking);
       } else {
         setSelectedBooking(booking);
       }
@@ -536,11 +542,12 @@ export default function BookingManagement() {
                   <Home className="w-4 h-4 text-blue-500" /> Thông tin homestay
                 </h3>
                 <div className="flex gap-4">
-                  {selectedBooking.homestayImage ? (
+                  {selectedBooking.homestayImage && (
                     <img src={selectedBooking.homestayImage} alt={selectedBooking.homestayName}
-                      className="w-28 h-24 object-cover rounded-lg flex-shrink-0" />
-                  ) : (
-                    <div className="w-28 h-24 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      className="w-28 h-24 object-cover rounded-lg flex-shrink-0 border border-gray-200" />
+                  )}
+                  {!selectedBooking.homestayImage && (
+                    <div className="w-28 h-24 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-200">
                       <Home className="w-7 h-7 text-gray-300" />
                     </div>
                   )}
