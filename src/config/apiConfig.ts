@@ -373,6 +373,8 @@ export const apiConfig = {
     },
     experienceSchedules: {
       bulkCreate: "/api/localexperienceschedule/bulk-create",
+      byExperience: (experienceId: string) =>
+        `/api/localexperienceschedule/experience/${experienceId}`,
       participants: (scheduleId: string) =>
         `/api/localexperienceschedule/${scheduleId}/participants`,
     },
