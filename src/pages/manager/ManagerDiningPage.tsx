@@ -602,7 +602,7 @@ export default function ManagerDiningPage() {
                             <td className="px-4 py-3 font-medium text-gray-900">{o.comboName}</td>
                             <td className="px-4 py-3 text-gray-600">{String(o.startTime || "").slice(0, 5)}</td>
                             <td className="px-4 py-3 text-gray-600">{o.serveLocation === "BEACH" ? "Bãi biển" : "Phòng"}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-cyan-700">{Number(o.price || 0).toLocaleString("vi-VN")}đ</td>
+                            <td className="px-4 py-3 text-right font-semibold text-cyan-700">{Number(o.totalAmount || o.price || 0).toLocaleString("vi-VN")}đ</td>
                             <td className="px-4 py-3 text-center">
                               <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${STATUS_COLOR[st] ?? STATUS_COLOR.PENDING}`}>{STATUS_LABEL[st] ?? st}</span>
                             </td>

@@ -75,8 +75,20 @@ const mapOrder = (item: any): DiningOrder => ({
   serveLocation: asString(pick(item, "serveLocation", "ServeLocation")),
   status: asString(pick(item, "status", "Status")),
   price: Number(pick(item, "price", "Price") ?? 0),
+  totalAmount: Number(pick(item, "totalAmount", "TotalAmount") ?? 0),
   paymentStatus: asString(pick(item, "paymentStatus", "PaymentStatus")),
   note: pick(item, "note", "Note"),
+  itemCount: Number(pick(item, "itemCount", "ItemCount") ?? 0),
+  items: (Array.isArray(pick(item, "items", "Items")) ? pick(item, "items", "Items") : []).map((x: any) => ({
+    id: asString(pick(x, "id", "Id")),
+    comboId: asString(pick(x, "comboId", "ComboId")),
+    comboName: asString(pick(x, "comboName", "ComboName")),
+    quantity: Number(pick(x, "quantity", "Quantity") ?? 0),
+    unitPrice: Number(pick(x, "unitPrice", "UnitPrice") ?? 0),
+    lineTotal: Number(pick(x, "lineTotal", "LineTotal") ?? 0),
+    imageUrl: pick(x, "imageUrl", "ImageUrl"),
+    maxPeople: Number(pick(x, "maxPeople", "MaxPeople") ?? 0),
+  })),
 });
 
 export const diningService = {
@@ -244,6 +256,7 @@ export const diningService = {
   async customerCreateOrder(payload: {
     bookingId: string;
     comboId: string;
+    quantity?: number;
     timeSlotId: string;
     orderDate: string; // YYYY-MM-DD
     serveLocation: DiningServeLocation;
@@ -254,6 +267,7 @@ export const diningService = {
       {
         bookingId: payload.bookingId,
         comboId: payload.comboId,
+        quantity: payload.quantity ?? 1,
         timeSlotId: payload.timeSlotId,
         orderDate: payload.orderDate,
         serveLocation: payload.serveLocation,
