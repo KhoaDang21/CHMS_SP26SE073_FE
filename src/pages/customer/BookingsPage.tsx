@@ -27,10 +27,28 @@ const cleanLoadingText = (value?: string | null): string | undefined => {
   return value;
 };
 
+// ─── ExtraCharge categorization ───────────────────────────────────────────────
+type ChargeCategory = 'dining' | 'bicycle' | 'damage' | 'other';
+
+const categorizeCharge = (note?: string | null): ChargeCategory => {
+  const d = String(note || '');
+  if (d.startsWith('[DINING_ORDER:')) return 'dining';
+  if (d.startsWith('Phí thuê xe đạp') || d.startsWith('Phạt hư hỏng xe đạp')) return 'bicycle';
+  if (d.startsWith('Chi phí hư hại/bảo trì') || d.startsWith('Phí tiêu thụ')) return 'damage';
+  return 'other';
+};
+
+const CHARGE_CATEGORY_CFG: Record<ChargeCategory, { label: string; icon: string; color: string; bg: string }> = {
+  dining: { label: 'Ăn uống', icon: '🍽', color: '#0891b2', bg: '#e0f2fe' },
+  bicycle: { label: 'Xe đạp', icon: '🚲', color: '#7c3aed', bg: '#ede9fe' },
+  damage: { label: 'Hư hại / Bảo trì', icon: '🔧', color: '#dc2626', bg: '#fee2e2' },
+  other: { label: 'Phí khác', icon: '📋', color: '#d97706', bg: '#fef3c7' },
+};
+
 // Helper to normalize date strings from API (could be ISO, timestamp, or malformed)
 const normalizeDateString = (value: any): string => {
   if (!value) return '';
-  
+
   // If already a valid ISO string, return as-is
   if (typeof value === 'string' && value.length > 0) {
     // Check if it's already in YYYY-MM-DD or ISO format
@@ -44,7 +62,7 @@ const normalizeDateString = (value: any): string => {
     }
     return value;
   }
-  
+
   // If it's a number (timestamp), convert to ISO
   if (typeof value === 'number') {
     const d = new Date(value);
@@ -52,12 +70,12 @@ const normalizeDateString = (value: any): string => {
       return d.toISOString().split('T')[0];
     }
   }
-  
+
   // If it's a Date object
   if (value instanceof Date && !isNaN(value.getTime())) {
     return value.toISOString().split('T')[0];
   }
-  
+
   return '';
 };
 
@@ -111,8 +129,9 @@ export default function BookingsPage() {
   const [showExtraDetailModal, setShowExtraDetailModal] = useState(false);
   const [extraDetailBooking, setExtraDetailBooking] = useState<Booking | null>(null);
   const [extraDetailCharges, setExtraDetailCharges] = useState<ExtraCharge[]>([]);
-  const [extraChargeDetailLoading, setExtraChargeDetailLoading] = useState(false);
-  const totalExtraDetailAmount = extraDetailCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
+  const [extraChargeDetailLoading] = useState(false);
+  const totalExtraDetailAmount = extraDetailCharges
+    .reduce((sum, c) => sum + (c.amount || 0), 0);
 
   const [cancelRefundBooking, setCancelRefundBooking] = useState<Booking | null>(null);
 
@@ -243,7 +262,7 @@ export default function BookingsPage() {
   const openDetail = async (b: Booking) => {
     // Check if this is a group booking - if so, show group detail modal instead
     const groupBookingId = b.groupBookingId?.trim();
-    
+
     if (groupBookingId) {
       // This is a booking from a group - show group detail modal
       setSelected(null);
@@ -313,22 +332,7 @@ export default function BookingsPage() {
     }
   };
 
-  const handleViewExtraDetail = async (booking: Booking) => {
-    setExtraDetailBooking(booking);
-    setShowExtraDetailModal(true);
 
-    try {
-      setExtraChargeDetailLoading(true);
-      const list = await extraChargeService.listByBooking(booking.id);
-      setExtraDetailCharges(list);
-    } catch (error) {
-      console.error('Load extra charges error:', error);
-      toast.error('Không thể tải chi tiết phát sinh');
-      setExtraDetailCharges([]);
-    } finally {
-      setExtraChargeDetailLoading(false);
-    }
-  };
 
   const startEdit = () => {
     if (!selected) return;
@@ -369,34 +373,7 @@ export default function BookingsPage() {
     return extractBookingExperienceData(specialRequests).items.length > 0;
   };
 
-  const selectedFinancials = useMemo(() => {
-    if (!selected) return null;
 
-    const totalPrice = Number(selected.totalPrice || 0);
-    const homestay = detailHomestay || getHomestayById(selected.homestayId) || null;
-    const rawDepositPercentage = Number(homestay?.depositPercentage ?? 0);
-    const depositPercentage = Number.isFinite(rawDepositPercentage) && rawDepositPercentage > 0
-      ? rawDepositPercentage
-      : 20;
-
-    const extraTotal = selectedExtraCharges.reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
-    const rentalTotal = Math.max(totalPrice - extraTotal, 0);
-    const depositAmount = typeof selected.depositAmount === 'number'
-      ? selected.depositAmount
-      : Math.round((rentalTotal * depositPercentage) / 100);
-    const remainingAmount = Number(selected.remainingAmount || 0);
-    const remainingAfterDeposit = Math.max(rentalTotal - depositAmount, 0);
-
-    return {
-      totalPrice,
-      depositPercentage,
-      depositAmount,
-      extraTotal,
-      rentalTotal,
-      remainingAmount,
-      remainingAfterDeposit,
-    };
-  }, [detailHomestay, getHomestayById, selected, selectedExtraCharges]);
 
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
@@ -598,15 +575,15 @@ export default function BookingsPage() {
                               <Calendar className="w-4 h-4" />
                               <span className="text-xs">Check-in</span>
                             </div>
-                              <div className="font-semibold text-gray-900 text-sm">
-                                {new Date(b.checkIn).toLocaleDateString('vi-VN')}
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {new Date(b.checkIn).toLocaleDateString('vi-VN')}
+                            </div>
+                            {b.checkInTime && (
+                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                <span>{b.checkInTime}</span>
                               </div>
-                              {b.checkInTime && (
-                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                  <Clock className="w-3.5 h-3.5 text-gray-400" />
-                                  <span>{b.checkInTime}</span>
-                                </div>
-                              )}
+                            )}
                           </div>
                           <div className="bg-gray-50 rounded-lg p-3">
                             <div className="flex items-center gap-2 text-gray-600 mb-1">
@@ -648,76 +625,76 @@ export default function BookingsPage() {
                             <div />
                           )}
 
-                        <div className="flex items-center gap-2">
-                          {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
+                          <div className="flex items-center gap-2">
+                            {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
+                              <button
+                                onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Thêm dịch vụ
+                              </button>
+                            )}
+                            {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
+                              <button
+                                onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
+                              >
+                                <UtensilsCrossed className="w-4 h-4" />
+                                Đặt món
+                              </button>
+                            )}
+                            {b.status === 'CHECKED_IN' && (
+                              <button
+                                onClick={() => navigate(`/customer/equipment?bookingId=${encodeURIComponent(b.id)}&homestayId=${encodeURIComponent(b.homestayId)}`)}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
+                              >
+                                <Package className="w-4 h-4" />
+                                Mượn đồ dùng
+                              </button>
+                            )}
+                            {(() => {
+                              const existing = myReviewsMap[b.id];
+                              if (existing) {
+                                return (
+                                  <button
+                                    onClick={() => setEditingReview(existing)}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
+                                  >
+                                    <Star className="w-4 h-4 text-yellow-400" />
+                                    Đã đánh giá
+                                  </button>
+                                );
+                              }
+                              if (b.status === 'COMPLETED') {
+                                return (
+                                  <button
+                                    onClick={() => setReviewingBooking({
+                                      id: b.id,
+                                      homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
+                                    })}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
+                                  >
+                                    <Star className="w-4 h-4" />
+                                    Đánh giá
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
                             <button
-                              onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
+                              onClick={() => openDetail(b)}
+                              className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
                             >
-                              <Plus className="w-4 h-4" />
-                              Thêm dịch vụ
+                              Chi tiết
+                              <ChevronRight className="w-4 h-4" />
                             </button>
-                          )}
-                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
-                            <button
-                              onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
-                            >
-                              <UtensilsCrossed className="w-4 h-4" />
-                              Đặt món
-                            </button>
-                          )}
-                          {b.status === 'CHECKED_IN' && (
-                            <button
-                              onClick={() => navigate(`/customer/equipment?bookingId=${encodeURIComponent(b.id)}&homestayId=${encodeURIComponent(b.homestayId)}`)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
-                            >
-                              <Package className="w-4 h-4" />
-                              Mượn đồ dùng
-                            </button>
-                          )}
-                          {(() => {
-                            const existing = myReviewsMap[b.id];
-                            if (existing) {
-                              return (
-                                <button
-                                  onClick={() => setEditingReview(existing)}
-                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
-                                >
-                                  <Star className="w-4 h-4 text-yellow-400" />
-                                  Đã đánh giá
-                                </button>
-                              );
-                            }
-                            if (b.status === 'COMPLETED') {
-                              return (
-                                <button
-                                  onClick={() => setReviewingBooking({
-                                    id: b.id,
-                                    homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
-                                  })}
-                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
-                                >
-                                  <Star className="w-4 h-4" />
-                                  Đánh giá
-                                </button>
-                              );
-                            }
-                            return null;
-                          })()}
-                          <button
-                            onClick={() => openDetail(b)}
-                            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
-                          >
-                            Chi tiết
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
+                );
               })}
             </div>
           )}
@@ -776,7 +753,7 @@ export default function BookingsPage() {
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Check-in</div>
                             <div className="font-semibold text-gray-900">
-                              {groupBookingDetail?.checkIn 
+                              {groupBookingDetail?.checkIn
                                 ? new Date(groupBookingDetail.checkIn).toLocaleDateString('vi-VN')
                                 : selectedGroupBooking?.bookings?.[0]?.checkIn
                                   ? new Date(selectedGroupBooking.bookings[0].checkIn).toLocaleDateString('vi-VN')
@@ -786,7 +763,7 @@ export default function BookingsPage() {
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Check-out</div>
                             <div className="font-semibold text-gray-900">
-                              {groupBookingDetail?.checkOut 
+                              {groupBookingDetail?.checkOut
                                 ? new Date(groupBookingDetail.checkOut).toLocaleDateString('vi-VN')
                                 : selectedGroupBooking?.bookings?.[0]?.checkOut
                                   ? new Date(selectedGroupBooking.bookings[0].checkOut).toLocaleDateString('vi-VN')
@@ -796,7 +773,7 @@ export default function BookingsPage() {
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Tổng khách</div>
                             <div className="font-semibold text-gray-900">
-                              {groupBookingDetail?.totalGuestCount 
+                              {groupBookingDetail?.totalGuestCount
                                 ? groupBookingDetail.totalGuestCount
                                 : selectedGroupBooking?.bookings?.reduce((sum, b) => sum + (b.guestsCount || 0), 0) || 0
                               } người
@@ -808,7 +785,7 @@ export default function BookingsPage() {
                               {(() => {
                                 let checkIn: Date | null = null;
                                 let checkOut: Date | null = null;
-                                
+
                                 if (groupBookingDetail?.checkIn && groupBookingDetail?.checkOut) {
                                   checkIn = new Date(groupBookingDetail.checkIn);
                                   checkOut = new Date(groupBookingDetail.checkOut);
@@ -816,7 +793,7 @@ export default function BookingsPage() {
                                   checkIn = new Date(selectedGroupBooking.bookings[0].checkIn);
                                   checkOut = new Date(selectedGroupBooking.bookings[0].checkOut);
                                 }
-                                
+
                                 if (!checkIn || !checkOut) return '—';
                                 const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
                                 return nights > 0 ? nights : 0;
@@ -904,7 +881,7 @@ export default function BookingsPage() {
                             <div>
                               <div className="font-semibold text-gray-900">Đặt nhóm</div>
                               <div className="text-gray-600 text-xs">
-                                Đã tạo lúc {groupBookingDetail?.createdAt 
+                                Đã tạo lúc {groupBookingDetail?.createdAt
                                   ? new Date(groupBookingDetail.createdAt).toLocaleDateString('vi-VN')
                                   : selectedGroupBooking?.bookings?.[0]?.createdAt
                                     ? new Date(selectedGroupBooking.bookings[0].createdAt).toLocaleDateString('vi-VN')
@@ -984,7 +961,7 @@ export default function BookingsPage() {
                                 }
                               }
                               if (!detail) return;
-                              
+
                               // Try to get dates from bookings if detail doesn't have them
                               let checkInStr = detail.checkIn;
                               let checkOutStr = detail.checkOut;
@@ -992,26 +969,26 @@ export default function BookingsPage() {
                                 checkInStr = selectedGroupBooking.bookings[0].checkIn;
                                 checkOutStr = selectedGroupBooking.bookings[0].checkOut;
                               }
-                              
+
                               // Normalize dates to ISO string format
                               const normalizedCheckIn = normalizeDateString(checkInStr);
                               const normalizedCheckOut = normalizeDateString(checkOutStr);
-                              
+
                               const checkInDate = new Date(normalizedCheckIn);
                               const checkOutDate = new Date(normalizedCheckOut);
-                              
-                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime()) 
+
+                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime())
                                 ? Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
                                 : 0;
                               const totalPrice = detail.totalPrice ?? 0;
                               const pricePerNight = totalNights > 0 ? Math.round(totalPrice / totalNights) : 0;
-                              
+
                               // Get guest count - prioritize API data, fallback to calculating from bookings
                               let guestsCount = detail.totalGuestCount ?? 0;
                               if (!guestsCount && selectedGroupBooking?.bookings) {
                                 guestsCount = selectedGroupBooking.bookings.reduce((sum, b) => sum + (b.guestsCount || 0), 0);
                               }
-                              
+
                               setPayingBooking({
                                 id: detail.id,
                                 groupBookingId: detail.id,
@@ -1055,7 +1032,7 @@ export default function BookingsPage() {
                                 }
                               }
                               if (!detail) return;
-                              
+
                               // Try to get dates from bookings if detail doesn't have them
                               let checkInStr = detail.checkIn;
                               let checkOutStr = detail.checkOut;
@@ -1063,26 +1040,26 @@ export default function BookingsPage() {
                                 checkInStr = selectedGroupBooking.bookings[0].checkIn;
                                 checkOutStr = selectedGroupBooking.bookings[0].checkOut;
                               }
-                              
+
                               // Normalize dates to ISO string format
                               const normalizedCheckIn = normalizeDateString(checkInStr);
                               const normalizedCheckOut = normalizeDateString(checkOutStr);
-                              
+
                               const checkInDate = new Date(normalizedCheckIn);
                               const checkOutDate = new Date(normalizedCheckOut);
-                              
-                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime()) 
+
+                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime())
                                 ? Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
                                 : 0;
                               const totalPrice = detail.totalPrice ?? 0;
                               const pricePerNight = totalNights > 0 ? Math.round(totalPrice / totalNights) : 0;
-                              
+
                               // Get guest count - prioritize API data, fallback to calculating from bookings
                               let guestsCount = detail.totalGuestCount ?? 0;
                               if (!guestsCount && selectedGroupBooking?.bookings) {
                                 guestsCount = selectedGroupBooking.bookings.reduce((sum, b) => sum + (b.guestsCount || 0), 0);
                               }
-                              
+
                               setPayingBooking({
                                 id: detail.id,
                                 groupBookingId: detail.id,
@@ -1261,68 +1238,76 @@ export default function BookingsPage() {
                                 ? rawDepositPercentage
                                 : 20;
 
-                              const extraTotal = selectedExtraCharges.reduce((sum, c) => sum + Number(c.amount || 0), 0);
-                              const rentalTotal = Math.max(totalPrice - extraTotal, 0);
+                              // Tiền phòng gốc (không bao gồm dining) — dùng subTotal từ BE
+                              const roomTotal = Number(selected.subTotal || 0);
+
+                              // Tiền dining — tổng các đơn active
+                              const diningTotal = (selected.diningOrders ?? [])
+                                .filter((o: any) => String(o?.status ?? o?.Status ?? "").toUpperCase() !== "CANCELLED")
+                                .reduce((s: number, o: any) => s + Number(o?.totalAmount ?? o?.TotalAmount ?? o?.price ?? o?.Price ?? 0), 0);
+
+                              // Chi phí phát sinh thực sự (không phải dining)
+                              const extraTotal = selectedExtraCharges
+                                .filter((c) => !c.note?.startsWith("[DINING_ORDER:"))
+                                .reduce((sum, c) => sum + Number(c.amount || 0), 0);
 
                               const depositAmount = typeof selected.depositAmount === 'number'
                                 ? selected.depositAmount
-                                : Math.round((rentalTotal * depositPercentage) / 100);
+                                : Math.round((roomTotal * depositPercentage) / 100);
 
-                              const remainingAfterDeposit = Math.max(rentalTotal - depositAmount, 0);
+                              const remainingAfterDeposit = Math.max(roomTotal - depositAmount, 0);
 
                               return (
                                 <>
-                            <div className="flex items-center justify-between">
-                              <div className="font-semibold text-gray-900">Tổng tiền</div>
-                              <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
-                                {selected.totalPrice.toLocaleString('vi-VN')}đ
-                              </div>
-                            </div>
-                            {selected.totalPrice && (
-                              <div className="mt-3 rounded-xl border border-blue-100 bg-white/70 p-3 space-y-2 text-xs text-gray-500">
-                                <div className="flex justify-between">
-                                  <span>Tổng tiền phòng</span>
-                                  <span className="font-medium text-gray-700">{rentalTotal.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Cọc ({depositPercentage}%)</span>
-                                  <span className="font-medium text-gray-700">{depositAmount.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Còn lại sau cọc{selected.status !== 'CHECKED_IN' ? ' (chưa check-in)' : ''}</span>
-                                  <span className="font-medium text-gray-700">{remainingAfterDeposit.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                                {!!selected.remainingAmount && (
-                              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                                Công thức: Tổng tiền thuê ({rentalTotal.toLocaleString('vi-VN')}đ) - Cọc ({depositAmount.toLocaleString('vi-VN')}đ) = Còn lại sau cọc ({remainingAfterDeposit.toLocaleString('vi-VN')}đ)
-                              </div>
-                            )}
-                                <div className="flex justify-between border-t border-blue-100 pt-2 text-gray-700">
-                                  <span className="font-semibold">Chi phí phát sinh</span>
-                                  <span className="font-semibold">{extraTotal.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                              </div>
-                            )}
-                            {/* {!!selected.remainingAmount && (
-                              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                                Công thức: Tổng tiền thuê ({rentalTotal.toLocaleString('vi-VN')}đ) - Cọc ({depositAmount.toLocaleString('vi-VN')}đ) = Còn lại sau cọc ({remainingAfterDeposit.toLocaleString('vi-VN')}đ)
-                              </div>
-                            )} */}
-                            {selected.paymentStatus === 'UNPAID' && typeof selected.depositAmount === 'number' && (
-                              <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-100">
-                                <span className="text-orange-600 font-medium">Cần cọc ngay</span>
-                                <span className="font-bold text-orange-600">{selected.depositAmount.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                            {selected.paymentStatus === 'DEPOSIT_PAID' && typeof selected.remainingAmount === 'number' && (
-                              <div className="flex items-center justify-between text-sm pt-2 border-t border-blue-100">
-                                <span className="text-blue-600 font-medium">Còn lại cần thanh toán</span>
-                                <span className="font-bold text-blue-600">{selected.remainingAmount.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                            {selected.paymentStatus === 'FULLY_PAID' && (
-                              <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ Đã thanh toán đầy đủ</div>
-                            )}
+                                  <div className="flex items-center justify-between">
+                                    <div className="font-semibold text-gray-900">Tổng tiền</div>
+                                    <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
+                                      {totalPrice.toLocaleString('vi-VN')}đ
+                                    </div>
+                                  </div>
+                                  {selected.totalPrice && (
+                                    <div className="mt-3 rounded-xl border border-blue-100 bg-white/70 p-3 space-y-2 text-xs text-gray-500">
+                                      <div className="flex justify-between">
+                                        <span>Tiền phòng</span>
+                                        <span className="font-medium text-gray-700">{roomTotal.toLocaleString('vi-VN')}đ</span>
+                                      </div>
+                                      {diningTotal > 0 && (
+                                        <div className="flex justify-between">
+                                          <span>🍽 Tiền ăn uống</span>
+                                          <span className="font-medium text-cyan-700">+{diningTotal.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                      )}
+                                      {extraTotal > 0 && (
+                                        <div className="flex justify-between">
+                                          <span>⚠ Phí phát sinh</span>
+                                          <span className="font-medium text-orange-600">+{extraTotal.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                      )}
+                                      <div className="flex justify-between border-t border-blue-100 pt-2">
+                                        <span>Cọc ({depositPercentage}%)</span>
+                                        <span className="font-medium text-gray-700">{depositAmount.toLocaleString('vi-VN')}đ</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Còn lại sau cọc{selected.status !== 'CHECKED_IN' ? ' (chưa check-in)' : ''}</span>
+                                        <span className="font-medium text-gray-700">{remainingAfterDeposit.toLocaleString('vi-VN')}đ</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selected.paymentStatus === 'UNPAID' && typeof selected.depositAmount === 'number' && (
+                                    <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-100">
+                                      <span className="text-orange-600 font-medium">Cần cọc ngay</span>
+                                      <span className="font-bold text-orange-600">{selected.depositAmount.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                  )}
+                                  {selected.paymentStatus === 'DEPOSIT_PAID' && typeof selected.remainingAmount === 'number' && (
+                                    <div className="flex items-center justify-between text-sm pt-2 border-t border-blue-100">
+                                      <span className="text-blue-600 font-medium">Còn lại cần thanh toán</span>
+                                      <span className="font-bold text-blue-600">{selected.remainingAmount.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                  )}
+                                  {selected.paymentStatus === 'FULLY_PAID' && (
+                                    <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ Đã thanh toán đầy đủ</div>
+                                  )}
                                 </>
                               );
                             })()}
@@ -1330,39 +1315,79 @@ export default function BookingsPage() {
                         )}
                       </div>
 
-                      {/* Chi phí phát sinh */}
-                      <div className="rounded-xl border border-orange-100 bg-orange-50/70 p-4 space-y-3">
-                        <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4 text-orange-500" />
-                          Chi phí phát sinh
-                        </div>
-                        {selectedExtraLoading ? (
-                          <div className="text-sm text-gray-500">Đang tải chi phí phát sinh...</div>
-                        ) : selectedExtraCharges.length === 0 ? (
-                          <div className="text-sm text-gray-500 bg-white border border-orange-100 rounded-xl p-4">Không có chi phí phát sinh.</div>
-                        ) : (
-                          <div className="space-y-2">
-                            {selectedExtraCharges.map((charge) => (
-                              <div key={charge.id} className="flex items-start justify-between gap-3 rounded-xl border border-orange-100 bg-white px-4 py-3">
-                                <div>
-                                  <div className="text-sm font-medium text-gray-800">{charge.note || 'Chi phí phát sinh'}</div>
-                                  {charge.createdAt && (
-                                    <div className="text-xs text-gray-500 mt-1">{new Date(charge.createdAt).toLocaleString('vi-VN')}</div>
-                                  )}
-                                </div>
-                                <div className="text-sm font-semibold text-orange-600">+{Number(charge.amount || 0).toLocaleString('vi-VN')}đ</div>
+                      {/* Chi phí dịch vụ & phát sinh — chỉ hiện khi có phí ngoài dining */}
+                      {(() => {
+                        const nonDiningCharges = selectedExtraCharges.filter(
+                          (c) => categorizeCharge(c.note) !== 'dining'
+                        );
+                        if (selectedExtraLoading) {
+                          return (
+                            <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                              <div className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-2">
+                                <AlertCircle className="w-4 h-4 text-orange-500" />
+                                Chi phí phát sinh
                               </div>
-                            ))}
-                            <div className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-100 px-4 py-3 text-sm">
-                              <span className="font-semibold text-orange-700">Tổng phát sinh</span>
-                              <span className="font-bold text-orange-700">{selectedFinancials?.extraTotal.toLocaleString('vi-VN')}đ</span>
+                              <div className="text-sm text-gray-400">Đang tải...</div>
                             </div>
-                            {/* <div className="text-xs text-orange-700 bg-white border border-orange-100 rounded-lg px-3 py-2">
-                              RemainingAmount (API) = Còn lại sau cọc ({selectedFinancials?.remainingAfterDeposit.toLocaleString('vi-VN')}đ) + Tổng phát sinh ({selectedFinancials?.extraTotal.toLocaleString('vi-VN')}đ)
-                            </div> */}
+                          );
+                        }
+                        if (nonDiningCharges.length === 0) return null;
+
+                        const grouped = nonDiningCharges.reduce<Record<string, typeof nonDiningCharges>>((acc, c) => {
+                          const cat = categorizeCharge(c.note);
+                          if (!acc[cat]) acc[cat] = [];
+                          acc[cat].push(c);
+                          return acc;
+                        }, {});
+                        const grandTotal = nonDiningCharges.reduce((s, c) => s + Number(c.amount || 0), 0);
+
+                        return (
+                          <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 space-y-3">
+                            <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4 text-orange-500" />
+                              Chi phí phát sinh
+                            </div>
+                            <div className="space-y-2">
+                              {(Object.keys(grouped) as ChargeCategory[]).map((cat) => {
+                                const cfg = CHARGE_CATEGORY_CFG[cat];
+                                const items = grouped[cat];
+                                const catTotal = items.reduce((s, c) => s + Number(c.amount || 0), 0);
+                                return (
+                                  <div key={cat} className="rounded-xl border bg-white overflow-hidden" style={{ borderColor: cfg.bg }}>
+                                    <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: cfg.bg }}>
+                                      <span className="text-xs font-semibold" style={{ color: cfg.color }}>{cfg.icon} {cfg.label}</span>
+                                      <span className="text-xs font-bold" style={{ color: cfg.color }}>+{catTotal.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-50">
+                                      {items.map((charge) => {
+                                        const displayNote = (charge.note || '') || 'Chi phí phát sinh';
+                                        const isCancelled = charge.amount === 0;
+                                        return (
+                                          <div key={charge.id} className={`flex items-start justify-between gap-3 px-4 py-2.5 ${isCancelled ? 'opacity-40' : ''}`}>
+                                            <div className="min-w-0">
+                                              <div className="text-xs text-gray-700 truncate">{displayNote}</div>
+                                              {charge.createdAt && (
+                                                <div className="text-xs text-gray-400 mt-0.5">{new Date(charge.createdAt).toLocaleDateString('vi-VN')}</div>
+                                              )}
+                                            </div>
+                                            <div className={`text-xs font-semibold flex-shrink-0 ${isCancelled ? 'line-through text-gray-400' : ''}`} style={{ color: isCancelled ? undefined : cfg.color }}>
+                                              +{Number(charge.amount || 0).toLocaleString('vi-VN')}đ
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm">
+                                <span className="font-semibold text-gray-700">Tổng phát sinh</span>
+                                <span className="font-bold text-orange-600">+{grandTotal.toLocaleString('vi-VN')}đ</span>
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        );
+                      })()}
 
                       {/* Dịch vụ địa phương */}
                       {selected.bookedExperiences && selected.bookedExperiences.length > 0 && (
@@ -1711,8 +1736,8 @@ export default function BookingsPage() {
                                     selected.status === 'CANCELLED' ? 'Booking đã bị hủy' : ''
                               }
                               className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status === 'CANCELLED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'
-                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                  : 'bg-red-600 hover:bg-red-700 text-white'
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-700 text-white'
                                 }`}
                             >
                               <XCircle className="w-4 h-4" />
@@ -1826,16 +1851,7 @@ export default function BookingsPage() {
                             </div>
                           </div>
 
-                          {/* Nút xem phí phát sinh nếu booking đã hoàn thành */}
-                          {(selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN') && (
-                            <button
-                              onClick={() => handleViewExtraDetail(selected)}
-                              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 transition-colors"
-                            >
-                              Chi tiết phí phát sinh
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                          )}
+                          {/* Nút xem phí phát sinh nếu booking đã hoàn thành — đã gom vào ô Chi phí phát sinh bên trên */}
                         </div>
                       )}
                     </>
@@ -1895,7 +1911,7 @@ export default function BookingsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b border-gray-200 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Chi tiết phí phát sinh</h3>
+                <h3 className="text-lg font-bold text-gray-900">Chi phí dịch vụ &amp; phát sinh</h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {extraDetailBooking.homestayName}
                 </p>
@@ -1914,9 +1930,9 @@ export default function BookingsPage() {
             </div>
 
             <div className="p-6 overflow-auto">
-              <div className="mb-4 p-4 rounded-lg bg-orange-50 border border-orange-100">
-                <p className="text-sm text-orange-800">Tổng phí phát sinh</p>
-                <p className="text-2xl font-bold text-orange-900 mt-1">{totalExtraDetailAmount.toLocaleString('vi-VN')} VND</p>
+              <div className="mb-4 p-4 rounded-lg bg-gray-50 border border-gray-200">
+                <p className="text-sm text-gray-600">Tổng chi phí</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalExtraDetailAmount.toLocaleString('vi-VN')}đ</p>
               </div>
 
               {extraChargeDetailLoading ? (
@@ -1924,21 +1940,49 @@ export default function BookingsPage() {
               ) : extraDetailCharges.length === 0 ? (
                 <div className="py-10 text-center text-gray-500">Booking này chưa có khoản phát sinh.</div>
               ) : (
-                <div className="space-y-3">
-                  {extraDetailCharges.map((item, index) => (
-                    <div key={item.id || `${extraDetailBooking.id}-${index}`} className="p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-gray-900">Khoản #{index + 1}</p>
-                        <p className="text-sm font-bold text-orange-600">+{(Number(item.amount) || 0).toLocaleString('vi-VN')} VND</p>
-                      </div>
-                      <p className="text-sm text-gray-700 mt-2">{item.note || 'Không có mô tả'}</p>
-                      {item.createdAt && (
-                        <p className="text-xs text-gray-500 mt-2">
-                          Tạo lúc: {new Date(item.createdAt).toLocaleString('vi-VN')}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  {(() => {
+                    const grouped = extraDetailCharges.reduce<Record<string, typeof extraDetailCharges>>((acc, c) => {
+                      const cat = categorizeCharge(c.note);
+                      if (!acc[cat]) acc[cat] = [];
+                      acc[cat].push(c);
+                      return acc;
+                    }, {});
+                    return (Object.keys(grouped) as ChargeCategory[]).map((cat) => {
+                      const cfg = CHARGE_CATEGORY_CFG[cat];
+                      const items = grouped[cat];
+                      const catTotal = items.reduce((s, c) => s + Number(c.amount || 0), 0);
+                      return (
+                        <div key={cat} className="rounded-xl border bg-white overflow-hidden" style={{ borderColor: cfg.bg }}>
+                          <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: cfg.bg }}>
+                            <span className="text-xs font-semibold" style={{ color: cfg.color }}>{cfg.icon} {cfg.label}</span>
+                            <span className="text-xs font-bold" style={{ color: cfg.color }}>+{catTotal.toLocaleString('vi-VN')}đ</span>
+                          </div>
+                          <div className="divide-y divide-gray-50">
+                            {items.map((item, idx) => {
+                              const displayNote = (item.note || '')
+                                .replace(/^\[DINING_ORDER:[^\]]+\]\s*/, '')
+                                .replace(/\s*\(Đã hủy đơn dining\)$/, '') || 'Chi phí phát sinh';
+                              const isCancelled = (item.note || '').includes('Đã hủy') || item.amount === 0;
+                              return (
+                                <div key={item.id || idx} className={`flex items-start justify-between gap-3 px-4 py-3 ${isCancelled ? 'opacity-40' : ''}`}>
+                                  <div className="min-w-0">
+                                    <p className="text-sm text-gray-800 truncate">{displayNote}</p>
+                                    {item.createdAt && (
+                                      <p className="text-xs text-gray-400 mt-0.5">{new Date(item.createdAt).toLocaleDateString('vi-VN')}</p>
+                                    )}
+                                  </div>
+                                  <p className={`text-sm font-semibold flex-shrink-0 ${isCancelled ? 'line-through text-gray-400' : ''}`} style={{ color: isCancelled ? undefined : cfg.color }}>
+                                    +{(Number(item.amount) || 0).toLocaleString('vi-VN')}đ
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               )}
             </div>
