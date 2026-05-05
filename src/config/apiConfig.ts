@@ -378,6 +378,23 @@ export const apiConfig = {
       participants: (scheduleId: string) =>
         `/api/localexperienceschedule/${scheduleId}/participants`,
     },
+    managerExperienceSchedules: {
+      createStep: (scheduleId: string) =>
+        `/api/manager/local-experience-schedules/${scheduleId}/steps`,
+    },
+    managerHiddenGems: {
+      list: "/api/manager/hidden-gems",
+      create: "/api/manager/hidden-gems",
+      detail: (id: string) => `/api/manager/hidden-gems/${id}`,
+      update: (id: string) => `/api/manager/hidden-gems/${id}`,
+      delete: (id: string) => `/api/manager/hidden-gems/${id}`,
+      bySchedule: (scheduleId: string) =>
+        `/api/manager/local-experience-schedules/${scheduleId}/hidden-gems`,
+      createBySchedule: (scheduleId: string) =>
+        `/api/manager/local-experience-schedules/${scheduleId}/hidden-gems`,
+      availableBySchedule: (scheduleId: string) =>
+        `/api/manager/local-experience-schedules/${scheduleId}/available-hidden-gems`,
+    },
     culturalGuides: {
       publicList: "/api/public/cultural-guides",
       publicDetail: (id: string) => `/api/public/cultural-guides/${id}`,
