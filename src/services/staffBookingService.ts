@@ -200,11 +200,8 @@ export const staffBookingService = {
     paymentMethod: 'CASH' | 'BANK_TRANSFER' = 'CASH',
   ): Promise<{ success: boolean; message?: string }> {
     try {
-      const res = await apiService.post<any>(
-        apiConfig.endpoints.staffBookings.confirmFinalPayment(id),
-        null,
-        { paymentMethod },
-      );
+      const endpoint = `${apiConfig.endpoints.staffBookings.confirmFinalPayment(id)}?paymentMethod=${paymentMethod}`;
+      const res = await apiService.post<any>(endpoint);
       return {
         success: res?.success ?? true,
         message: res?.message || 'Xác nhận thanh toán hoàn tất thành công',

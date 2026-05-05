@@ -150,7 +150,7 @@ export default function StaffDashboard() {
     }
   };
 
-  const handleConfirmCheckout = async (payload: { note: string; extraChargeAmount: number }) => {
+  const handleConfirmCheckout = async (payload: { note: string; extraChargeAmount: number; paymentMethod?: 'CASH' | 'BANK_TRANSFER' }) => {
     if (!checkoutBooking) return;
 
     try {
