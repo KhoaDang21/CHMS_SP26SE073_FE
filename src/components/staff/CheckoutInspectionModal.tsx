@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Banknote, ClipboardCheck, House, X } from 'lucide-react';
+import { AlertCircle, Banknote, ClipboardCheck, CreditCard, DollarSign, House, X } from 'lucide-react';
 import type { Booking } from '../../types/booking.types';
 
 interface CheckoutInspectionPayload {
   note: string;
   extraChargeAmount: number;
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER';
 }
 
 interface CheckoutInspectionModalProps {
@@ -26,17 +27,28 @@ export function CheckoutInspectionModal({
 }: CheckoutInspectionModalProps) {
   const [note, setNote] = useState(defaultNote);
   const [extraChargeAmount, setExtraChargeAmount] = useState('0');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH');
 
   useEffect(() => {
     if (!open) return;
     setNote(defaultNote);
     setExtraChargeAmount('0');
+    setPaymentMethod('CASH');
   }, [open, booking?.id]);
 
   const amountValue = useMemo(() => {
     const parsed = Number(extraChargeAmount);
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
   }, [extraChargeAmount]);
+
+  // Calculate remaining amount (including extra charges)
+  const remainingAmount = useMemo(() => {
+    if (!booking) return 0;
+    const remaining = booking.remainingAmount || 0;
+    return remaining + amountValue;
+  }, [booking, amountValue]);
+
+  const hasUnpaidAmount = remainingAmount > 0;
 
   if (!open || !booking) return null;
 
@@ -49,6 +61,7 @@ export function CheckoutInspectionModal({
     void onConfirm({
       note: trimmedNote,
       extraChargeAmount: amountValue,
+      paymentMethod,
     });
   };
 
@@ -72,6 +85,24 @@ export function CheckoutInspectionModal({
         </div>
 
         <div className="p-6 space-y-5 overflow-y-auto">
+          {/* Payment Warning */}
+          {hasUnpaidAmount && (
+            <div className="rounded-xl bg-red-50 border-2 border-red-200 p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-red-900 mb-1">Khách còn nợ phí phát sinh!</h4>
+                  <p className="text-sm text-red-800 mb-3">
+                    Tổng cần thu: <span className="font-bold">{remainingAmount.toLocaleString('vi-VN')} VND</span>
+                  </p>
+                  <p className="text-xs text-red-700">
+                    Vui lòng thu tiền từ khách (tiền mặt hoặc chuyển khoản), sau đó chọn phương thức bên dưới và xác nhận.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-xl border border-gray-200 p-4 bg-gray-50">
               <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Thông tin phòng</p>
@@ -91,6 +122,78 @@ export function CheckoutInspectionModal({
               <p className="text-sm text-gray-600 mt-2">Nhập 0 nếu không có phí phát sinh.</p>
             </div>
           </div>
+
+          {/* Payment Summary */}
+          <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign className="w-5 h-5 text-blue-600" />
+              <h4 className="font-semibold text-blue-900">Tổng kết thanh toán</h4>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-blue-800">Nợ hiện tại:</span>
+                <span className="font-medium text-blue-900">
+                  {(booking.remainingAmount || 0).toLocaleString('vi-VN')} VND
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-800">Phí phát sinh:</span>
+                <span className="font-medium text-blue-900">
+                  {amountValue.toLocaleString('vi-VN')} VND
+                </span>
+              </div>
+              <div className="border-t border-blue-300 pt-2 flex justify-between">
+                <span className="font-semibold text-blue-900">Tổng cần thu:</span>
+                <span className="font-bold text-blue-900 text-lg">
+                  {remainingAmount.toLocaleString('vi-VN')} VND
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Method Selection */}
+          {hasUnpaidAmount && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Khách đã thanh toán bằng <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-600 mb-3">
+                Chọn phương thức khách vừa thanh toán cho bạn (để ghi nhận vào hệ thống)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('CASH')}
+                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                    paymentMethod === 'CASH'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <Banknote className="w-5 h-5" />
+                  <div className="text-left">
+                    <div className="font-semibold">Tiền mặt</div>
+                    <div className="text-xs opacity-75">Khách trả cash</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('BANK_TRANSFER')}
+                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                    paymentMethod === 'BANK_TRANSFER'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <CreditCard className="w-5 h-5" />
+                  <div className="text-left">
+                    <div className="font-semibold">Chuyển khoản</div>
+                    <div className="text-xs opacity-75">Khách chuyển khoản</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú kiểm phòng</label>
@@ -117,7 +220,7 @@ export function CheckoutInspectionModal({
           </div>
 
           <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
-            Ghi chú này sẽ được lưu cùng phí phát sinh để làm căn cứ tính thêm tiền nếu có hư hại hoặc thất lạc tài sản.
+            <strong>Lưu ý:</strong> Ghi chú này sẽ được lưu cùng phí phát sinh. Nếu có hư hại hoặc thất lạc tài sản, vui lòng mô tả chi tiết để làm căn cứ tính phí.
           </div>
         </div>
 
@@ -136,7 +239,11 @@ export function CheckoutInspectionModal({
             className="px-5 py-2.5 rounded-xl bg-cyan-600 text-white hover:bg-cyan-700 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={submitting || !note.trim()}
           >
-            {submitting ? 'Đang lưu...' : 'Xác nhận kiểm phòng & checkout'}
+            {submitting
+              ? 'Đang xử lý...'
+              : hasUnpaidAmount
+                ? 'Xác nhận đã thu tiền & Checkout'
+                : 'Xác nhận kiểm phòng & Checkout'}
           </button>
         </div>
       </div>

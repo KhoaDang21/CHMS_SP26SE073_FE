@@ -169,6 +169,20 @@ export default function StaffDashboard() {
         }
       }
 
+      // Confirm final payment if there's remaining amount or extra charges
+      const remainingAmount = (checkoutBooking.remainingAmount || 0) + payload.extraChargeAmount;
+      if (remainingAmount > 0) {
+        const paymentResult = await staffBookingService.confirmFinalPayment(
+          checkoutBooking.id,
+          payload.paymentMethod || 'CASH',
+        );
+
+        if (!paymentResult.success) {
+          toast.error(paymentResult.message || 'Không thể xác nhận thanh toán');
+          return;
+        }
+      }
+
       const checkoutResult = await staffBookingService.checkOut(checkoutBooking.id);
       if (!checkoutResult.success) {
         toast.error(checkoutResult.message || 'Không thể checkout booking');

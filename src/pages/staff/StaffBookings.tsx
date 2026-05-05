@@ -208,7 +208,7 @@ export default function StaffBookings() {
     setShowCheckoutModal(true);
   };
 
-  const handleConfirmCheckout = async (payload: { note: string; extraChargeAmount: number }) => {
+  const handleConfirmCheckout = async (payload: { note: string; extraChargeAmount: number; paymentMethod?: 'CASH' | 'BANK_TRANSFER' }) => {
     if (!checkoutBooking) return;
 
     try {
@@ -223,6 +223,20 @@ export default function StaffBookings() {
 
         if (!chargeResult.success) {
           toast.error(chargeResult.message || 'Không thể lưu phí phát sinh');
+          return;
+        }
+      }
+
+      // Confirm final payment if there's remaining amount or extra charges
+      const remainingAmount = (checkoutBooking.remainingAmount || 0) + payload.extraChargeAmount;
+      if (remainingAmount > 0) {
+        const paymentResult = await staffBookingService.confirmFinalPayment(
+          checkoutBooking.id,
+          payload.paymentMethod || 'CASH',
+        );
+
+        if (!paymentResult.success) {
+          toast.error(paymentResult.message || 'Không thể xác nhận thanh toán');
           return;
         }
       }
