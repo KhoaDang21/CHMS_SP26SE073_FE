@@ -1,6 +1,7 @@
 import { BrowserRouter } from 'react-router-dom';
 import { AppRoutes } from './routes/AppRoutes';
 import { Toaster } from 'react-hot-toast';
+import { Toaster as SonnerToaster } from 'sonner';
 import AiChatWidget from './components/ai/AiChatWidget';
 import { WishlistProvider } from './contexts/WishlistContext';
 import './utils/connectionDebugger'; // Import for console debugging
@@ -34,6 +35,7 @@ export default function App() {
             },
           }}
         />
+        <SonnerToaster position="top-right" richColors duration={3000} />
         <AppRoutes />
         <AiChatWidget />
       </WishlistProvider>

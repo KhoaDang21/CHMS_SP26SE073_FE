@@ -16,8 +16,8 @@ import {
   Tag,
   Clock,
   Users,
-  Dot,
-  Edit2,
+  ChevronDown,
+  CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
@@ -27,8 +27,10 @@ import {
   experienceSchedulesService,
   type ExperienceSchedule,
   type ScheduleParticipant,
+  type HiddenGemStepRequest,
+  type ScheduleHiddenGem,
 } from '../../services/experienceSchedulesService';
-import hiddenGemsService, { type HiddenGem } from '../../services/hiddenGemsService';
+
 import { serviceCategoryService } from '../../services/serviceCategoryService';
 import type {
   ExperienceCategory,
@@ -86,23 +88,6 @@ const fallbackExperienceImage = 'https://images.unsplash.com/photo-1507525428034
 
 const normalizeText = (value: unknown): string => String(value ?? '').trim().toLowerCase();
 
-const formatServiceOptionLabel = (service: any): string => {
-  const serviceName = String(service?.name ?? '').trim() || 'Dịch vụ';
-  const homestayName = String(service?.homestayName ?? '').trim();
-  return homestayName ? `${serviceName} • ${homestayName}` : serviceName;
-};
-
-const formatScheduleOptionLabel = (schedule: any): string => {
-  const scheduleDate = schedule?.date || schedule?.availableDate || schedule?.serviceDate || '';
-  const dateLabel = scheduleDate ? new Date(scheduleDate).toLocaleDateString('vi-VN') : 'Lịch trình';
-  const startTime = String(schedule?.startTime ?? '—').trim() || '—';
-  const endTime = String(schedule?.endTime ?? '—').trim() || '—';
-  const shortId = String(schedule?.id ?? '').trim().slice(0, 8);
-  return shortId
-    ? `${dateLabel} • ${startTime} - ${endTime} • ${shortId}`
-    : `${dateLabel} • ${startTime} - ${endTime}`;
-};
-
 const pickProvinceValue = (item: any): { id: string | null; name: string | null } => {
   const provinceId =
     item?.managedProvinceId ||
@@ -139,45 +124,6 @@ const homestayMatchesProvince = (
 
   if (province.name && homestayProvinceName) {
     return normalizeText(homestayProvinceName) === normalizeText(province.name);
-  }
-
-  return false;
-};
-
-const hiddenGemMatchesProvince = (
-  gem: HiddenGem,
-  province: { id: string | null; name: string | null },
-): boolean => {
-  const gemProvinceId =
-    gem.provinceId ||
-    gem.managedProvinceId ||
-    gem.assignedProvinceId ||
-    (gem as any)?.province?.id ||
-    (gem as any)?.managedProvince?.id ||
-    (gem as any)?.assignedProvince?.id ||
-    null;
-
-  const gemProvinceName =
-    gem.provinceName ||
-    gem.managedProvinceName ||
-    gem.assignedProvinceName ||
-    (gem as any)?.province?.name ||
-    (gem as any)?.managedProvince?.name ||
-    (gem as any)?.assignedProvince?.name ||
-    null;
-
-  const hasProvinceScope = Boolean(gemProvinceId || gemProvinceName);
-
-  if (!hasProvinceScope) {
-    return true;
-  }
-
-  if (province.id && gemProvinceId) {
-    return String(gemProvinceId) === province.id;
-  }
-
-  if (province.name && gemProvinceName) {
-    return normalizeText(gemProvinceName) === normalizeText(province.name);
   }
 
   return false;
@@ -235,47 +181,29 @@ export default function ExperienceManagement() {
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [expandedStepEditorScheduleId, setExpandedStepEditorScheduleId] = useState('');
   const [creatingScheduleStep, setCreatingScheduleStep] = useState(false);
-  const [availableHiddenGems, setAvailableHiddenGems] = useState<HiddenGem[]>([]);
-  const [availableHiddenGemsLoading, setAvailableHiddenGemsLoading] = useState(false);
-  const [availableHiddenGemsScheduleId, setAvailableHiddenGemsScheduleId] = useState('');
+
+  // ── Tab Điểm đến ──────────────────────────────────────────────────────────
+  const [gemTabExperienceId, setGemTabExperienceId] = useState('');
+  const [gemTabSchedules, setGemTabSchedules] = useState<ExperienceSchedule[]>([]);
+  const [gemTabSchedulesLoading, setGemTabSchedulesLoading] = useState(false);
+  const [gemTabScheduleId, setGemTabScheduleId] = useState('');
+  const [gemTabGems, setGemTabGems] = useState<ScheduleHiddenGem[]>([]);
+  const [gemTabGemsLoading, setGemTabGemsLoading] = useState(false);
+  const [gemTabTotal, setGemTabTotal] = useState(0);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const [scheduleStepForm, setScheduleStepForm] = useState({
     stepOrder: 1,
-    stepType: 'string',
-    hiddenGemId: '',
     name: '',
     description: '',
     latitude: '',
     longitude: '',
-    checkInRadiusMeters: '0',
-    rewardPoints: '0',
-    isRequired: true,
-  });
-
-  const [hiddenGems, setHiddenGems] = useState<HiddenGem[]>([]);
-  const [hiddenGemsLoading, setHiddenGemsLoading] = useState(false);
-  const [showHiddenGemModal, setShowHiddenGemModal] = useState(false);
-  const [editingHiddenGem, setEditingHiddenGem] = useState<HiddenGem | null>(null);
-  const [hiddenGemSearch, setHiddenGemSearch] = useState('');
-  const [hiddenGemViewExperienceId, setHiddenGemViewExperienceId] = useState('');
-  const [hiddenGemViewSchedules, setHiddenGemViewSchedules] = useState<ExperienceSchedule[]>([]);
-  const [hiddenGemViewSchedulesLoading, setHiddenGemViewSchedulesLoading] = useState(false);
-  const [hiddenGemViewScheduleId, setHiddenGemViewScheduleId] = useState('');
-  const [hiddenGemExperienceId, setHiddenGemExperienceId] = useState('');
-  const [hiddenGemSchedules, setHiddenGemSchedules] = useState<ExperienceSchedule[]>([]);
-  const [hiddenGemSchedulesLoading, setHiddenGemSchedulesLoading] = useState(false);
-  const [hiddenGemScheduleId, setHiddenGemScheduleId] = useState('');
-  const [hiddenGemForm, setHiddenGemForm] = useState({
-    name: '',
-    description: '',
-    latitude: '',
-    longitude: '',
-    rewardPoints: '0',
-    createStep: true,
-    stepOrder: '1',
     checkInRadiusMeters: '50',
+    rewardPoints: '0',
     isRequired: true,
+    createStep: true,
+    localRouteId: '',
   });
-  const [savingHiddenGem, setSavingHiddenGem] = useState(false);
 
   const groupedNavItems = isAdmin ? adminNavItemsGrouped : managerNavItemsGrouped;
 
@@ -321,107 +249,9 @@ export default function ExperienceManagement() {
     }
   }, [isAdmin, user?.id]);
 
-  const loadHiddenGems = useCallback(async () => {
-    setHiddenGemsLoading(true);
-    try {
-      const scheduleId = selectedScheduleId.trim();
-      if (!scheduleId) {
-        setHiddenGems([]);
-        return;
-      }
-
-      const result = await hiddenGemsService.getAvailableHiddenGemsBySchedule(scheduleId, false);
-      if (result.success) {
-        setHiddenGems(result.data);
-      } else {
-        toast.error(result.message || 'Không thể tải danh sách hidden gems');
-      }
-    } catch (error) {
-      console.error('Load hidden gems error:', error);
-      toast.error('Không thể tải danh sách hidden gems');
-    } finally {
-      setHiddenGemsLoading(false);
-    }
-  }, [selectedScheduleId]);
-
-  const loadHiddenGemSchedules = useCallback(async (experienceId: string) => {
-    const trimmedExperienceId = experienceId.trim();
-    setHiddenGemExperienceId(trimmedExperienceId);
-    setHiddenGemScheduleId('');
-
-    if (!trimmedExperienceId) {
-      setHiddenGemSchedules([]);
-      return;
-    }
-
-    setHiddenGemSchedulesLoading(true);
-    try {
-      const list = await experienceSchedulesService.getSchedulesByExperienceId(trimmedExperienceId);
-      setHiddenGemSchedules(list);
-    } catch (error) {
-      console.error('Load hidden gem schedules error:', error);
-      toast.error('Không thể tải lịch trình theo dịch vụ đã chọn');
-      setHiddenGemSchedules([]);
-    } finally {
-      setHiddenGemSchedulesLoading(false);
-    }
-  }, []);
-
-  const loadHiddenGemViewSchedules = useCallback(async (experienceId: string) => {
-    const trimmedExperienceId = experienceId.trim();
-    setHiddenGemViewExperienceId(trimmedExperienceId);
-    setHiddenGemViewScheduleId('');
-    setSelectedScheduleId('');
-
-    if (!trimmedExperienceId) {
-      setHiddenGemViewSchedules([]);
-      return;
-    }
-
-    setHiddenGemViewSchedulesLoading(true);
-    try {
-      const list = await experienceSchedulesService.getSchedulesByExperienceId(trimmedExperienceId);
-      setHiddenGemViewSchedules(list);
-    } catch (error) {
-      console.error('Load hidden gem view schedules error:', error);
-      toast.error('Không thể tải lịch trình để xem hidden gems');
-      setHiddenGemViewSchedules([]);
-    } finally {
-      setHiddenGemViewSchedulesLoading(false);
-    }
-  }, []);
-
-  const loadAvailableHiddenGems = useCallback(async (scheduleId: string) => {
-    const trimmedScheduleId = scheduleId.trim();
-    setAvailableHiddenGemsScheduleId(trimmedScheduleId);
-
-    if (!trimmedScheduleId) {
-      setAvailableHiddenGems([]);
-      return;
-    }
-
-    setAvailableHiddenGemsLoading(true);
-    try {
-      const result = await hiddenGemsService.getAvailableHiddenGemsBySchedule(trimmedScheduleId, true);
-      if (result.success) {
-        setAvailableHiddenGems(result.data);
-      } else {
-        setAvailableHiddenGems([]);
-        toast.error(result.message || 'Không thể tải hidden gems theo lịch trình');
-      }
-    } catch (error) {
-      console.error('Load available hidden gems error:', error);
-      setAvailableHiddenGems([]);
-      toast.error('Không thể tải hidden gems theo lịch trình');
-    } finally {
-      setAvailableHiddenGemsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     void loadData();
-    void loadHiddenGems();
-  }, [loadData, loadHiddenGems]);
+  }, [loadData]);
 
   const categoryUsage = useMemo(() => {
     const usage: Record<string, number> = {};
@@ -678,51 +508,52 @@ export default function ExperienceManagement() {
       return;
     }
     if (!scheduleStepForm.name.trim()) {
-      toast.error('Vui lòng nhập tên bước');
+      toast.error('Vui lòng nhập tên điểm đến');
       return;
     }
-    if (!scheduleStepForm.stepType.trim()) {
-      toast.error('Vui lòng nhập loại bước');
+    if (!scheduleStepForm.latitude.trim() || !scheduleStepForm.longitude.trim()) {
+      toast.error('Vui lòng nhập tọa độ (latitude, longitude)');
       return;
     }
 
-    const payload = {
-      stepOrder: Number(scheduleStepForm.stepOrder) || 1,
-      stepType: scheduleStepForm.stepType.trim(),
-      hiddenGemId: scheduleStepForm.hiddenGemId.trim() || undefined,
+    const payload: HiddenGemStepRequest = {
       name: scheduleStepForm.name.trim(),
       description: scheduleStepForm.description.trim() || undefined,
-      latitude: scheduleStepForm.latitude.trim() ? Number(scheduleStepForm.latitude) : undefined,
-      longitude: scheduleStepForm.longitude.trim() ? Number(scheduleStepForm.longitude) : undefined,
-      checkInRadiusMeters: scheduleStepForm.checkInRadiusMeters.trim() ? Number(scheduleStepForm.checkInRadiusMeters) : undefined,
-      rewardPoints: scheduleStepForm.rewardPoints.trim() ? Number(scheduleStepForm.rewardPoints) : undefined,
+      latitude: Number(scheduleStepForm.latitude),
+      longitude: Number(scheduleStepForm.longitude),
+      rewardPoints: scheduleStepForm.rewardPoints.trim() ? Number(scheduleStepForm.rewardPoints) : 0,
+      createStep: scheduleStepForm.createStep,
+      stepOrder: scheduleStepForm.stepOrder || 1,
+      checkInRadiusMeters: scheduleStepForm.checkInRadiusMeters.trim() ? Number(scheduleStepForm.checkInRadiusMeters) : 50,
       isRequired: scheduleStepForm.isRequired,
+      localRouteId: scheduleStepForm.localRouteId.trim() || undefined,
     };
 
     setCreatingScheduleStep(true);
     try {
-      const result = await experienceSchedulesService.createScheduleStep(scheduleId, payload);
+      const result = await experienceSchedulesService.createHiddenGemStep(scheduleId, payload);
       if (!result.success) {
-        toast.error(result.message || 'Không thể tạo chi tiết lịch trình');
+        toast.error(result.message || 'Không thể tạo hidden gem step');
         return;
       }
 
-      toast.success(result.message || 'Đã thêm chi tiết lịch trình');
-      setScheduleStepForm({
-        stepOrder: Number(scheduleStepForm.stepOrder) + 1,
-        stepType: 'string',
-        hiddenGemId: '',
+      toast.success(result.message || 'Tạo điểm đến và step thành công!');
+      setScheduleStepForm((p) => ({
+        ...p,
+        stepOrder: p.stepOrder + 1,
         name: '',
         description: '',
         latitude: '',
         longitude: '',
-        checkInRadiusMeters: '0',
+        checkInRadiusMeters: '50',
         rewardPoints: '0',
         isRequired: true,
-      });
+        createStep: true,
+        localRouteId: '',
+      }));
     } catch (error) {
-      console.error('Create schedule step error:', error);
-      toast.error('Không thể tạo chi tiết lịch trình');
+      console.error('Create hidden gem step error:', error);
+      toast.error('Không thể tạo hidden gem step');
     } finally {
       setCreatingScheduleStep(false);
     }
@@ -732,140 +563,58 @@ export default function ExperienceManagement() {
     const nextExpandedScheduleId = expandedStepEditorScheduleId === scheduleId ? '' : scheduleId;
     setSelectedScheduleId(scheduleId);
     setExpandedStepEditorScheduleId(nextExpandedScheduleId);
-    void loadAvailableHiddenGems(nextExpandedScheduleId ? scheduleId : '');
   };
 
-  const openCreateHiddenGem = () => {
-    setEditingHiddenGem(null);
-    setHiddenGemExperienceId('');
-    setHiddenGemSchedules([]);
-    setHiddenGemScheduleId('');
-    setAvailableHiddenGems([]);
-    setAvailableHiddenGemsScheduleId('');
-    setHiddenGemForm({
-      name: '',
-      description: '',
-      latitude: '',
-      longitude: '',
-      rewardPoints: '0',
-      createStep: true,
-      stepOrder: '1',
-      checkInRadiusMeters: '50',
-      isRequired: true,
-    });
-    setShowHiddenGemModal(true);
-  };
-
-  const openEditHiddenGem = (gem: HiddenGem) => {
-    setEditingHiddenGem(gem);
-    setHiddenGemForm({
-      name: gem.name,
-      description: gem.description || '',
-      latitude: String(gem.latitude || ''),
-      longitude: String(gem.longitude || ''),
-      rewardPoints: String(gem.rewardPoints || 0),
-      createStep: Boolean((gem as any)?.createStep ?? true),
-      stepOrder: String((gem as any)?.stepOrder ?? 1),
-      checkInRadiusMeters: String(gem.checkInRadiusMeters || 50),
-      isRequired: Boolean(gem.isRequired ?? true),
-    });
-    setShowHiddenGemModal(true);
-  };
-
-  const handleSaveHiddenGem = async () => {
-    const scheduleId = hiddenGemScheduleId.trim();
-
-    if (!hiddenGemForm.name.trim()) {
-      toast.error('Vui lòng nhập tên điểm đến');
+  // ── Tab Điểm đến: load schedules theo experience ──────────────────────────
+  const loadGemTabSchedules = useCallback(async (experienceId: string) => {
+    setGemTabExperienceId(experienceId);
+    setGemTabScheduleId('');
+    setGemTabGems([]);
+    setGemTabTotal(0);
+    if (!experienceId.trim()) {
+      setGemTabSchedules([]);
       return;
     }
-
-    if (!hiddenGemForm.latitude.trim() || !hiddenGemForm.longitude.trim()) {
-      toast.error('Vui lòng nhập tọa độ (latitude, longitude)');
-      return;
-    }
-
-    if (!hiddenGemExperienceId.trim()) {
-      toast.error('Vui lòng chọn dịch vụ để lấy schedule');
-      return;
-    }
-
-    if (!scheduleId) {
-      toast.error('Vui lòng chọn một lịch trình để lấy scheduleId');
-      return;
-    }
-
-    const payload = {
-      name: hiddenGemForm.name.trim(),
-      description: hiddenGemForm.description.trim() || undefined,
-      latitude: Number(hiddenGemForm.latitude),
-      longitude: Number(hiddenGemForm.longitude),
-      rewardPoints: hiddenGemForm.rewardPoints.trim() ? Number(hiddenGemForm.rewardPoints) : 0,
-      createStep: hiddenGemForm.createStep,
-      stepOrder: hiddenGemForm.stepOrder.trim() ? Number(hiddenGemForm.stepOrder) : 1,
-      checkInRadiusMeters: hiddenGemForm.checkInRadiusMeters.trim() ? Number(hiddenGemForm.checkInRadiusMeters) : 50,
-      isRequired: hiddenGemForm.isRequired,
-    };
-
-    setSavingHiddenGem(true);
+    setGemTabSchedulesLoading(true);
     try {
-      let result;
-      if (editingHiddenGem) {
-        result = await hiddenGemsService.updateHiddenGem(editingHiddenGem.id, payload);
-      } else {
-        result = await hiddenGemsService.createHiddenGemBySchedule(scheduleId, payload);
-      }
-
-      if (result.success) {
-        toast.success(editingHiddenGem ? 'Cập nhật thành công' : 'Tạo thành công');
-        setShowHiddenGemModal(false);
-        await loadHiddenGems();
-      } else {
-        toast.error(result.message || 'Không thể lưu hidden gem');
-      }
-    } catch (error) {
-      console.error('Save hidden gem error:', error);
-      toast.error('Không thể lưu hidden gem');
+      const list = await experienceSchedulesService.getSchedulesByExperienceId(experienceId);
+      setGemTabSchedules(list);
+    } catch {
+      toast.error('Không thể tải lịch trình');
+      setGemTabSchedules([]);
     } finally {
-      setSavingHiddenGem(false);
+      setGemTabSchedulesLoading(false);
     }
-  };
+  }, []);
 
-  const handleDeleteHiddenGem = async (gem: HiddenGem) => {
-    if (!window.confirm(`Bạn chắc chắn muốn xóa "${gem.name}"?`)) {
+  // ── Tab Điểm đến: load hidden gems theo schedule ──────────────────────────
+  const loadGemTabGems = useCallback(async (scheduleId: string) => {
+    setGemTabScheduleId(scheduleId);
+    if (!scheduleId.trim()) {
+      setGemTabGems([]);
+      setGemTabTotal(0);
       return;
     }
-
+    setGemTabGemsLoading(true);
     try {
-      const result = await hiddenGemsService.deleteHiddenGem(gem.id);
+      const result = await experienceSchedulesService.getHiddenGemsBySchedule(scheduleId);
       if (result.success) {
-        toast.success('Xóa thành công');
-        await loadHiddenGems();
+        setGemTabGems(result.hiddenGems);
+        setGemTabTotal(result.total);
       } else {
-        toast.error(result.message || 'Không thể xóa hidden gem');
+        toast.error(result.message || 'Không thể tải điểm đến');
+        setGemTabGems([]);
+        setGemTabTotal(0);
       }
-    } catch (error) {
-      console.error('Delete hidden gem error:', error);
-      toast.error('Không thể xóa hidden gem');
+    } catch {
+      toast.error('Không thể tải điểm đến');
+      setGemTabGems([]);
+      setGemTabTotal(0);
+    } finally {
+      setGemTabGemsLoading(false);
     }
-  };
-
-  const filteredHiddenGems = useMemo(() => {
-    const scopedHiddenGems = isAdmin
-      ? hiddenGems
-      : hiddenGems.filter((gem) => hiddenGemMatchesProvince(gem, managerProvince));
-    const q = hiddenGemSearch.trim().toLowerCase();
-    if (!q) return scopedHiddenGems;
-    return scopedHiddenGems.filter((gem) => 
-      gem.name.toLowerCase().includes(q) || 
-      (gem.description || '').toLowerCase().includes(q)
-    );
-  }, [hiddenGems, hiddenGemSearch, isAdmin, managerProvince]);
-
-  const selectedHiddenGemSchedule = useMemo(
-    () => hiddenGemSchedules.find((schedule) => schedule.id === hiddenGemScheduleId) || null,
-    [hiddenGemSchedules, hiddenGemScheduleId],
-  );
+  }, []);
+  // ──────────────────────────────────────────────────────────────────────────
 
   const handleLogout = () => {
     authService.logout();
@@ -954,10 +703,7 @@ export default function ExperienceManagement() {
               Lịch trình
             </button>
             <button
-              onClick={() => {
-                setActiveTab('hidden-gems');
-                loadHiddenGems();
-              }}
+              onClick={() => setActiveTab('hidden-gems')}
               className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'hidden-gems' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               Điểm đến
@@ -1078,7 +824,7 @@ export default function ExperienceManagement() {
                   Lịch trình cho tỉnh quản lý: {managerProvince.name || 'Chưa phân công'}
                 </div>
               )}
-              
+
               {showScheduleForm && (
                 <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
                   <div className="flex items-center justify-between mb-4">
@@ -1170,7 +916,7 @@ export default function ExperienceManagement() {
                               checked={scheduleFormData.daysOfWeek.includes(day.value)}
                               onChange={(e) => setScheduleFormData(p => ({
                                 ...p,
-                                daysOfWeek: e.target.checked 
+                                daysOfWeek: e.target.checked
                                   ? [...p.daysOfWeek, day.value]
                                   : p.daysOfWeek.filter(d => d !== day.value)
                               }))}
@@ -1383,84 +1129,49 @@ export default function ExperienceManagement() {
 
                                 {isExpanded && (
                                   <div className="mt-4 rounded-xl border border-cyan-100 bg-white p-4 space-y-4">
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div>
-                                        <h5 className="font-semibold text-gray-900">Thêm bước chi tiết cho lịch trình</h5>
-                                        <p className="text-sm text-gray-500">Nhập thông tin bước cho lịch trình đang chọn.</p>
-                                      </div>
-                                      <div className="text-sm text-gray-500">Đã chọn: {selectedScheduleId || 'Chưa chọn'}</div>
+                                    <div>
+                                      <h5 className="font-semibold text-gray-900">Tạo điểm đến (Hidden Gem) cho lịch trình</h5>
+                                      <p className="text-sm text-gray-500 mt-0.5">
+                                        Tạo hidden gem mới và gắn vào lịch trình này trong một lần gọi.
+                                      </p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tên bước *</label>
+                                      <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          Tên điểm đến <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                           value={scheduleStepForm.name}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, name: e.target.value }))}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                          placeholder="Ví dụ: Tham quan đền"
+                                          placeholder="Ví dụ: Đền Tháp Mộ"
                                         />
                                       </div>
+
                                       <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Loại bước *</label>
-                                        <input
-                                          value={scheduleStepForm.stepType}
-                                          onChange={(e) => setScheduleStepForm((p) => ({ ...p, stepType: e.target.value }))}
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                          placeholder="string / visit / checkin / ..."
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Điểm đến (Hidden Gem)</label>
-                                        <select
-                                          value={scheduleStepForm.hiddenGemId}
-                                          onChange={(e) => setScheduleStepForm((p) => ({ ...p, hiddenGemId: e.target.value }))}
-                                          disabled={availableHiddenGemsLoading || availableHiddenGemsScheduleId !== schedule.id}
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                          <option value="">-- Chọn điểm đến (tùy chọn) --</option>
-                                          {availableHiddenGems.map((gem) => (
-                                            <option key={gem.id} value={gem.id}>
-                                              {gem.name}
-                                            </option>
-                                          ))}
-                                        </select>
-                                        {availableHiddenGemsLoading && availableHiddenGemsScheduleId === schedule.id ? (
-                                          <p className="mt-1 text-xs text-gray-500">Đang tải hidden gems theo lịch trình...</p>
-                                        ) : (
-                                          <p className="mt-1 text-xs text-gray-500">
-                                            Danh sách chỉ gồm hidden gems khả dụng cho lịch trình này.
-                                          </p>
-                                        )}
-                                      </div>
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Thứ tự *</label>
-                                        <input
-                                          type="number"
-                                          min="1"
-                                          value={scheduleStepForm.stepOrder}
-                                          onChange={(e) => setScheduleStepForm((p) => ({ ...p, stepOrder: parseInt(e.target.value) || 1 }))}
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          Latitude <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                           value={scheduleStepForm.latitude}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, latitude: e.target.value }))}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                          placeholder="0"
+                                          placeholder="Ví dụ: 13.6610"
                                         />
                                       </div>
                                       <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          Longitude <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                           value={scheduleStepForm.longitude}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, longitude: e.target.value }))}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                          placeholder="0"
+                                          placeholder="Ví dụ: 109.2297"
                                         />
                                       </div>
+
                                       <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Bán kính check-in (m)</label>
                                         <input
@@ -1481,6 +1192,26 @@ export default function ExperienceManagement() {
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                         />
                                       </div>
+
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Thứ tự step</label>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          value={scheduleStepForm.stepOrder}
+                                          onChange={(e) => setScheduleStepForm((p) => ({ ...p, stepOrder: parseInt(e.target.value) || 1 }))}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Local Route ID (tùy chọn)</label>
+                                        <input
+                                          value={scheduleStepForm.localRouteId}
+                                          onChange={(e) => setScheduleStepForm((p) => ({ ...p, localRouteId: e.target.value }))}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                          placeholder="UUID của local route"
+                                        />
+                                      </div>
                                     </div>
 
                                     <div>
@@ -1488,35 +1219,45 @@ export default function ExperienceManagement() {
                                       <textarea
                                         value={scheduleStepForm.description}
                                         onChange={(e) => setScheduleStepForm((p) => ({ ...p, description: e.target.value }))}
-                                        rows={3}
+                                        rows={2}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        placeholder="Mô tả chi tiết của bước"
+                                        placeholder="Mô tả chi tiết về điểm đến"
                                       />
                                     </div>
 
-                                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                                      <input
-                                        type="checkbox"
-                                        checked={scheduleStepForm.isRequired}
-                                        onChange={(e) => setScheduleStepForm((p) => ({ ...p, isRequired: e.target.checked }))}
-                                      />
-                                      Bắt buộc
-                                    </label>
+                                    <div className="flex flex-wrap gap-4">
+                                      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                                        <input
+                                          type="checkbox"
+                                          checked={scheduleStepForm.createStep}
+                                          onChange={(e) => setScheduleStepForm((p) => ({ ...p, createStep: e.target.checked }))}
+                                        />
+                                        Tạo HIDDEN_GEM step ngay
+                                      </label>
+                                      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                                        <input
+                                          type="checkbox"
+                                          checked={scheduleStepForm.isRequired}
+                                          onChange={(e) => setScheduleStepForm((p) => ({ ...p, isRequired: e.target.checked }))}
+                                        />
+                                        Bắt buộc check-in
+                                      </label>
+                                    </div>
 
-                                    <div className="flex justify-end gap-3">
+                                    <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                                       <button
                                         type="button"
                                         onClick={() => setScheduleStepForm({
                                           stepOrder: 1,
-                                          stepType: 'string',
-                                          hiddenGemId: '',
                                           name: '',
                                           description: '',
                                           latitude: '',
                                           longitude: '',
-                                          checkInRadiusMeters: '0',
+                                          checkInRadiusMeters: '50',
                                           rewardPoints: '0',
                                           isRequired: true,
+                                          createStep: true,
+                                          localRouteId: '',
                                         })}
                                         className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                                       >
@@ -1528,7 +1269,7 @@ export default function ExperienceManagement() {
                                         disabled={creatingScheduleStep}
                                         className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50"
                                       >
-                                        {creatingScheduleStep ? 'Đang tạo...' : 'Tạo bước chi tiết'}
+                                        {creatingScheduleStep ? 'Đang tạo...' : 'Tạo điểm đến'}
                                       </button>
                                     </div>
                                   </div>
@@ -1551,361 +1292,180 @@ export default function ExperienceManagement() {
 
           {activeTab === 'hidden-gems' && (
             <div className="space-y-4">
+              {/* Info banner */}
               {!isAdmin && (
                 <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
-                  Quản lý điểm đến (POI/hidden gems) cho tour du lịch địa phương: {managerProvince.name || 'Chưa phân công'}
+                  Xem điểm check-in (hidden gems) theo lịch trình của tỉnh: <span className="font-semibold">{managerProvince.name || 'Chưa phân công'}</span>
                 </div>
               )}
 
-              {showHiddenGemModal && (
-                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">
-                      {editingHiddenGem ? 'Chỉnh sửa điểm đến' : 'Tạo điểm đến mới'}
-                    </h3>
+              {/* Bộ lọc: chọn Experience → Schedule */}
+              <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200 space-y-4">
+                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-cyan-600" />
+                  Chọn tour và lịch trình
+                </h4>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Dropdown Experience */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tour (dịch vụ)</label>
+                    <div className="relative">
+                      <select
+                        value={gemTabExperienceId}
+                        onChange={(e) => void loadGemTabSchedules(e.target.value)}
+                        className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none"
+                      >
+                        <option value="">-- Chọn tour --</option>
+                        {services.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}{s.homestayName ? ` • ${s.homestayName}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Dropdown Schedule */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lịch trình</label>
+                    <div className="relative">
+                      <select
+                        value={gemTabScheduleId}
+                        onChange={(e) => void loadGemTabGems(e.target.value)}
+                        disabled={!gemTabExperienceId || gemTabSchedulesLoading}
+                        className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        <option value="">
+                          {gemTabSchedulesLoading ? 'Đang tải...' : '-- Chọn lịch trình --'}
+                        </option>
+                        {gemTabSchedules.map((sch) => {
+                          const d = sch.date || sch.availableDate || sch.serviceDate || '';
+                          const dateLabel = d ? new Date(d).toLocaleDateString('vi-VN') : '—';
+                          const shortId = sch.id.slice(0, 8);
+                          return (
+                            <option key={sch.id} value={sch.id}>
+                              {dateLabel} • {sch.startTime ?? '—'} - {sch.endTime ?? '—'} • {shortId}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+                    {gemTabScheduleId && (
+                      <p className="mt-1 text-xs text-gray-400">Schedule ID: {gemTabScheduleId}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Danh sách hidden gems */}
+              {gemTabScheduleId && (
+                <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-cyan-600" />
+                      <h4 className="font-semibold text-gray-900">Điểm check-in</h4>
+                      {!gemTabGemsLoading && (
+                        <span className="ml-1 rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-semibold text-cyan-700">
+                          {gemTabTotal} điểm
+                        </span>
+                      )}
+                    </div>
                     <button
-                      onClick={() => setShowHiddenGemModal(false)}
-                      className="p-1 hover:bg-gray-100 rounded"
+                      onClick={() => void loadGemTabGems(gemTabScheduleId)}
+                      disabled={gemTabGemsLoading}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
                     >
-                      <X className="w-5 h-5" />
+                      {gemTabGemsLoading ? 'Đang tải...' : 'Làm mới'}
                     </button>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="rounded-xl border border-cyan-100 bg-cyan-50/40 p-4 space-y-4">
-                      <div>
-                        <h4 className="font-semibold text-cyan-900">Nguồn lịch trình</h4>
-                        <p className="text-xs text-cyan-700 mt-1">Chọn dịch vụ trước, sau đó chọn lịch trình thuộc dịch vụ đó.</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Dịch vụ gốc
-                          </label>
-                          <select
-                            value={hiddenGemExperienceId}
-                            onChange={(e) => void loadHiddenGemSchedules(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          >
-                            <option value="">-- Chọn dịch vụ --</option>
-                            {services.map((service) => (
-                              <option key={service.id} value={service.id}>
-                                {formatServiceOptionLabel(service)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Lịch trình
-                          </label>
-                          <select
-                            value={hiddenGemScheduleId}
-                            onChange={(e) => setHiddenGemScheduleId(e.target.value)}
-                            disabled={!hiddenGemExperienceId || hiddenGemSchedulesLoading}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-100"
-                          >
-                            <option value="">-- Chọn lịch trình --</option>
-                            {hiddenGemSchedules.map((schedule) => (
-                              <option key={schedule.id} value={schedule.id}>
-                                {formatScheduleOptionLabel(schedule)}
-                              </option>
-                            ))}
-                          </select>
-                          {hiddenGemSchedulesLoading ? (
-                            <p className="mt-1 text-xs text-gray-500">Đang tải lịch trình theo dịch vụ...</p>
-                          ) : (
-                            <p className="mt-1 text-xs text-gray-500">Chọn đúng lịch trình để tạo hidden gem.</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {selectedHiddenGemSchedule && (
-                        <div className="rounded-lg border border-cyan-200 bg-white px-3 py-2 text-sm text-gray-700">
-                          <span className="font-medium text-gray-900">Đã chọn: </span>
-                          {formatScheduleOptionLabel(selectedHiddenGemSchedule)}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
-                      <div>
-                        <h4 className="font-semibold text-gray-900">Thông tin điểm đến</h4>
-                        <p className="text-xs text-gray-500 mt-1">Nhập tên, mô tả và tọa độ để định vị điểm đến.</p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Tên điểm đến <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          value={hiddenGemForm.name}
-                          onChange={(e) => setHiddenGemForm((p) => ({ ...p, name: e.target.value }))}
-                          placeholder="Ví dụ: Đền Tháp Mộ"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-                        <textarea
-                          value={hiddenGemForm.description}
-                          onChange={(e) => setHiddenGemForm((p) => ({ ...p, description: e.target.value }))}
-                          rows={3}
-                          placeholder="Mô tả chi tiết về điểm đến"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Latitude <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            value={hiddenGemForm.latitude}
-                            onChange={(e) => setHiddenGemForm((p) => ({ ...p, latitude: e.target.value }))}
-                            placeholder="Ví dụ: 21.0285"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Longitude <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            value={hiddenGemForm.longitude}
-                            onChange={(e) => setHiddenGemForm((p) => ({ ...p, longitude: e.target.value }))}
-                            placeholder="Ví dụ: 105.8555"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                        </div>
+                  {/* Body */}
+                  {gemTabGemsLoading ? (
+                    <div className="flex items-center justify-center py-16 text-gray-400">
+                      <div className="text-center space-y-2">
+                        <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="text-sm">Đang tải điểm đến...</p>
                       </div>
                     </div>
-
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
-                      <div>
-                        <h4 className="font-semibold text-gray-900">Cấu hình tạo điểm</h4>
-                        <p className="text-xs text-gray-500 mt-1">Thiết lập check-in và cách điểm đến được thêm vào step.</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Bán kính check-in (m)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={hiddenGemForm.checkInRadiusMeters}
-                            onChange={(e) => setHiddenGemForm((p) => ({ ...p, checkInRadiusMeters: e.target.value }))}
-                            placeholder="50"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Reward points</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={hiddenGemForm.rewardPoints}
-                            onChange={(e) => setHiddenGemForm((p) => ({ ...p, rewardPoints: e.target.value }))}
-                            placeholder="0"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                          <input
-                            type="checkbox"
-                            checked={hiddenGemForm.createStep}
-                            onChange={(e) => setHiddenGemForm((p) => ({ ...p, createStep: e.target.checked }))}
-                          />
-                          Tạo step cho điểm đến này
-                        </label>
-
-                        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                          <input
-                            type="checkbox"
-                            checked={hiddenGemForm.isRequired}
-                            onChange={(e) => setHiddenGemForm((p) => ({ ...p, isRequired: e.target.checked }))}
-                          />
-                          Bắt buộc check-in
-                        </label>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Thứ tự step
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={hiddenGemForm.stepOrder}
-                            onChange={(e) => setHiddenGemForm((p) => ({ ...p, stepOrder: e.target.value }))}
-                            placeholder="1"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                        </div>
-                      </div>
+                  ) : gemTabGems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
+                      <MapPin className="w-10 h-10 opacity-30" />
+                      <p className="text-sm">Chưa có điểm check-in nào cho lịch trình này</p>
                     </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {gemTabGems.map((gem, idx) => (
+                        <div key={gem.stepId} className="flex items-start gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
+                          {/* Step order badge */}
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center text-sm font-bold">
+                            {gem.stepOrder || idx + 1}
+                          </div>
 
-                    <div className="flex gap-3 justify-end pt-4 border-t">
-                      <button
-                        onClick={() => setShowHiddenGemModal(false)}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        onClick={handleSaveHiddenGem}
-                        disabled={savingHiddenGem}
-                        className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50"
-                      >
-                        {savingHiddenGem ? 'Đang lưu...' : 'Lưu'}
-                      </button>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-semibold text-gray-900">{gem.name}</p>
+                                {gem.description && (
+                                  <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{gem.description}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {gem.isRequired && (
+                                  <span className="rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-xs text-red-600 font-medium">
+                                    Bắt buộc
+                                  </span>
+                                )}
+                                <CheckCircle2 className="w-4 h-4 text-cyan-500" />
+                              </div>
+                            </div>
+
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {gem.latitude.toFixed(4)}, {gem.longitude.toFixed(4)}
+                              </span>
+                              {gem.checkInRadiusMeters !== undefined && (
+                                <span className="flex items-center gap-1">
+                                  <Tag className="w-3 h-3" />
+                                  Bán kính: {gem.checkInRadiusMeters}m
+                                </span>
+                              )}
+                              {gem.rewardPoints !== undefined && (
+                                <span className="font-semibold text-cyan-600">
+                                  {gem.rewardPoints} điểm
+                                </span>
+                              )}
+                              {gem.localRouteName && (
+                                <span className="text-gray-400">Route: {gem.localRouteName}</span>
+                              )}
+                            </div>
+
+                            <div className="mt-1.5 flex gap-3 text-xs text-gray-400">
+                              <span>Step ID: {gem.stepId.slice(0, 8)}…</span>
+                              <span>Gem ID: {gem.hiddenGemId.slice(0, 8)}…</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
-              {!showHiddenGemModal && (
-                <div className="space-y-4">
-                  <button
-                    onClick={openCreateHiddenGem}
-                    className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Thêm điểm đến mới
-                  </button>
-
-                  <div className="bg-white rounded-xl shadow-md p-4">
-                    {!isAdmin && (
-                      <div className="mb-4 rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-sm text-cyan-800">
-                        Đang hiển thị điểm đến thuộc tỉnh: {managerProvince.name || 'Chưa phân công'}
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
-                      <select
-                        value={hiddenGemViewExperienceId}
-                        onChange={(e) => void loadHiddenGemViewSchedules(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      >
-                        <option value="">-- Chọn dịch vụ để xem hidden gems --</option>
-                        {services.map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {formatServiceOptionLabel(service)}
-                          </option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={hiddenGemViewScheduleId}
-                        onChange={(e) => {
-                          const nextScheduleId = e.target.value;
-                          setHiddenGemViewScheduleId(nextScheduleId);
-                          setSelectedScheduleId(nextScheduleId);
-                        }}
-                        disabled={!hiddenGemViewExperienceId || hiddenGemViewSchedulesLoading}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-100"
-                      >
-                        <option value="">-- Chọn lịch trình --</option>
-                        {hiddenGemViewSchedules.map((schedule) => (
-                          <option key={schedule.id} value={schedule.id}>
-                            {formatScheduleOptionLabel(schedule)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {hiddenGemViewSchedulesLoading && (
-                      <p className="mb-3 text-xs text-gray-500">Đang tải lịch trình...</p>
-                    )}
-
-                    <div className="relative max-w-xl mb-4">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={hiddenGemSearch}
-                        onChange={(e) => setHiddenGemSearch(e.target.value)}
-                        placeholder="Tìm điểm đến..."
-                        className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
-                      />
-                    </div>
-
-                    {hiddenGemsLoading ? (
-                      <div className="text-center py-10 text-gray-500">Đang tải...</div>
-                    ) : filteredHiddenGems.length === 0 ? (
-                      <div className="text-center py-10 text-gray-500">
-                        {!selectedScheduleId
-                          ? 'Chọn lịch trình để xem hidden gems'
-                          : hiddenGems.length === 0
-                            ? 'Chưa có điểm đến nào'
-                            : 'Không tìm thấy điểm đến'}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredHiddenGems.map((gem) => (
-                          <div
-                            key={gem.id}
-                            className="rounded-lg border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow"
-                          >
-                            <div className="mb-3">
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <h4 className="font-semibold text-gray-900 flex-1">{gem.name}</h4>
-                                <Dot className="w-5 h-5 text-cyan-600 flex-shrink-0" />
-                              </div>
-                              {gem.description && (
-                                <p className="text-sm text-gray-600 line-clamp-2">{gem.description}</p>
-                              )}
-                            </div>
-
-                            <div className="space-y-1.5 text-sm text-gray-600 mb-4">
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4" />
-                                <span className="font-mono text-xs">{gem.latitude.toFixed(4)}, {gem.longitude.toFixed(4)}</span>
-                              </div>
-                              {gem.checkInRadiusMeters !== undefined && (
-                                <div className="flex items-center gap-2">
-                                  <Tag className="w-4 h-4" />
-                                  <span>Bán kính: {gem.checkInRadiusMeters}m</span>
-                                </div>
-                              )}
-                              {gem.rewardPoints !== undefined && gem.rewardPoints > 0 && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-cyan-600 font-semibold">{gem.rewardPoints} điểm</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => openEditHiddenGem(gem)}
-                                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 flex items-center justify-center gap-2"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                                Sửa
-                              </button>
-                              <button
-                                onClick={() => handleDeleteHiddenGem(gem)}
-                                className="px-3 py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            <div className="mt-2 text-xs text-gray-400">ID: {gem.id}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              {/* Placeholder khi chưa chọn schedule */}
+              {!gemTabScheduleId && gemTabExperienceId && !gemTabSchedulesLoading && gemTabSchedules.length === 0 && (
+                <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-400">
+                  Tour này chưa có lịch trình nào.
+                </div>
+              )}
+              {!gemTabExperienceId && (
+                <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-400">
+                  Chọn tour và lịch trình để xem danh sách điểm check-in.
                 </div>
               )}
             </div>
