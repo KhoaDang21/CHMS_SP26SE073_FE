@@ -6,7 +6,7 @@ import MainLayout from "../../layouts/MainLayout";
 import { bookingService, type Booking } from "../../services/bookingService";
 import { publicHomestayService } from "../../services/publicHomestayService";
 import { diningService } from "../../services/diningService";
-import type { AvailableDiningTimeSlot, DiningCombo, DiningOrder, DiningServeLocation } from "../../types/dining.types";
+import type { AvailableDiningTimeSlot, DiningCombo, DiningServeLocation } from "../../types/dining.types";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
 const dateISO = (d: Date) => d.toISOString().slice(0, 10);
@@ -163,25 +163,18 @@ export default function BookingDiningPage() {
 
     setSubmitting(true);
     try {
-      const createdOrders: DiningOrder[] = [];
-      for (let i = 0; i < quantity; i += 1) {
-        const created = await diningService.customerCreateOrder({
-          bookingId,
-          comboId: selectedComboId,
-          quantity: 1,
-          timeSlotId: selectedSlotId,
-          orderDate: date,
-          serveLocation,
-          note: note.trim() || undefined,
-        });
-        if (!created?.id) break;
-        createdOrders.push(created);
-      }
+      const created = await diningService.customerCreateOrder({
+        bookingId,
+        comboId: selectedComboId,
+        quantity,
+        timeSlotId: selectedSlotId,
+        orderDate: date,
+        serveLocation,
+        note: note.trim() || undefined,
+      });
 
-      if (createdOrders.length === quantity) {
+      if (created?.id) {
         toast.success("Đặt món thành công. Tiền sẽ được cộng vào hóa đơn phòng.");
-      } else if (createdOrders.length > 0) {
-        toast.success(`Đặt thành công ${createdOrders.length}/${quantity} đơn. Slot còn lại có thể đã hết.`);
       } else {
         toast.error("Không thể đặt món ở khung giờ đã chọn.");
       }
@@ -406,7 +399,7 @@ export default function BookingDiningPage() {
                     </div>
                   )}
                   <div className="text-xs text-gray-500 mt-2">
-                    Sức chứa khung giờ được tính theo số đơn, không theo số lượng món trong một đơn.
+                    Mỗi lần đặt chiếm 1 suất trong khung giờ, bất kể số lượng combo.
                   </div>
                 </div>
 
