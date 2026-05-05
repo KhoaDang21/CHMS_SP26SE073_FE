@@ -39,16 +39,16 @@ const categorizeCharge = (note?: string | null): ChargeCategory => {
 };
 
 const CHARGE_CATEGORY_CFG: Record<ChargeCategory, { label: string; icon: string; color: string; bg: string }> = {
-  dining:  { label: 'Ăn uống',       icon: '🍽',  color: '#0891b2', bg: '#e0f2fe' },
-  bicycle: { label: 'Xe đạp',        icon: '🚲',  color: '#7c3aed', bg: '#ede9fe' },
-  damage:  { label: 'Hư hại / Bảo trì', icon: '🔧', color: '#dc2626', bg: '#fee2e2' },
-  other:   { label: 'Phí khác',      icon: '📋',  color: '#d97706', bg: '#fef3c7' },
+  dining: { label: 'Ăn uống', icon: '🍽', color: '#0891b2', bg: '#e0f2fe' },
+  bicycle: { label: 'Xe đạp', icon: '🚲', color: '#7c3aed', bg: '#ede9fe' },
+  damage: { label: 'Hư hại / Bảo trì', icon: '🔧', color: '#dc2626', bg: '#fee2e2' },
+  other: { label: 'Phí khác', icon: '📋', color: '#d97706', bg: '#fef3c7' },
 };
 
 // Helper to normalize date strings from API (could be ISO, timestamp, or malformed)
 const normalizeDateString = (value: any): string => {
   if (!value) return '';
-  
+
   // If already a valid ISO string, return as-is
   if (typeof value === 'string' && value.length > 0) {
     // Check if it's already in YYYY-MM-DD or ISO format
@@ -62,7 +62,7 @@ const normalizeDateString = (value: any): string => {
     }
     return value;
   }
-  
+
   // If it's a number (timestamp), convert to ISO
   if (typeof value === 'number') {
     const d = new Date(value);
@@ -70,12 +70,12 @@ const normalizeDateString = (value: any): string => {
       return d.toISOString().split('T')[0];
     }
   }
-  
+
   // If it's a Date object
   if (value instanceof Date && !isNaN(value.getTime())) {
     return value.toISOString().split('T')[0];
   }
-  
+
   return '';
 };
 
@@ -129,7 +129,7 @@ export default function BookingsPage() {
   const [showExtraDetailModal, setShowExtraDetailModal] = useState(false);
   const [extraDetailBooking, setExtraDetailBooking] = useState<Booking | null>(null);
   const [extraDetailCharges, setExtraDetailCharges] = useState<ExtraCharge[]>([]);
-  const [extraChargeDetailLoading, setExtraChargeDetailLoading] = useState(false);
+  const [extraChargeDetailLoading] = useState(false);
   const totalExtraDetailAmount = extraDetailCharges
     .reduce((sum, c) => sum + (c.amount || 0), 0);
 
@@ -262,7 +262,7 @@ export default function BookingsPage() {
   const openDetail = async (b: Booking) => {
     // Check if this is a group booking - if so, show group detail modal instead
     const groupBookingId = b.groupBookingId?.trim();
-    
+
     if (groupBookingId) {
       // This is a booking from a group - show group detail modal
       setSelected(null);
@@ -332,22 +332,7 @@ export default function BookingsPage() {
     }
   };
 
-  const handleViewExtraDetail = async (booking: Booking) => {
-    setExtraDetailBooking(booking);
-    setShowExtraDetailModal(true);
 
-    try {
-      setExtraChargeDetailLoading(true);
-      const list = await extraChargeService.listByBooking(booking.id);
-      setExtraDetailCharges(list);
-    } catch (error) {
-      console.error('Load extra charges error:', error);
-      toast.error('Không thể tải chi tiết phát sinh');
-      setExtraDetailCharges([]);
-    } finally {
-      setExtraChargeDetailLoading(false);
-    }
-  };
 
   const startEdit = () => {
     if (!selected) return;
@@ -388,46 +373,7 @@ export default function BookingsPage() {
     return extractBookingExperienceData(specialRequests).items.length > 0;
   };
 
-  const selectedFinancials = useMemo(() => {
-    if (!selected) return null;
 
-    const totalPrice = Number(selected.totalPrice || 0);
-    const homestay = detailHomestay || getHomestayById(selected.homestayId) || null;
-    const rawDepositPercentage = Number(homestay?.depositPercentage ?? 0);
-    const depositPercentage = Number.isFinite(rawDepositPercentage) && rawDepositPercentage > 0
-      ? rawDepositPercentage
-      : 20;
-
-    // Tiền phòng gốc từ BE (không bao gồm dining)
-    const roomTotal = Number(selected.subTotal || 0);
-
-    // Tiền dining active
-    const diningTotal = (selected.diningOrders ?? [])
-      .filter((o: any) => String(o?.status ?? o?.Status ?? "").toUpperCase() !== "CANCELLED")
-      .reduce((s: number, o: any) => s + Number(o?.totalAmount ?? o?.TotalAmount ?? o?.price ?? o?.Price ?? 0), 0);
-
-    // Chi phí phát sinh thực sự (không phải dining)
-    const extraTotal = selectedExtraCharges
-      .filter((charge) => !charge.note?.startsWith("[DINING_ORDER:"))
-      .reduce((sum, charge) => sum + Number(charge.amount || 0), 0);
-
-    const depositAmount = typeof selected.depositAmount === 'number'
-      ? selected.depositAmount
-      : Math.round((roomTotal * depositPercentage) / 100);
-    const remainingAmount = Number(selected.remainingAmount || 0);
-    const remainingAfterDeposit = Math.max(roomTotal - depositAmount, 0);
-
-    return {
-      totalPrice,
-      depositPercentage,
-      depositAmount,
-      roomTotal,
-      diningTotal,
-      extraTotal,
-      remainingAmount,
-      remainingAfterDeposit,
-    };
-  }, [detailHomestay, getHomestayById, selected, selectedExtraCharges]);
 
   const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
@@ -629,15 +575,15 @@ export default function BookingsPage() {
                               <Calendar className="w-4 h-4" />
                               <span className="text-xs">Check-in</span>
                             </div>
-                              <div className="font-semibold text-gray-900 text-sm">
-                                {new Date(b.checkIn).toLocaleDateString('vi-VN')}
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {new Date(b.checkIn).toLocaleDateString('vi-VN')}
+                            </div>
+                            {b.checkInTime && (
+                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                <span>{b.checkInTime}</span>
                               </div>
-                              {b.checkInTime && (
-                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                  <Clock className="w-3.5 h-3.5 text-gray-400" />
-                                  <span>{b.checkInTime}</span>
-                                </div>
-                              )}
+                            )}
                           </div>
                           <div className="bg-gray-50 rounded-lg p-3">
                             <div className="flex items-center gap-2 text-gray-600 mb-1">
@@ -679,76 +625,76 @@ export default function BookingsPage() {
                             <div />
                           )}
 
-                        <div className="flex items-center gap-2">
-                          {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
+                          <div className="flex items-center gap-2">
+                            {(b.status === 'CHECKED_IN' || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && !hasSelectedExperiences(b.specialRequests))) && (
+                              <button
+                                onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Thêm dịch vụ
+                              </button>
+                            )}
+                            {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
+                              <button
+                                onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
+                              >
+                                <UtensilsCrossed className="w-4 h-4" />
+                                Đặt món
+                              </button>
+                            )}
+                            {b.status === 'CHECKED_IN' && (
+                              <button
+                                onClick={() => navigate(`/customer/equipment?bookingId=${encodeURIComponent(b.id)}&homestayId=${encodeURIComponent(b.homestayId)}`)}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
+                              >
+                                <Package className="w-4 h-4" />
+                                Mượn đồ dùng
+                              </button>
+                            )}
+                            {(() => {
+                              const existing = myReviewsMap[b.id];
+                              if (existing) {
+                                return (
+                                  <button
+                                    onClick={() => setEditingReview(existing)}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
+                                  >
+                                    <Star className="w-4 h-4 text-yellow-400" />
+                                    Đã đánh giá
+                                  </button>
+                                );
+                              }
+                              if (b.status === 'COMPLETED') {
+                                return (
+                                  <button
+                                    onClick={() => setReviewingBooking({
+                                      id: b.id,
+                                      homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
+                                    })}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
+                                  >
+                                    <Star className="w-4 h-4" />
+                                    Đánh giá
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
                             <button
-                              onClick={() => navigate(`/customer/bookings/${b.id}/services`)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold text-sm transition-colors"
+                              onClick={() => openDetail(b)}
+                              className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
                             >
-                              <Plus className="w-4 h-4" />
-                              Thêm dịch vụ
+                              Chi tiết
+                              <ChevronRight className="w-4 h-4" />
                             </button>
-                          )}
-                          {(b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') && (
-                            <button
-                              onClick={() => navigate(`/customer/bookings/${b.id}/dining`)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold text-sm transition-colors"
-                            >
-                              <UtensilsCrossed className="w-4 h-4" />
-                              Đặt món
-                            </button>
-                          )}
-                          {b.status === 'CHECKED_IN' && (
-                            <button
-                              onClick={() => navigate(`/customer/equipment?bookingId=${encodeURIComponent(b.id)}&homestayId=${encodeURIComponent(b.homestayId)}`)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
-                            >
-                              <Package className="w-4 h-4" />
-                              Mượn đồ dùng
-                            </button>
-                          )}
-                          {(() => {
-                            const existing = myReviewsMap[b.id];
-                            if (existing) {
-                              return (
-                                <button
-                                  onClick={() => setEditingReview(existing)}
-                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
-                                >
-                                  <Star className="w-4 h-4 text-yellow-400" />
-                                  Đã đánh giá
-                                </button>
-                              );
-                            }
-                            if (b.status === 'COMPLETED') {
-                              return (
-                                <button
-                                  onClick={() => setReviewingBooking({
-                                    id: b.id,
-                                    homestayName: getHomestayById(b.homestayId)?.name || cleanLoadingText(b.homestayName) || 'Homestay',
-                                  })}
-                                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-sm transition-colors"
-                                >
-                                  <Star className="w-4 h-4" />
-                                  Đánh giá
-                                </button>
-                              );
-                            }
-                            return null;
-                          })()}
-                          <button
-                            onClick={() => openDetail(b)}
-                            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm transition-colors"
-                          >
-                            Chi tiết
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
+                );
               })}
             </div>
           )}
@@ -807,7 +753,7 @@ export default function BookingsPage() {
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Check-in</div>
                             <div className="font-semibold text-gray-900">
-                              {groupBookingDetail?.checkIn 
+                              {groupBookingDetail?.checkIn
                                 ? new Date(groupBookingDetail.checkIn).toLocaleDateString('vi-VN')
                                 : selectedGroupBooking?.bookings?.[0]?.checkIn
                                   ? new Date(selectedGroupBooking.bookings[0].checkIn).toLocaleDateString('vi-VN')
@@ -817,7 +763,7 @@ export default function BookingsPage() {
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Check-out</div>
                             <div className="font-semibold text-gray-900">
-                              {groupBookingDetail?.checkOut 
+                              {groupBookingDetail?.checkOut
                                 ? new Date(groupBookingDetail.checkOut).toLocaleDateString('vi-VN')
                                 : selectedGroupBooking?.bookings?.[0]?.checkOut
                                   ? new Date(selectedGroupBooking.bookings[0].checkOut).toLocaleDateString('vi-VN')
@@ -827,7 +773,7 @@ export default function BookingsPage() {
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Tổng khách</div>
                             <div className="font-semibold text-gray-900">
-                              {groupBookingDetail?.totalGuestCount 
+                              {groupBookingDetail?.totalGuestCount
                                 ? groupBookingDetail.totalGuestCount
                                 : selectedGroupBooking?.bookings?.reduce((sum, b) => sum + (b.guestsCount || 0), 0) || 0
                               } người
@@ -839,7 +785,7 @@ export default function BookingsPage() {
                               {(() => {
                                 let checkIn: Date | null = null;
                                 let checkOut: Date | null = null;
-                                
+
                                 if (groupBookingDetail?.checkIn && groupBookingDetail?.checkOut) {
                                   checkIn = new Date(groupBookingDetail.checkIn);
                                   checkOut = new Date(groupBookingDetail.checkOut);
@@ -847,7 +793,7 @@ export default function BookingsPage() {
                                   checkIn = new Date(selectedGroupBooking.bookings[0].checkIn);
                                   checkOut = new Date(selectedGroupBooking.bookings[0].checkOut);
                                 }
-                                
+
                                 if (!checkIn || !checkOut) return '—';
                                 const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
                                 return nights > 0 ? nights : 0;
@@ -935,7 +881,7 @@ export default function BookingsPage() {
                             <div>
                               <div className="font-semibold text-gray-900">Đặt nhóm</div>
                               <div className="text-gray-600 text-xs">
-                                Đã tạo lúc {groupBookingDetail?.createdAt 
+                                Đã tạo lúc {groupBookingDetail?.createdAt
                                   ? new Date(groupBookingDetail.createdAt).toLocaleDateString('vi-VN')
                                   : selectedGroupBooking?.bookings?.[0]?.createdAt
                                     ? new Date(selectedGroupBooking.bookings[0].createdAt).toLocaleDateString('vi-VN')
@@ -1015,7 +961,7 @@ export default function BookingsPage() {
                                 }
                               }
                               if (!detail) return;
-                              
+
                               // Try to get dates from bookings if detail doesn't have them
                               let checkInStr = detail.checkIn;
                               let checkOutStr = detail.checkOut;
@@ -1023,26 +969,26 @@ export default function BookingsPage() {
                                 checkInStr = selectedGroupBooking.bookings[0].checkIn;
                                 checkOutStr = selectedGroupBooking.bookings[0].checkOut;
                               }
-                              
+
                               // Normalize dates to ISO string format
                               const normalizedCheckIn = normalizeDateString(checkInStr);
                               const normalizedCheckOut = normalizeDateString(checkOutStr);
-                              
+
                               const checkInDate = new Date(normalizedCheckIn);
                               const checkOutDate = new Date(normalizedCheckOut);
-                              
-                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime()) 
+
+                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime())
                                 ? Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
                                 : 0;
                               const totalPrice = detail.totalPrice ?? 0;
                               const pricePerNight = totalNights > 0 ? Math.round(totalPrice / totalNights) : 0;
-                              
+
                               // Get guest count - prioritize API data, fallback to calculating from bookings
                               let guestsCount = detail.totalGuestCount ?? 0;
                               if (!guestsCount && selectedGroupBooking?.bookings) {
                                 guestsCount = selectedGroupBooking.bookings.reduce((sum, b) => sum + (b.guestsCount || 0), 0);
                               }
-                              
+
                               setPayingBooking({
                                 id: detail.id,
                                 groupBookingId: detail.id,
@@ -1086,7 +1032,7 @@ export default function BookingsPage() {
                                 }
                               }
                               if (!detail) return;
-                              
+
                               // Try to get dates from bookings if detail doesn't have them
                               let checkInStr = detail.checkIn;
                               let checkOutStr = detail.checkOut;
@@ -1094,26 +1040,26 @@ export default function BookingsPage() {
                                 checkInStr = selectedGroupBooking.bookings[0].checkIn;
                                 checkOutStr = selectedGroupBooking.bookings[0].checkOut;
                               }
-                              
+
                               // Normalize dates to ISO string format
                               const normalizedCheckIn = normalizeDateString(checkInStr);
                               const normalizedCheckOut = normalizeDateString(checkOutStr);
-                              
+
                               const checkInDate = new Date(normalizedCheckIn);
                               const checkOutDate = new Date(normalizedCheckOut);
-                              
-                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime()) 
+
+                              const totalNights = (checkInDate.getTime() && checkOutDate.getTime())
                                 ? Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
                                 : 0;
                               const totalPrice = detail.totalPrice ?? 0;
                               const pricePerNight = totalNights > 0 ? Math.round(totalPrice / totalNights) : 0;
-                              
+
                               // Get guest count - prioritize API data, fallback to calculating from bookings
                               let guestsCount = detail.totalGuestCount ?? 0;
                               if (!guestsCount && selectedGroupBooking?.bookings) {
                                 guestsCount = selectedGroupBooking.bookings.reduce((sum, b) => sum + (b.guestsCount || 0), 0);
                               }
-                              
+
                               setPayingBooking({
                                 id: detail.id,
                                 groupBookingId: detail.id,
@@ -1313,55 +1259,55 @@ export default function BookingsPage() {
 
                               return (
                                 <>
-                            <div className="flex items-center justify-between">
-                              <div className="font-semibold text-gray-900">Tổng tiền</div>
-                              <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
-                                {totalPrice.toLocaleString('vi-VN')}đ
-                              </div>
-                            </div>
-                            {selected.totalPrice && (
-                              <div className="mt-3 rounded-xl border border-blue-100 bg-white/70 p-3 space-y-2 text-xs text-gray-500">
-                                <div className="flex justify-between">
-                                  <span>Tiền phòng</span>
-                                  <span className="font-medium text-gray-700">{roomTotal.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                                {diningTotal > 0 && (
-                                  <div className="flex justify-between">
-                                    <span>🍽 Tiền ăn uống</span>
-                                    <span className="font-medium text-cyan-700">+{diningTotal.toLocaleString('vi-VN')}đ</span>
+                                  <div className="flex items-center justify-between">
+                                    <div className="font-semibold text-gray-900">Tổng tiền</div>
+                                    <div className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
+                                      {totalPrice.toLocaleString('vi-VN')}đ
+                                    </div>
                                   </div>
-                                )}
-                                {extraTotal > 0 && (
-                                  <div className="flex justify-between">
-                                    <span>⚠ Phí phát sinh</span>
-                                    <span className="font-medium text-orange-600">+{extraTotal.toLocaleString('vi-VN')}đ</span>
-                                  </div>
-                                )}
-                                <div className="flex justify-between border-t border-blue-100 pt-2">
-                                  <span>Cọc ({depositPercentage}%)</span>
-                                  <span className="font-medium text-gray-700">{depositAmount.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Còn lại sau cọc{selected.status !== 'CHECKED_IN' ? ' (chưa check-in)' : ''}</span>
-                                  <span className="font-medium text-gray-700">{remainingAfterDeposit.toLocaleString('vi-VN')}đ</span>
-                                </div>
-                              </div>
-                            )}
-                            {selected.paymentStatus === 'UNPAID' && typeof selected.depositAmount === 'number' && (
-                              <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-100">
-                                <span className="text-orange-600 font-medium">Cần cọc ngay</span>
-                                <span className="font-bold text-orange-600">{selected.depositAmount.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                            {selected.paymentStatus === 'DEPOSIT_PAID' && typeof selected.remainingAmount === 'number' && (
-                              <div className="flex items-center justify-between text-sm pt-2 border-t border-blue-100">
-                                <span className="text-blue-600 font-medium">Còn lại cần thanh toán</span>
-                                <span className="font-bold text-blue-600">{selected.remainingAmount.toLocaleString('vi-VN')}đ</span>
-                              </div>
-                            )}
-                            {selected.paymentStatus === 'FULLY_PAID' && (
-                              <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ Đã thanh toán đầy đủ</div>
-                            )}
+                                  {selected.totalPrice && (
+                                    <div className="mt-3 rounded-xl border border-blue-100 bg-white/70 p-3 space-y-2 text-xs text-gray-500">
+                                      <div className="flex justify-between">
+                                        <span>Tiền phòng</span>
+                                        <span className="font-medium text-gray-700">{roomTotal.toLocaleString('vi-VN')}đ</span>
+                                      </div>
+                                      {diningTotal > 0 && (
+                                        <div className="flex justify-between">
+                                          <span>🍽 Tiền ăn uống</span>
+                                          <span className="font-medium text-cyan-700">+{diningTotal.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                      )}
+                                      {extraTotal > 0 && (
+                                        <div className="flex justify-between">
+                                          <span>⚠ Phí phát sinh</span>
+                                          <span className="font-medium text-orange-600">+{extraTotal.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                      )}
+                                      <div className="flex justify-between border-t border-blue-100 pt-2">
+                                        <span>Cọc ({depositPercentage}%)</span>
+                                        <span className="font-medium text-gray-700">{depositAmount.toLocaleString('vi-VN')}đ</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Còn lại sau cọc{selected.status !== 'CHECKED_IN' ? ' (chưa check-in)' : ''}</span>
+                                        <span className="font-medium text-gray-700">{remainingAfterDeposit.toLocaleString('vi-VN')}đ</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selected.paymentStatus === 'UNPAID' && typeof selected.depositAmount === 'number' && (
+                                    <div className="flex items-center justify-between text-sm pt-2 border-t border-orange-100">
+                                      <span className="text-orange-600 font-medium">Cần cọc ngay</span>
+                                      <span className="font-bold text-orange-600">{selected.depositAmount.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                  )}
+                                  {selected.paymentStatus === 'DEPOSIT_PAID' && typeof selected.remainingAmount === 'number' && (
+                                    <div className="flex items-center justify-between text-sm pt-2 border-t border-blue-100">
+                                      <span className="text-blue-600 font-medium">Còn lại cần thanh toán</span>
+                                      <span className="font-bold text-blue-600">{selected.remainingAmount.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                  )}
+                                  {selected.paymentStatus === 'FULLY_PAID' && (
+                                    <div className="text-sm text-green-600 font-medium text-right pt-2 border-t border-green-100">✓ Đã thanh toán đầy đủ</div>
+                                  )}
                                 </>
                               );
                             })()}
@@ -1790,8 +1736,8 @@ export default function BookingsPage() {
                                     selected.status === 'CANCELLED' ? 'Booking đã bị hủy' : ''
                               }
                               className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${selected.status === 'CANCELLED' || selected.status === 'COMPLETED' || selected.status === 'CHECKED_IN' || selected.status === 'REJECTED'
-                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                  : 'bg-red-600 hover:bg-red-700 text-white'
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-700 text-white'
                                 }`}
                             >
                               <XCircle className="w-4 h-4" />
