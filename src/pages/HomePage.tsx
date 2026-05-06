@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
-import { MapPin } from "lucide-react";
+import { MapPin, CalendarDays, X } from "lucide-react";
 import { publicHomestayService } from "../services/publicHomestayService";
 import { bookingService, type Booking } from "../services/bookingService";
 import { authService } from "../services/authService";
@@ -39,8 +39,9 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [checkInDate] = useState("");
-  const [checkOutDate] = useState("");
+  const [checkInDate, setCheckInDate] = useState("");
+  const [checkOutDate, setCheckOutDate] = useState("");
+  const isLoggedIn = authService.isAuthenticated() && authService.isTokenValid();
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
   const [showPriceFilter, setShowPriceFilter] = useState(false);
   const [activeHeroImage, setActiveHeroImage] = useState(0);
@@ -330,6 +331,65 @@ export default function HomePage() {
               )}
             </div>
           </div>
+
+          {/* Date filter — chỉ hiện khi đã đăng nhập */}
+          {isLoggedIn && (
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <CalendarDays className="inline w-4 h-4 mr-1 text-gray-400" />
+                  Ngày nhận phòng
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={checkInDate}
+                    min={today}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCheckInDate(val);
+                      if (checkOutDate && checkOutDate <= val) setCheckOutDate('');
+                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white"
+                  />
+                  {checkInDate && (
+                    <button
+                      type="button"
+                      onClick={() => { setCheckInDate(''); setCheckOutDate(''); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <CalendarDays className="inline w-4 h-4 mr-1 text-gray-400" />
+                  Ngày trả phòng
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={checkOutDate}
+                    min={checkInDate ? (() => { const d = new Date(checkInDate); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })() : today}
+                    disabled={!checkInDate}
+                    onChange={(e) => setCheckOutDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  />
+                  {checkOutDate && (
+                    <button
+                      type="button"
+                      onClick={() => setCheckOutDate('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Featured Homestays (fetched from API) */}

@@ -955,14 +955,6 @@ export default function SupportPage() {
             </div>
             <p className="text-sm text-gray-500 ml-11">Quản lý các yêu cầu hỗ trợ của bạn</p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500
-              text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-sm shadow-blue-200"
-          >
-            <Plus className="w-4 h-4" />
-            Gửi khiếu nại
-          </button>
         </div>
 
         {/* Main layout: list + detail */}

@@ -20,9 +20,23 @@ export default function CancelRefundModal({ bookingId, homestayName, totalPrice,
   const [submitting, setSubmitting] = useState(false);
 
   const BANKS = [
-    'Vietcombank', 'VietinBank', 'BIDV', 'Agribank', 'Techcombank',
-    'MB Bank', 'ACB', 'VPBank', 'TPBank', 'Sacombank',
-    'HDBank', 'OCB', 'SHB', 'SeABank', 'VIB', 'MSB', 'Eximbank',
+    { label: 'Vietcombank', value: 'VCB' },
+    { label: 'VietinBank', value: 'ICB' },
+    { label: 'BIDV', value: 'BIDV' },
+    { label: 'Agribank', value: 'VBA' },
+    { label: 'Techcombank', value: 'TCB' },
+    { label: 'MB Bank', value: 'MB' },
+    { label: 'ACB', value: 'ACB' },
+    { label: 'VPBank', value: 'VPB' },
+    { label: 'TPBank', value: 'TPB' },
+    { label: 'Sacombank', value: 'STB' },
+    { label: 'HDBank', value: 'HDB' },
+    { label: 'OCB', value: 'OCB' },
+    { label: 'SHB', value: 'SHB' },
+    { label: 'SeABank', value: 'SEAB' },
+    { label: 'VIB', value: 'VIB' },
+    { label: 'MSB', value: 'MSB' },
+    { label: 'Eximbank', value: 'EIB' },
   ];
 
   useEffect(() => {
@@ -126,7 +140,7 @@ export default function CancelRefundModal({ bookingId, homestayName, totalPrice,
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Chọn ngân hàng...</option>
-                  {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
+                  {BANKS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
                 </select>
               </div>
               <div>
