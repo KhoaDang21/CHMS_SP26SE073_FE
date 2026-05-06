@@ -19,32 +19,32 @@ import { subscribeTicketRealtimeEvents } from '../../services/ticketRealtimeServ
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; color: string; border: string; icon: ReactNode }> = {
-  OPEN:        { label: 'Mở',             color: 'bg-blue-100 text-blue-700',    border: 'border-l-blue-500',   icon: <AlertCircle className="w-3 h-3" /> },
-  IN_PROGRESS: { label: 'Đang xử lý',    color: 'bg-yellow-100 text-yellow-700', border: 'border-l-yellow-400', icon: <Clock className="w-3 h-3" /> },
-  RESOLVED:    { label: 'Đã giải quyết', color: 'bg-green-100 text-green-700',  border: 'border-l-green-500',  icon: <CheckCircle2 className="w-3 h-3" /> },
-  CLOSED:      { label: 'Đã đóng',       color: 'bg-gray-100 text-gray-500',    border: 'border-l-gray-400',   icon: <CheckCircle2 className="w-3 h-3" /> },
+  OPEN: { label: 'Mở', color: 'bg-blue-100 text-blue-700', border: 'border-l-blue-500', icon: <AlertCircle className="w-3 h-3" /> },
+  IN_PROGRESS: { label: 'Đang xử lý', color: 'bg-yellow-100 text-yellow-700', border: 'border-l-yellow-400', icon: <Clock className="w-3 h-3" /> },
+  RESOLVED: { label: 'Đã giải quyết', color: 'bg-green-100 text-green-700', border: 'border-l-green-500', icon: <CheckCircle2 className="w-3 h-3" /> },
+  CLOSED: { label: 'Đã đóng', color: 'bg-gray-100 text-gray-500', border: 'border-l-gray-400', icon: <CheckCircle2 className="w-3 h-3" /> },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  HIGH:   { label: 'Khẩn cấp',    color: 'bg-red-100 text-red-600' },
+  HIGH: { label: 'Khẩn cấp', color: 'bg-red-100 text-red-600' },
   NORMAL: { label: 'Bình thường', color: 'bg-blue-50 text-blue-600' },
-  LOW:    { label: 'Không gấp',   color: 'bg-gray-100 text-gray-500' },
+  LOW: { label: 'Không gấp', color: 'bg-gray-100 text-gray-500' },
 };
 
 const QUICK_CATEGORIES = [
-  { label: 'Vệ sinh phòng',      icon: '🧹' },
-  { label: 'Tiện nghi hỏng',     icon: '🔧' },
-  { label: 'Thái độ nhân viên',  icon: '👤' },
-  { label: 'Yêu cầu hoàn tiền',  icon: '💰' },
-  { label: 'Khác',               icon: '💬' },
+  { label: 'Vệ sinh phòng', icon: '🧹' },
+  { label: 'Tiện nghi hỏng', icon: '🔧' },
+  { label: 'Thái độ nhân viên', icon: '👤' },
+  { label: 'Yêu cầu hoàn tiền', icon: '💰' },
+  { label: 'Khác', icon: '💬' },
 ];
 
 const FILTER_TABS = [
-  { key: 'ALL',         label: 'Tất cả' },
-  { key: 'OPEN',        label: 'Mở' },
+  { key: 'ALL', label: 'Tất cả' },
+  { key: 'OPEN', label: 'Mở' },
   { key: 'IN_PROGRESS', label: 'Đang xử lý' },
-  { key: 'RESOLVED',    label: 'Đã giải quyết' },
-  { key: 'CLOSED',      label: 'Đã đóng' },
+  { key: 'RESOLVED', label: 'Đã giải quyết' },
+  { key: 'CLOSED', label: 'Đã đóng' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -64,9 +64,9 @@ function formatTime(dateStr: string) {
 // ─── Status Timeline ──────────────────────────────────────────────────────────
 function StatusTimeline({ status }: { status: string }) {
   const steps = [
-    { key: 'OPEN',        label: 'Đã gửi',        icon: <Send className="w-3.5 h-3.5" /> },
-    { key: 'IN_PROGRESS', label: 'Đang xử lý',    icon: <Clock className="w-3.5 h-3.5" /> },
-    { key: 'RESOLVED',    label: 'Đã giải quyết', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    { key: 'OPEN', label: 'Đã gửi', icon: <Send className="w-3.5 h-3.5" /> },
+    { key: 'IN_PROGRESS', label: 'Đang xử lý', icon: <Clock className="w-3.5 h-3.5" /> },
+    { key: 'RESOLVED', label: 'Đã giải quyết', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   ];
   const ORDER: Record<string, number> = { OPEN: 0, IN_PROGRESS: 1, RESOLVED: 2, CLOSED: 2 };
   const currentIdx = ORDER[status] ?? 0;
@@ -82,7 +82,7 @@ function StatusTimeline({ status }: { status: string }) {
               <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all
                 ${active ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-md shadow-blue-200'
                   : done ? 'bg-green-100 text-green-600'
-                  : 'bg-gray-100 text-gray-400'}`}>
+                    : 'bg-gray-100 text-gray-400'}`}>
                 {step.icon}
               </div>
               <span className={`text-[10px] font-medium whitespace-nowrap
@@ -362,9 +362,9 @@ function CreateTicketModal({ onClose, onCreated }: { onClose: () => void; onCrea
                 <div className="grid grid-cols-3 gap-2">
                   {(['LOW', 'NORMAL', 'HIGH'] as const).map(p => {
                     const colors = {
-                      LOW:    { active: 'border-gray-400 bg-gray-50 text-gray-700',  dot: 'bg-gray-400' },
-                      NORMAL: { active: 'border-blue-400 bg-blue-50 text-blue-700',  dot: 'bg-blue-400' },
-                      HIGH:   { active: 'border-red-400 bg-red-50 text-red-700',     dot: 'bg-red-400' },
+                      LOW: { active: 'border-gray-400 bg-gray-50 text-gray-700', dot: 'bg-gray-400' },
+                      NORMAL: { active: 'border-blue-400 bg-blue-50 text-blue-700', dot: 'bg-blue-400' },
+                      HIGH: { active: 'border-red-400 bg-red-50 text-red-700', dot: 'bg-red-400' },
                     };
                     const isActive = form.priority === p;
                     return (
@@ -497,16 +497,16 @@ function TicketDetailPanel({
     if (!token) return;
 
     let isMounted = true;
-    let unsubscribe = () => {};
+    let unsubscribe = () => { };
 
     signalRService.connect(token).then((conn) => {
       if (!isMounted || !conn) return;
 
       if (currentUserId) {
-        conn.invoke('JoinUserGroup', currentUserId).catch(() => {});
+        conn.invoke('JoinUserGroup', currentUserId).catch(() => { });
       }
-      conn.invoke('JoinTicketGroup', ticketId).catch(() => {});
-      conn.invoke('JoinSupportTicketGroup', ticketId).catch(() => {});
+      conn.invoke('JoinTicketGroup', ticketId).catch(() => { });
+      conn.invoke('JoinSupportTicketGroup', ticketId).catch(() => { });
 
       unsubscribe = subscribeTicketRealtimeEvents(conn, (event) => {
         if (!event.isTicketEvent) return;
@@ -521,7 +521,7 @@ function TicketDetailPanel({
           }
         }, 250);
       });
-    }).catch(() => {});
+    }).catch(() => { });
 
     return () => {
       isMounted = false;
@@ -696,19 +696,19 @@ function TicketDetailPanel({
                       ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-br-sm'
                       : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'}`}>
                     {!isMe && <p className="text-xs font-medium mb-0.5 text-blue-600">{reply.senderName}</p>}
-                        {reply.message && <p className="whitespace-pre-wrap break-words leading-relaxed">{reply.message}</p>}
-                        {reply.attachmentUrl && (
-                          <a href={reply.attachmentUrl} target="_blank" rel="noreferrer" className="block mt-2">
-                            <img
-                              src={reply.attachmentUrl}
-                              alt="Ảnh đính kèm"
-                              className="w-full max-w-[240px] rounded-xl border border-white/70 shadow-sm object-cover hover:opacity-90 transition-opacity"
-                            />
-                          </a>
-                        )}
-                        <p className={`text-[10px] mt-1 ${isMe ? 'text-blue-100 text-right' : 'text-gray-400'}`}>
-                          {formatTime(reply.createdAt)}
-                        </p>
+                    {reply.message && <p className="whitespace-pre-wrap break-words leading-relaxed">{reply.message}</p>}
+                    {reply.attachmentUrl && (
+                      <a href={reply.attachmentUrl} target="_blank" rel="noreferrer" className="block mt-2">
+                        <img
+                          src={reply.attachmentUrl}
+                          alt="Ảnh đính kèm"
+                          className="w-full max-w-[240px] rounded-xl border border-white/70 shadow-sm object-cover hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    )}
+                    <p className={`text-[10px] mt-1 ${isMe ? 'text-blue-100 text-right' : 'text-gray-400'}`}>
+                      {formatTime(reply.createdAt)}
+                    </p>
                   </div>
                 </div>
               );
@@ -752,32 +752,32 @@ function TicketDetailPanel({
 
                 <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-gray-200
                   px-3 py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                <button
-                  type="button"
-                  onClick={handlePickReplyImage}
-                  className="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:bg-white hover:text-blue-600 transition-colors flex items-center justify-center flex-shrink-0"
-                  title="Đính kèm ảnh"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-                <textarea
-                  rows={1}
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                  placeholder="Nhập tin nhắn..."
-                  className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none outline-none max-h-24 leading-relaxed"
-                  style={{ minHeight: 24 }}
-                />
-                <button
-                  onClick={sendMessage}
-                  disabled={(!message.trim() && !replyImageFile) || sending}
-                  className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white
+                  <button
+                    type="button"
+                    onClick={handlePickReplyImage}
+                    className="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:bg-white hover:text-blue-600 transition-colors flex items-center justify-center flex-shrink-0"
+                    title="Đính kèm ảnh"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                  <textarea
+                    rows={1}
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    placeholder="Nhập tin nhắn..."
+                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none outline-none max-h-24 leading-relaxed"
+                    style={{ minHeight: 24 }}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={(!message.trim() && !replyImageFile) || sending}
+                    className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 text-white
                     flex items-center justify-center flex-shrink-0
                     disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                >
-                  {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                </button>
+                  >
+                    {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
             )}
@@ -888,13 +888,13 @@ export default function SupportPage() {
     if (!token) return;
 
     let isMounted = true;
-    let unsubscribe = () => {};
+    let unsubscribe = () => { };
 
     signalRService.connect(token).then((conn) => {
       if (!isMounted || !conn) return;
 
       if (currentUserId) {
-        conn.invoke('JoinUserGroup', currentUserId).catch(() => {});
+        conn.invoke('JoinUserGroup', currentUserId).catch(() => { });
       }
 
       unsubscribe = subscribeTicketRealtimeEvents(conn, (event) => {
@@ -909,7 +909,7 @@ export default function SupportPage() {
           }
         }, 250);
       });
-    }).catch(() => {});
+    }).catch(() => { });
 
     return () => {
       isMounted = false;
@@ -1011,13 +1011,23 @@ export default function SupportPage() {
                           ${sCfg.border}
                           ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50/80'}`}
                       >
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <p className={`text-sm font-medium line-clamp-1 flex-1 ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
+                        {/* Title + chevron */}
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <p className={`text-sm font-semibold line-clamp-1 flex-1 ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
                             {ticket.title}
                           </p>
                           <ChevronRight className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isSelected ? 'text-blue-400' : 'text-gray-300'}`} />
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
+
+                        {/* Homestay name */}
+                        {ticket.homestayName && (
+                          <p className={`text-sm font-medium truncate mb-1.5 ${isSelected ? 'text-blue-600' : 'text-gray-700'}`}>
+                            🏠 {ticket.homestayName}
+                          </p>
+                        )}
+
+                        {/* Status + priority badges */}
+                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
                           <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${sCfg.color}`}>
                             {sCfg.icon}{sCfg.label}
                           </span>
@@ -1025,7 +1035,18 @@ export default function SupportPage() {
                             <Tag className="w-2.5 h-2.5 inline mr-0.5" />{pCfg.label}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1.5">{formatTime(ticket.createdAt)}</p>
+
+                        {/* Staff + date */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          {ticket.staffName ? (
+                            <p className="text-xs text-gray-500 truncate">
+                              👤 {ticket.staffName}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">Chưa có nhân viên</p>
+                          )}
+                          <p className="text-xs text-gray-400 flex-shrink-0">{formatTime(ticket.createdAt)}</p>
+                        </div>
                       </button>
                     );
                   })

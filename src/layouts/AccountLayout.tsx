@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import {
   User, Bell,
-  Star, LogOut, Menu, X, ChevronRight,
+  Star, LogOut, Menu, X, ChevronRight, Sparkles,
 } from 'lucide-react';
 import Header from '../components/ui/header';
 import { authService } from '../services/authService';
@@ -16,8 +16,9 @@ interface AccountLayoutProps {
 }
 
 const sidebarItems = [
-  { label: 'Hồ Sơ',     href: '/customer/profile',       icon: User },
-  { label: 'Đánh Giá',  href: '/customer/reviews',       icon: Star },
+  { label: 'Hồ Sơ', href: '/customer/profile', icon: User },
+  { label: 'Đánh Giá', href: '/customer/reviews', icon: Star },
+  { label: 'Điểm thưởng', href: '/customer/rewards', icon: Sparkles },
   { label: 'Thông Báo', href: '/customer/notifications', icon: Bell },
 ];
 
@@ -189,11 +190,10 @@ function SidebarContent({
             <button
               key={href}
               onClick={() => navigate(href)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-                active
-                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${active
+                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
             >
               <span className="flex items-center gap-2.5">
                 <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}`} />
