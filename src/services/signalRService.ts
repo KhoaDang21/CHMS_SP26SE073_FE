@@ -1,22 +1,25 @@
 import * as signalR from "@microsoft/signalr";
 
-const HUB_URL = `${import.meta.env.VITE_API_URL ?? "http://163.227.230.54:8088"}/notificationHub`;
+const API_URL = import.meta.env.VITE_API_URL ?? "http://163.227.230.54:8088";
+const NOTIFICATION_HUB_URL = `${API_URL}/notificationHub`;
+const CHAT_HUB_URL = `${API_URL}/chatHub`;
 
-let connection: signalR.HubConnection | null = null;
-let isConnecting = false;
+let notificationConnection: signalR.HubConnection | null = null;
+let chatConnection: signalR.HubConnection | null = null;
+let isNotificationConnecting = false;
+let isChatConnecting = false;
 let connectionError: Error | null = null;
 
-// Log the hub URL for debugging
-console.log("[SignalR] Hub URL:", HUB_URL);
+// Log the hub URLs for debugging
+console.log("[SignalR] NotificationHub URL:", NOTIFICATION_HUB_URL);
+console.log("[SignalR] ChatHub URL:", CHAT_HUB_URL);
 console.log("[SignalR] API URL env:", import.meta.env.VITE_API_URL);
 
 export const signalRService = {
   /** Test if backend API is reachable */
   async testBackendConnection(): Promise<boolean> {
     try {
-      const apiUrl =
-        import.meta.env.VITE_API_URL ?? "http://163.227.230.54:8088";
-      const response = await fetch(`${apiUrl}/api/health`, {
+      const response = await fetch(`${API_URL}/api/health`, {
         method: "GET",
         mode: "no-cors", // Test basic connectivity
       });
@@ -28,97 +31,217 @@ export const signalRService = {
     }
   },
 
-  /** Khởi tạo và kết nối hub, truyền token JWT để xác thực */
-  async connect(token: string): Promise<signalR.HubConnection | null> {
-    // Return existing connection if already connected
+  /** Kết nối NotificationHub để nhận thông báo realtime */
+  async connectNotificationHub(token: string): Promise<signalR.HubConnection | null> {
     if (
-      connection &&
-      connection.state === signalR.HubConnectionState.Connected
+      notificationConnection &&
+      notificationConnection.state === signalR.HubConnectionState.Connected
     ) {
-      return connection;
+      return notificationConnection;
     }
 
-    // Prevent multiple simultaneous connection attempts
-    if (isConnecting) {
-      return connection;
+    if (isNotificationConnecting) {
+      return notificationConnection;
     }
 
-    isConnecting = true;
+    isNotificationConnecting = true;
     connectionError = null;
 
     try {
-      console.log("[SignalR] Starting connection to", HUB_URL);
-      connection = new signalR.HubConnectionBuilder()
-        .withUrl(HUB_URL, {
+      console.log("[SignalR] Starting connection to NotificationHub:", NOTIFICATION_HUB_URL);
+      notificationConnection = new signalR.HubConnectionBuilder()
+        .withUrl(NOTIFICATION_HUB_URL, {
           accessTokenFactory: () => token,
-          // Không dùng skipNegotiation trừ khi transport chỉ có WebSockets.
-          // skipNegotiation + nhiều transport gây lỗi: "Negotiation can only be skipped when using the WebSocket transport directly."
-          // Mặc định: POST /negotiate rồi chọn WebSocket → SSE → LongPolling (phù hợp BE MapHub).
           withCredentials: true,
         })
-        .withAutomaticReconnect([0, 1000, 2000, 5000, 10000]) // Retry: 0ms, 1s, 2s, 5s, 10s
-        .configureLogging(signalR.LogLevel.Error) // Only log errors
+        .withAutomaticReconnect([0, 1000, 2000, 5000, 10000])
+        .configureLogging(signalR.LogLevel.Error)
         .build();
 
-      // Handle connection closed
-      connection.onclose((error) => {
-        console.warn("[SignalR] Connection closed:", error?.message);
+      notificationConnection.onclose((error) => {
+        console.warn("[SignalR] NotificationHub closed:", error?.message);
         connectionError = error || new Error("Connection closed");
-        connection = null;
+        notificationConnection = null;
       });
 
-      // Handle reconnecting
-      connection.onreconnecting((error) => {
-        console.warn(
-          "[SignalR] Attempting reconnect after error:",
-          error?.message,
-        );
+      notificationConnection.onreconnecting((error) => {
+        console.warn("[SignalR] NotificationHub reconnecting:", error?.message);
       });
 
-      // Handle reconnected
-      connection.onreconnected((connectionId) => {
-        console.log("[SignalR] Reconnected successfully, ID:", connectionId);
+      notificationConnection.onreconnected((connectionId) => {
+        console.log("[SignalR] NotificationHub reconnected, ID:", connectionId);
         connectionError = null;
       });
 
-      await connection.start();
-      console.log("[SignalR] ✓ Connected successfully!");
-      return connection;
+      await notificationConnection.start();
+      console.log("[SignalR] ✓ NotificationHub connected successfully!");
+      return notificationConnection;
     } catch (error) {
       console.error(
-        "[SignalR] ✗ Connection failed:",
+        "[SignalR] NotificationHub connection failed:",
         error instanceof Error ? error.message : String(error),
       );
       connectionError =
         error instanceof Error ? error : new Error(String(error));
-      connection = null;
-      // Return null instead of throwing to prevent app crash
+      notificationConnection = null;
       return null;
     } finally {
-      isConnecting = false;
+      isNotificationConnecting = false;
     }
   },
 
-  /** Ngắt kết nối */
-  async disconnect(): Promise<void> {
+  /** Kết nối ChatHub để nhận tin nhắn chat và ticket reply */
+  async connectChatHub(token: string): Promise<signalR.HubConnection | null> {
+    if (
+      chatConnection &&
+      chatConnection.state === signalR.HubConnectionState.Connected
+    ) {
+      return chatConnection;
+    }
+
+    if (isChatConnecting) {
+      return chatConnection;
+    }
+
+    isChatConnecting = true;
+
     try {
-      if (connection) {
-        await connection.stop();
+      console.log("[SignalR] Starting connection to ChatHub:", CHAT_HUB_URL);
+      chatConnection = new signalR.HubConnectionBuilder()
+        .withUrl(CHAT_HUB_URL, {
+          accessTokenFactory: () => token,
+          withCredentials: true,
+        })
+        .withAutomaticReconnect([0, 1000, 2000, 5000, 10000])
+        .configureLogging(signalR.LogLevel.Error)
+        .build();
+
+      chatConnection.onclose((error) => {
+        console.warn("[SignalR] ChatHub closed:", error?.message);
+        chatConnection = null;
+      });
+
+      chatConnection.onreconnecting((error) => {
+        console.warn("[SignalR] ChatHub reconnecting:", error?.message);
+      });
+
+      chatConnection.onreconnected((connectionId) => {
+        console.log("[SignalR] ChatHub reconnected, ID:", connectionId);
+      });
+
+      await chatConnection.start();
+      console.log("[SignalR] ✓ ChatHub connected successfully!");
+      return chatConnection;
+    } catch (error) {
+      console.error(
+        "[SignalR] ChatHub connection failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+      chatConnection = null;
+      return null;
+    } finally {
+      isChatConnecting = false;
+    }
+  },
+
+  /** Join user group trong ChatHub để nhận tin nhắn */
+  async joinChatRoom(userId: string): Promise<void> {
+    try {
+      if (!chatConnection || chatConnection.state !== signalR.HubConnectionState.Connected) {
+        console.warn('[SignalR] ChatHub not connected, cannot join room');
+        return;
+      }
+
+      await chatConnection.invoke('JoinRoom', userId);
+      console.log('[SignalR] Joined chat room:', userId);
+    } catch (error) {
+      console.error('[SignalR] Failed to join chat room:', error);
+    }
+  },
+
+  /** Leave user group trong ChatHub */
+  async leaveChatRoom(userId: string): Promise<void> {
+    try {
+      if (chatConnection && chatConnection.state === signalR.HubConnectionState.Connected) {
+        await chatConnection.invoke('LeaveRoom', userId);
+        console.log('[SignalR] Left chat room:', userId);
       }
     } catch (error) {
-      console.error("[SignalR] Error disconnecting:", error);
-    } finally {
-      connection = null;
-      isConnecting = false;
+      console.error('[SignalR] Failed to leave chat room:', error);
     }
   },
 
-  getConnection(): signalR.HubConnection | null {
-    return connection;
+  /** Kết nối cả hai hub (backward compatible với code cũ) */
+  async connect(token: string): Promise<signalR.HubConnection | null> {
+    await this.connectNotificationHub(token);
+    await this.connectChatHub(token);
+    return notificationConnection;
   },
 
+  /** Ngắt kết nối NotificationHub */
+  async disconnectNotificationHub(): Promise<void> {
+    try {
+      if (notificationConnection) {
+        await notificationConnection.stop();
+      }
+    } catch (error) {
+      console.error("[SignalR] Error disconnecting NotificationHub:", error);
+    } finally {
+      notificationConnection = null;
+      isNotificationConnecting = false;
+    }
+  },
+
+  /** Ngắt kết nối ChatHub */
+  async disconnectChatHub(): Promise<void> {
+    try {
+      if (chatConnection) {
+        await chatConnection.stop();
+      }
+    } catch (error) {
+      console.error("[SignalR] Error disconnecting ChatHub:", error);
+    } finally {
+      chatConnection = null;
+      isChatConnecting = false;
+    }
+  },
+
+  /** Ngắt tất cả kết nối */
+  async disconnect(): Promise<void> {
+    await Promise.all([
+      this.disconnectNotificationHub(),
+      this.disconnectChatHub(),
+    ]);
+  },
+
+  /** Lấy NotificationHub connection */
+  getNotificationConnection(): signalR.HubConnection | null {
+    return notificationConnection;
+  },
+
+  /** Lấy ChatHub connection */
+  getChatConnection(): signalR.HubConnection | null {
+    return chatConnection;
+  },
+
+  /** Backward compatible - trả về NotificationHub connection */
+  getConnection(): signalR.HubConnection | null {
+    return notificationConnection;
+  },
+
+  /** Kiểm tra NotificationHub đã kết nối chưa */
+  isNotificationConnected(): boolean {
+    return notificationConnection?.state === signalR.HubConnectionState.Connected;
+  },
+
+  /** Kiểm tra ChatHub đã kết nối chưa */
+  isChatConnected(): boolean {
+    return chatConnection?.state === signalR.HubConnectionState.Connected;
+  },
+
+  /** Backward compatible - kiểm tra NotificationHub */
   isConnected(): boolean {
-    return connection?.state === signalR.HubConnectionState.Connected;
+    return this.isNotificationConnected();
   },
 
   getLastError(): Error | null {
