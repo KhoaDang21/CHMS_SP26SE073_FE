@@ -301,7 +301,7 @@ export default function StaffTickets() {
   const activeDetail = selectedTicket;
   const activeReplies = activeDetail?.replies ?? [];
   const activeStatus = activeTicket?.status ?? 'OPEN';
-  const isClosed = activeStatus === 'CLOSED';
+  const isClosed = activeStatus === 'CLOSED' || activeStatus === 'RESOLVED';
 
   useEffect(() => {
     const container = document.getElementById('staff-ticket-messages');
@@ -692,7 +692,6 @@ export default function StaffTickets() {
                                   <option value="OPEN">Mở</option>
                                   <option value="IN_PROGRESS">Đang xử lý</option>
                                   <option value="RESOLVED">Đã giải quyết</option>
-                                  <option value="CLOSED">Đã đóng</option>
                                 </select>
                               </div>
                               <button

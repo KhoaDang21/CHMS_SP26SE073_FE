@@ -331,7 +331,7 @@ export default function ManagerDiningPage() {
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-500 hover:text-gray-700" type="button"><X className="w-6 h-6" /></button>
         </div>
-        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+        <nav className="p-4">
           <AdminSidebar groupedItems={groupedNavItems} />
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
