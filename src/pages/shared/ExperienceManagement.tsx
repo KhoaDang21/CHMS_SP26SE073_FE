@@ -88,6 +88,30 @@ const fallbackExperienceImage = 'https://images.unsplash.com/photo-1507525428034
 
 const normalizeText = (value: unknown): string => String(value ?? '').trim().toLowerCase();
 
+const formatScheduleDateTime = (date: string | null | undefined, startTime?: string, endTime?: string): string => {
+  if (!date) return '-';
+  const d = new Date(date);
+  const dayIndex = d.getDay();
+  const dayOfWeek = DAYS_OF_WEEK[dayIndex]?.label || '-';
+  const dateStr = d.toLocaleDateString('vi-VN');
+  
+  // Extract HH:mm from ISO timestamp or plain time
+  const extractTime = (timeStr?: string) => {
+    if (!timeStr) return '-';
+    // If it's ISO format like "2026-05-06T08:00:00", extract "08:00"
+    if (timeStr.includes('T')) {
+      return timeStr.split('T')[1]?.substring(0, 5) || '-';
+    }
+    // If it's already "08:00" format, return as is
+    return timeStr.substring(0, 5);
+  };
+  
+  const startStr = extractTime(startTime);
+  const endStr = extractTime(endTime);
+  const timeStr = startStr !== '-' && endStr !== '-' ? `${startStr} - ${endStr}` : '-';
+  return `${dayOfWeek}, ${dateStr} ${timeStr}`;
+};
+
 const pickProvinceValue = (item: any): { id: string | null; name: string | null } => {
   const provinceId =
     item?.managedProvinceId ||
@@ -1087,30 +1111,35 @@ export default function ExperienceManagement() {
                         ) : viewingSchedules.length === 0 ? (
                           <div className="text-sm text-cyan-800">Chưa có lịch trình để hiển thị.</div>
                         ) : (
-                          viewingSchedules.map((schedule) => {
-                            const scheduleDate = schedule.date || schedule.availableDate || schedule.serviceDate || '';
-                            const isSelected = selectedScheduleId === schedule.id;
-                            const isExpanded = expandedStepEditorScheduleId === schedule.id;
+                          [...viewingSchedules]
+                            .sort((a, b) => {
+                              const dateA = new Date(a.date || a.availableDate || a.serviceDate || '').getTime();
+                              const dateB = new Date(b.date || b.availableDate || b.serviceDate || '').getTime();
+                              return dateA - dateB;
+                            })
+                            .map((schedule) => {
+                              const scheduleDate = schedule.date || schedule.availableDate || schedule.serviceDate || '';
+                              const isSelected = selectedScheduleId === schedule.id;
+                              const isExpanded = expandedStepEditorScheduleId === schedule.id;
 
-                            return (
-                              <div
-                                key={schedule.id}
-                                className={`rounded-lg border px-4 py-3 transition-colors ${isSelected ? 'border-cyan-400 bg-cyan-50' : 'border-cyan-100 bg-white'}`}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedScheduleId(schedule.id)}
-                                  className="w-full text-left flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                              return (
+                                <div
+                                  key={schedule.id}
+                                  className={`rounded-lg border px-4 py-3 transition-colors ${isSelected ? 'border-cyan-400 bg-cyan-50' : 'border-cyan-100 bg-white'}`}
                                 >
-                                  <div>
-                                    <div className="font-medium text-gray-900">
-                                      {scheduleDate ? new Date(scheduleDate).toLocaleDateString('vi-VN') : '-'}
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedScheduleId(schedule.id)}
+                                    className="w-full text-left flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                                  >
+                                    <div>
+                                      <div className="font-medium text-gray-900">
+                                        {formatScheduleDateTime(scheduleDate, schedule.startTime, schedule.endTime)}
+                                      </div>
+                                      <div className="text-sm text-gray-600 mt-1">
+                                        {typeof schedule.price === 'number' && schedule.price > 0 ? `${schedule.price.toLocaleString('vi-VN')}đ` : 'Liên hệ'}
+                                      </div>
                                     </div>
-                                    <div className="text-sm text-gray-600 mt-1">
-                                      {schedule.startTime ?? '-'} - {schedule.endTime ?? '-'}
-                                      {typeof schedule.price === 'number' && schedule.price > 0 ? ` - ${schedule.price.toLocaleString('vi-VN')}đ` : ''}
-                                    </div>
-                                  </div>
                                   <div className="text-sm text-gray-500 md:text-right">
                                     <div>Còn: {schedule.remainingSlots ?? schedule.maxParticipants ?? '-'}</div>
                                     <div className="text-xs">ID: {schedule.id}</div>
@@ -1340,16 +1369,21 @@ export default function ExperienceManagement() {
                         <option value="">
                           {gemTabSchedulesLoading ? 'Đang tải...' : '-- Chọn lịch trình --'}
                         </option>
-                        {gemTabSchedules.map((sch) => {
-                          const d = sch.date || sch.availableDate || sch.serviceDate || '';
-                          const dateLabel = d ? new Date(d).toLocaleDateString('vi-VN') : '-';
-                          const shortId = sch.id.slice(0, 8);
-                          return (
-                            <option key={sch.id} value={sch.id}>
-                              {dateLabel} - {sch.startTime ?? '-'} - {sch.endTime ?? '-'} - {shortId}
-                            </option>
-                          );
-                        })}
+                        {[...gemTabSchedules]
+                          .sort((a, b) => {
+                            const dateA = new Date(a.date || a.availableDate || a.serviceDate || '').getTime();
+                            const dateB = new Date(b.date || b.availableDate || b.serviceDate || '').getTime();
+                            return dateA - dateB;
+                          })
+                          .map((sch) => {
+                            const dateStr = sch.date || sch.availableDate || sch.serviceDate || '';
+                            const formatted = formatScheduleDateTime(dateStr, sch.startTime, sch.endTime);
+                            return (
+                              <option key={sch.id} value={sch.id}>
+                                {formatted}
+                              </option>
+                            );
+                          })}
                       </select>
                       <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     </div>
