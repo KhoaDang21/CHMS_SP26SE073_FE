@@ -24,76 +24,76 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 const categoryLabels: Record<AmenityCategory, { vi: string; en: string; color: string }> = {
-  basic: { vi: 'Co b?n', en: 'Basic', color: 'bg-blue-100 text-blue-700' },
-  kitchen: { vi: 'B?p', en: 'Kitchen', color: 'bg-orange-100 text-orange-700' },
-  bathroom: { vi: 'Ph�ng t?m', en: 'Bathroom', color: 'bg-cyan-100 text-cyan-700' },
-  entertainment: { vi: 'Gi?i tr�', en: 'Entertainment', color: 'bg-purple-100 text-purple-700' },
-  outdoor: { vi: 'Ngo�i tr?i', en: 'Outdoor', color: 'bg-green-100 text-green-700' },
-  safety: { vi: 'An to�n', en: 'Safety', color: 'bg-red-100 text-red-700' },
-  service: { vi: 'D?ch v?', en: 'Service', color: 'bg-indigo-100 text-indigo-700' },
-  other: { vi: 'Kh�c', en: 'Other', color: 'bg-gray-100 text-gray-700' },
+  basic: { vi: 'Cơ bản', en: 'Basic', color: 'bg-blue-100 text-blue-700' },
+  kitchen: { vi: 'Bếp', en: 'Kitchen', color: 'bg-orange-100 text-orange-700' },
+  bathroom: { vi: 'Phòng tắm', en: 'Bathroom', color: 'bg-cyan-100 text-cyan-700' },
+  entertainment: { vi: 'Giải trí', en: 'Entertainment', color: 'bg-purple-100 text-purple-700' },
+  outdoor: { vi: 'Ngoài trời', en: 'Outdoor', color: 'bg-green-100 text-green-700' },
+  safety: { vi: 'An toàn', en: 'Safety', color: 'bg-red-100 text-red-700' },
+  service: { vi: 'Dịch vụ', en: 'Service', color: 'bg-indigo-100 text-indigo-700' },
+  other: { vi: 'Khác', en: 'Other', color: 'bg-gray-100 text-gray-700' },
 };
 
 // Available icons as URLs - Comprehensive list for homestay amenities
 const availableIcons = [
   // Basic Amenities
   { name: 'WiFi', url: 'https://cdn-icons-png.flaticon.com/512/93/93158.png' },
-  { name: '�i?u h�a', url: 'https://cdn-icons-png.flaticon.com/128/7969/7969763.png' },
-  { name: 'M�y su?i', url: 'https://cdn-icons-png.flaticon.com/128/1677/1677058.png' },
-  { name: 'Qu?t m�y', url: 'https://cdn-icons-png.flaticon.com/128/11385/11385117.png' },
+  { name: 'Điều hòa', url: 'https://cdn-icons-png.flaticon.com/128/7969/7969763.png' },
+  { name: 'Máy sưởi', url: 'https://cdn-icons-png.flaticon.com/128/1677/1677058.png' },
+  { name: 'Quạt máy', url: 'https://cdn-icons-png.flaticon.com/128/11385/11385117.png' },
 
   // Kitchen
-  { name: 'B?p', url: 'https://cdn-icons-png.flaticon.com/128/2851/2851928.png' },
-  { name: 'T? l?nh', url: 'https://cdn-icons-png.flaticon.com/128/4352/4352967.png' },
-  { name: 'L� vi s�ng', url: 'https://cdn-icons-png.flaticon.com/128/1547/1547889.png' },
-  { name: 'M�y pha c� ph�', url: 'https://cdn-icons-png.flaticon.com/128/3019/3019817.png' },
-  { name: '?m dun nu?c', url: 'https://cdn-icons-png.flaticon.com/128/1941/1941802.png' },
-  { name: 'M�y r?a ch�n', url: 'https://cdn-icons-png.flaticon.com/128/2564/2564393.png' },
-  { name: 'L� nu?ng', url: 'https://cdn-icons-png.flaticon.com/128/9997/9997745.png' },
-  { name: 'N?i com di?n', url: 'https://cdn-icons-png.flaticon.com/128/3956/3956442.png' },
+  { name: 'Bếp', url: 'https://cdn-icons-png.flaticon.com/128/2851/2851928.png' },
+  { name: 'Tủ lạnh', url: 'https://cdn-icons-png.flaticon.com/128/4352/4352967.png' },
+  { name: 'Lò vi sóng', url: 'https://cdn-icons-png.flaticon.com/128/1547/1547889.png' },
+  { name: 'Máy pha cà phê', url: 'https://cdn-icons-png.flaticon.com/128/3019/3019817.png' },
+  { name: 'Ấm đun nước', url: 'https://cdn-icons-png.flaticon.com/128/1941/1941802.png' },
+  { name: 'Máy rửa chén', url: 'https://cdn-icons-png.flaticon.com/128/2564/2564393.png' },
+  { name: 'Lò nướng', url: 'https://cdn-icons-png.flaticon.com/128/9997/9997745.png' },
+  { name: 'Nồi cơm điện', url: 'https://cdn-icons-png.flaticon.com/128/3956/3956442.png' },
 
   // Bathroom
-  { name: 'M�y s?y t�c', url: 'https://cdn-icons-png.flaticon.com/128/6367/6367568.png' },
-  { name: 'Sen v�i', url: 'https://cdn-icons-png.flaticon.com/128/10772/10772673.png' },
-  { name: 'B?n t?m', url: 'https://cdn-icons-png.flaticon.com/128/259/259973.png' },
-  { name: 'M�y gi?t', url: 'https://cdn-icons-png.flaticon.com/128/1104/1104590.png' },
-  { name: 'M�y s?y qu?n �o', url: 'https://cdn-icons-png.flaticon.com/128/17521/17521642.png' },
-  { name: 'B�n ?i', url: 'https://cdn-icons-png.flaticon.com/128/2236/2236584.png' },
+  { name: 'Máy sấy tóc', url: 'https://cdn-icons-png.flaticon.com/128/6367/6367568.png' },
+  { name: 'Sen vòi', url: 'https://cdn-icons-png.flaticon.com/128/10772/10772673.png' },
+  { name: 'Bồn tắm', url: 'https://cdn-icons-png.flaticon.com/128/259/259973.png' },
+  { name: 'Máy giặt', url: 'https://cdn-icons-png.flaticon.com/128/1104/1104590.png' },
+  { name: 'Máy sấy quần áo', url: 'https://cdn-icons-png.flaticon.com/128/17521/17521642.png' },
+  { name: 'Bàn đi', url: 'https://cdn-icons-png.flaticon.com/128/2236/2236584.png' },
 
   // Entertainment
   { name: 'Smart TV', url: 'https://cdn-icons-png.flaticon.com/128/1023/1023521.png' },
   { name: 'Netflix', url: 'https://cdn-icons-png.flaticon.com/128/732/732228.png' },
   { name: 'Loa Bluetooth', url: 'https://cdn-icons-png.flaticon.com/128/895/895591.png' },
-  { name: 'B�n bi-a', url: 'https://cdn-icons-png.flaticon.com/128/4295/4295376.png' },
+  { name: 'Bàn bi-a', url: 'https://cdn-icons-png.flaticon.com/128/4295/4295376.png' },
   { name: 'Game console', url: 'https://cdn-icons-png.flaticon.com/128/686/686589.png' },
 
   // Outdoor
-  { name: 'H? boi', url: 'https://cdn-icons-png.flaticon.com/128/9629/9629334.png' },
-  { name: 'Ban c�ng', url: 'https://cdn-icons-png.flaticon.com/128/16187/16187032.png' },
-  { name: 'S�n vu?n', url: 'https://cdn-icons-png.flaticon.com/128/1010/1010368.png' },
+  { name: 'Hồ bơi', url: 'https://cdn-icons-png.flaticon.com/128/9629/9629334.png' },
+  { name: 'Ban công', url: 'https://cdn-icons-png.flaticon.com/128/16187/16187032.png' },
+  { name: 'Sân vườn', url: 'https://cdn-icons-png.flaticon.com/128/1010/1010368.png' },
   { name: 'BBQ', url: 'https://cdn-icons-png.flaticon.com/128/2946/2946507.png' },
-  { name: 'B�i d?u xe', url: 'https://cdn-icons-png.flaticon.com/128/708/708949.png' },
-  { name: 'T?m n?ng', url: 'https://cdn-icons-png.flaticon.com/128/4336/4336494.png' },
+  { name: 'Bãi đậu xe', url: 'https://cdn-icons-png.flaticon.com/128/708/708949.png' },
+  { name: 'Tắm nắng', url: 'https://cdn-icons-png.flaticon.com/128/4336/4336494.png' },
 
   // Safety & Security
-  { name: 'K�t an to�n', url: 'https://cdn-icons-png.flaticon.com/512/1611/1611179.png' },
+  { name: 'Khóa an toàn', url: 'https://cdn-icons-png.flaticon.com/512/1611/1611179.png' },
   { name: 'Camera an ninh', url: 'https://cdn-icons-png.flaticon.com/512/3064/3064197.png' },
-  { name: 'Kh�a di?n t?', url: 'https://cdn-icons-png.flaticon.com/512/6195/6195699.png' },
-  { name: 'Chu�ng c?a', url: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png' },
-  { name: 'B�nh c?u h?a', url: 'https://cdn-icons-png.flaticon.com/512/785/785116.png' },
-  { name: 'B�o kh�i', url: 'https://cdn-icons-png.flaticon.com/512/4149/4149705.png' },
+  { name: 'Khóa điện tử', url: 'https://cdn-icons-png.flaticon.com/512/6195/6195699.png' },
+  { name: 'Chuông cửa', url: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png' },
+  { name: 'Bình cứu hỏa', url: 'https://cdn-icons-png.flaticon.com/512/785/785116.png' },
+  { name: 'Báo khói', url: 'https://cdn-icons-png.flaticon.com/512/4149/4149705.png' },
 
   // Services
-  { name: 'Ph�ng gym', url: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png' },
-  { name: 'D?n ph�ng', url: 'https://cdn-icons-png.flaticon.com/512/3050/3050150.png' },
+  { name: 'Phòng gym', url: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png' },
+  { name: 'Dọn phòng', url: 'https://cdn-icons-png.flaticon.com/512/3050/3050150.png' },
   { name: 'Th� cung', url: 'https://cdn-icons-png.flaticon.com/512/2138/2138440.png' },
-  { name: '��n ti?n s�n bay', url: 'https://cdn-icons-png.flaticon.com/128/995/995334.png' },
+  { name: 'Đón tiễn sân bay', url: 'https://cdn-icons-png.flaticon.com/128/995/995334.png' },
   { name: 'Cho thu� xe', url: 'https://cdn-icons-png.flaticon.com/128/14023/14023024.png' },
 
   // Others
-  { name: 'View bi?n', url: 'https://cdn-icons-png.flaticon.com/128/17813/17813814.png' },
-  { name: 'View n�i', url: 'https://cdn-icons-png.flaticon.com/128/7811/7811712.png' },
-  { name: 'Cho tr? em', url: 'https://cdn-icons-png.flaticon.com/512/3050/3050156.png' },
+  { name: 'View biển', url: 'https://cdn-icons-png.flaticon.com/128/17813/17813814.png' },
+  { name: 'View núi', url: 'https://cdn-icons-png.flaticon.com/128/7811/7811712.png' },
+  { name: 'Cho trẻ em', url: 'https://cdn-icons-png.flaticon.com/512/3050/3050156.png' },
   { name: 'Ph� h?p gia d�nh', url: 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png' },
   { name: 'Laptop-friendly', url: 'https://cdn-icons-png.flaticon.com/512/3143/3143636.png' },
 ];
@@ -283,7 +283,7 @@ export default function AmenityManagement() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">�ang t?i d? li?u...</p>
+          <p className="text-gray-600">Đang tải dữ liệu</p>
         </div>
       </div>
     );
@@ -333,7 +333,7 @@ export default function AmenityManagement() {
             className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            <span>�ang xu?t</span>
+            <span>Đăng xuất</span>
           </button>
         </div>
       </aside>
@@ -351,8 +351,8 @@ export default function AmenityManagement() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Qu?n l� Ti?n �ch</h2>
-                <p className="text-sm text-gray-500">Qu?n l� c�c ti?n �ch v� d?ch v? c?a homestay</p>
+                <h2 className="text-xl font-bold text-gray-900">Quản lý tiện ích</h2>
+                <p className="text-sm text-gray-500">Quản lý các tiện ích và dịch vụ của homestay</p>
               </div>
             </div>
           </div>
@@ -365,7 +365,7 @@ export default function AmenityManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm">T?ng ti?n �ch</p>
+                  <p className="text-gray-500 text-sm">Tổng tiện ích</p>
                   <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</h3>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -377,7 +377,7 @@ export default function AmenityManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm">�ang ho?t d?ng</p>
+                  <p className="text-gray-500 text-sm">Đang hoạt động</p>
                   <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.active}</h3>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -389,7 +389,7 @@ export default function AmenityManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm">Ng?ng ho?t d?ng</p>
+                  <p className="text-gray-500 text-sm">Ngừng hoạt động</p>
                   <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.inactive}</h3>
                 </div>
                 <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -401,7 +401,7 @@ export default function AmenityManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-amber-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm">Ti?n �ch cao c?p</p>
+                  <p className="text-gray-500 text-sm">Tiện ích cao cấp</p>
                   <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.premium}</h3>
                 </div>
                 <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
@@ -419,7 +419,7 @@ export default function AmenityManagement() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="T�m ki?m ti?n �ch..."
+                  placeholder="Tìm kiếm tiện ích..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -434,7 +434,7 @@ export default function AmenityManagement() {
                   onChange={(e) => setFilterCategory(e.target.value as AmenityCategory | 'all')}
                   className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
                 >
-                  <option value="all">T?t c? danh m?c</option>
+                  <option value="all">Tất cả danh mục</option>
                   {Object.entries(categoryLabels).map(([key, value]) => (
                     <option key={key} value={key}>{value.vi}</option>
                   ))}
@@ -447,9 +447,9 @@ export default function AmenityManagement() {
                 onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">T?t c? tr?ng th�i</option>
-                <option value="active">�ang ho?t d?ng</option>
-                <option value="inactive">Ng?ng ho?t d?ng</option>
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="inactive">Ngừng hoạt động</option>
               </select>
 
               {/* View Mode Toggle */}
@@ -483,7 +483,7 @@ export default function AmenityManagement() {
                 className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all flex items-center gap-2 whitespace-nowrap"
               >
                 <Plus className="w-5 h-5" />
-                Th�m ti?n �ch
+                Thêm tiện ích
               </button>
             </div>
           </div>
@@ -543,7 +543,7 @@ export default function AmenityManagement() {
                               : 'bg-green-50 text-green-600 hover:bg-green-100'
                             }`}
                         >
-                          {amenity.isActive ? 'T?t' : 'B?t'}
+                          {amenity.isActive ? 'Tắt' : 'Bật'}
                         </button>
                         <button
                           onClick={() => openEditModal(amenity)}
@@ -568,12 +568,12 @@ export default function AmenityManagement() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ti?n �ch</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Danh m?c</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">M� t?</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiện ích</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Danh mục</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mô tả</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Premium</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tr?ng th�i</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao t�c</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -659,8 +659,8 @@ export default function AmenityManagement() {
           {filteredAmenities.length === 0 && (
             <div className="text-center py-12">
               <Sparkles className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Kh�ng t�m th?y ti?n �ch</h3>
-              <p className="text-gray-500">Th? thay d?i b? l?c ho?c th�m ti?n �ch m?i</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy tiện ích</h3>
+              <p className="text-gray-500">TThay đổi bộ lọc hoặc thêm tiện ích mới</p>
             </div>
           )}
 
@@ -670,7 +670,7 @@ export default function AmenityManagement() {
               <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-gray-200">
                   <h2 className="text-xl font-bold text-gray-900">
-                    {editingAmenity ? 'Ch?nh s?a ti?n �ch' : 'Th�m ti?n �ch m?i'}
+                    {editingAmenity ? 'Chỉnh sửa tiện ích' : 'Thêm tiện ích mới'}
                   </h2>
                 </div>
 
@@ -678,21 +678,21 @@ export default function AmenityManagement() {
                   {/* Name (Vietnamese) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      T�n ti?n �ch <span className="text-red-500">*</span>
+                      Tên tiện ích <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VD: WiFi t?c d? cao"
+                      placeholder="VD: WiFi tốc độ cao"
                     />
                   </div>
 
                   {/* Category */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Danh m?c <span className="text-red-500">*</span>
+                      Danh mục <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={formData.category}
@@ -708,9 +708,9 @@ export default function AmenityManagement() {
                   {/* Icon Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ch?n Icon <span className="text-red-500">*</span>
+                      Chọn Icon <span className="text-red-500">*</span>
                       <span className="text-xs text-gray-500 font-normal ml-2">
-                        ({availableIcons.length} icons c� s?n)
+                        ({availableIcons.length} icons có sẵn)
                       </span>
                     </label>
 
@@ -749,12 +749,12 @@ export default function AmenityManagement() {
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Click v�o icon d? ch?n
+                      Click vào icon để chọn 
                     </p>
 
                     <div className="mt-3">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Ho?c t?i file icon m?i
+                        Hoặc tải file icon tùy chỉnh
                       </label>
                       <input
                         type="file"
@@ -766,14 +766,14 @@ export default function AmenityManagement() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                       />
                       {iconFile && (
-                        <p className="text-xs text-green-600 mt-1">�� ch?n file: {iconFile.name}</p>
+                        <p className="text-xs text-green-600 mt-1">Đã chọn file: {iconFile.name}</p>
                       )}
                     </div>
 
                     {/* Icon Preview */}
                     {formData.iconUrl && (
                       <div className="mt-3 p-3 bg-white rounded-lg border border-gray-300">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Icon d� ch?n:</p>
+                        <p className="text-xs font-medium text-gray-700 mb-2">Icon đã chọn:</p>
                         <div className="flex items-center gap-3">
                           <img
                             src={formData.iconUrl}
@@ -784,7 +784,7 @@ export default function AmenityManagement() {
                             }}
                           />
                           <span className="text-sm text-gray-600">
-                            {availableIcons.find(i => i.url === formData.iconUrl)?.name || 'Icon t�y ch?nh'}
+                            {availableIcons.find(i => i.url === formData.iconUrl)?.name || 'Icon tuỳ chỉnh'}
                           </span>
                         </div>
                       </div>
@@ -801,13 +801,13 @@ export default function AmenityManagement() {
                     }}
                     className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    H?y
+                    Hủy
                   </button>
                   <button
                     onClick={editingAmenity ? handleUpdate : handleCreate}
                     className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all"
                   >
-                    {editingAmenity ? 'C?p nh?t' : 'Th�m m?i'}
+                    {editingAmenity ? 'Cập nhật' : 'Thêm mới'}
                   </button>
                 </div>
               </div>
