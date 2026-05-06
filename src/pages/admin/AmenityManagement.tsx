@@ -24,77 +24,77 @@ import { RoleBadge } from '../../components/common/RoleBadge';
 import { authService } from '../../services/authService';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 const categoryLabels: Record<AmenityCategory, { vi: string; en: string; color: string }> = {
-  basic: { vi: 'Co b?n', en: 'Basic', color: 'bg-blue-100 text-blue-700' },
-  kitchen: { vi: 'B?p', en: 'Kitchen', color: 'bg-orange-100 text-orange-700' },
-  bathroom: { vi: 'PhÚng t?m', en: 'Bathroom', color: 'bg-cyan-100 text-cyan-700' },
-  entertainment: { vi: 'Gi?i trÌ', en: 'Entertainment', color: 'bg-purple-100 text-purple-700' },
-  outdoor: { vi: 'Ngo‡i tr?i', en: 'Outdoor', color: 'bg-green-100 text-green-700' },
-  safety: { vi: 'An to‡n', en: 'Safety', color: 'bg-red-100 text-red-700' },
-  service: { vi: 'D?ch v?', en: 'Service', color: 'bg-indigo-100 text-indigo-700' },
-  other: { vi: 'Kh·c', en: 'Other', color: 'bg-gray-100 text-gray-700' },
+  basic: { vi: 'C∆° b·∫£n', en: 'Basic', color: 'bg-blue-100 text-blue-700' },
+  kitchen: { vi: 'B·∫øp', en: 'Kitchen', color: 'bg-orange-100 text-orange-700' },
+  bathroom: { vi: 'Ph√≤ng t·∫Øm', en: 'Bathroom', color: 'bg-cyan-100 text-cyan-700' },
+  entertainment: { vi: 'Gi·∫£i tr√≠', en: 'Entertainment', color: 'bg-purple-100 text-purple-700' },
+  outdoor: { vi: 'Ngo√†i tr·ªùi', en: 'Outdoor', color: 'bg-green-100 text-green-700' },
+  safety: { vi: 'An to√†n', en: 'Safety', color: 'bg-red-100 text-red-700' },
+  service: { vi: 'D·ªãch v·ª•', en: 'Service', color: 'bg-indigo-100 text-indigo-700' },
+  other: { vi: 'Kh√°c', en: 'Other', color: 'bg-gray-100 text-gray-700' },
 };
 
 // Available icons as URLs - Comprehensive list for homestay amenities
 const availableIcons = [
   // Basic Amenities
   { name: 'WiFi', url: 'https://cdn-icons-png.flaticon.com/512/93/93158.png' },
-  { name: '–i?u hÚa', url: 'https://cdn-icons-png.flaticon.com/128/7969/7969763.png' },
-  { name: 'M·y su?i', url: 'https://cdn-icons-png.flaticon.com/128/1677/1677058.png' },
-  { name: 'Qu?t m·y', url: 'https://cdn-icons-png.flaticon.com/128/11385/11385117.png' },
+  { name: 'ƒêi·ªÅu h√≤a', url: 'https://cdn-icons-png.flaticon.com/128/7969/7969763.png' },
+  { name: 'M√°y s∆∞·ªüi', url: 'https://cdn-icons-png.flaticon.com/128/1677/1677058.png' },
+  { name: 'Qu·∫°t m√°y', url: 'https://cdn-icons-png.flaticon.com/128/11385/11385117.png' },
 
   // Kitchen
-  { name: 'B?p', url: 'https://cdn-icons-png.flaticon.com/128/2851/2851928.png' },
-  { name: 'T? l?nh', url: 'https://cdn-icons-png.flaticon.com/128/4352/4352967.png' },
-  { name: 'LÚ vi sÛng', url: 'https://cdn-icons-png.flaticon.com/128/1547/1547889.png' },
-  { name: 'M·y pha c‡ phÍ', url: 'https://cdn-icons-png.flaticon.com/128/3019/3019817.png' },
-  { name: '?m dun nu?c', url: 'https://cdn-icons-png.flaticon.com/128/1941/1941802.png' },
-  { name: 'M·y r?a chÈn', url: 'https://cdn-icons-png.flaticon.com/128/2564/2564393.png' },
-  { name: 'LÚ nu?ng', url: 'https://cdn-icons-png.flaticon.com/128/9997/9997745.png' },
-  { name: 'N?i com di?n', url: 'https://cdn-icons-png.flaticon.com/128/3956/3956442.png' },
+  { name: 'B·∫øp', url: 'https://cdn-icons-png.flaticon.com/128/2851/2851928.png' },
+  { name: 'T·ªß l·∫°nh', url: 'https://cdn-icons-png.flaticon.com/128/4352/4352967.png' },
+  { name: 'L√≤ vi s√≥ng', url: 'https://cdn-icons-png.flaticon.com/128/1547/1547889.png' },
+  { name: 'M√°y pha c√† ph√™', url: 'https://cdn-icons-png.flaticon.com/128/3019/3019817.png' },
+  { name: '·∫§m ƒëun n∆∞·ªõc', url: 'https://cdn-icons-png.flaticon.com/128/1941/1941802.png' },
+  { name: 'M√°y r·ª≠a ch√©n', url: 'https://cdn-icons-png.flaticon.com/128/2564/2564393.png' },
+  { name: 'L√≤ n∆∞·ªõng', url: 'https://cdn-icons-png.flaticon.com/128/9997/9997745.png' },
+  { name: 'N·ªìi c∆°m ƒëi·ªán', url: 'https://cdn-icons-png.flaticon.com/128/3956/3956442.png' },
 
   // Bathroom
-  { name: 'M·y s?y tÛc', url: 'https://cdn-icons-png.flaticon.com/128/6367/6367568.png' },
-  { name: 'Sen vÚi', url: 'https://cdn-icons-png.flaticon.com/128/10772/10772673.png' },
-  { name: 'B?n t?m', url: 'https://cdn-icons-png.flaticon.com/128/259/259973.png' },
-  { name: 'M·y gi?t', url: 'https://cdn-icons-png.flaticon.com/128/1104/1104590.png' },
-  { name: 'M·y s?y qu?n ·o', url: 'https://cdn-icons-png.flaticon.com/128/17521/17521642.png' },
-  { name: 'B‡n ?i', url: 'https://cdn-icons-png.flaticon.com/128/2236/2236584.png' },
+  { name: 'M√°y s·∫•y t√≥c', url: 'https://cdn-icons-png.flaticon.com/128/6367/6367568.png' },
+  { name: 'Sen v√≤i', url: 'https://cdn-icons-png.flaticon.com/128/10772/10772673.png' },
+  { name: 'B·ªìn t·∫Øm', url: 'https://cdn-icons-png.flaticon.com/128/259/259973.png' },
+  { name: 'M√°y gi·∫∑t', url: 'https://cdn-icons-png.flaticon.com/128/1104/1104590.png' },
+  { name: 'M√°y s·∫•y qu·∫ßn √°o', url: 'https://cdn-icons-png.flaticon.com/128/17521/17521642.png' },
+  { name: 'B√†n ƒëi', url: 'https://cdn-icons-png.flaticon.com/128/2236/2236584.png' },
 
   // Entertainment
   { name: 'Smart TV', url: 'https://cdn-icons-png.flaticon.com/128/1023/1023521.png' },
   { name: 'Netflix', url: 'https://cdn-icons-png.flaticon.com/128/732/732228.png' },
   { name: 'Loa Bluetooth', url: 'https://cdn-icons-png.flaticon.com/128/895/895591.png' },
-  { name: 'B‡n bi-a', url: 'https://cdn-icons-png.flaticon.com/128/4295/4295376.png' },
+  { name: 'B√†n bi-a', url: 'https://cdn-icons-png.flaticon.com/128/4295/4295376.png' },
   { name: 'Game console', url: 'https://cdn-icons-png.flaticon.com/128/686/686589.png' },
 
   // Outdoor
-  { name: 'H? boi', url: 'https://cdn-icons-png.flaticon.com/128/9629/9629334.png' },
-  { name: 'Ban cÙng', url: 'https://cdn-icons-png.flaticon.com/128/16187/16187032.png' },
-  { name: 'S‚n vu?n', url: 'https://cdn-icons-png.flaticon.com/128/1010/1010368.png' },
+  { name: 'H·ªì b∆°i', url: 'https://cdn-icons-png.flaticon.com/128/9629/9629334.png' },
+  { name: 'Ban c√¥ng', url: 'https://cdn-icons-png.flaticon.com/128/16187/16187032.png' },
+  { name: 'S√¢n v∆∞·ªùn', url: 'https://cdn-icons-png.flaticon.com/128/1010/1010368.png' },
   { name: 'BBQ', url: 'https://cdn-icons-png.flaticon.com/128/2946/2946507.png' },
-  { name: 'B„i d?u xe', url: 'https://cdn-icons-png.flaticon.com/128/708/708949.png' },
-  { name: 'T?m n?ng', url: 'https://cdn-icons-png.flaticon.com/128/4336/4336494.png' },
+  { name: 'B√£i ƒë·∫≠u xe', url: 'https://cdn-icons-png.flaticon.com/128/708/708949.png' },
+  { name: 'T·∫Øm n·∫Øng', url: 'https://cdn-icons-png.flaticon.com/128/4336/4336494.png' },
 
   // Safety & Security
-  { name: 'KÈt an to‡n', url: 'https://cdn-icons-png.flaticon.com/512/1611/1611179.png' },
+  { name: 'Kh√≥a an to√†n', url: 'https://cdn-icons-png.flaticon.com/512/1611/1611179.png' },
   { name: 'Camera an ninh', url: 'https://cdn-icons-png.flaticon.com/512/3064/3064197.png' },
-  { name: 'KhÛa di?n t?', url: 'https://cdn-icons-png.flaticon.com/512/6195/6195699.png' },
-  { name: 'ChuÙng c?a', url: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png' },
-  { name: 'BÏnh c?u h?a', url: 'https://cdn-icons-png.flaticon.com/512/785/785116.png' },
-  { name: 'B·o khÛi', url: 'https://cdn-icons-png.flaticon.com/512/4149/4149705.png' },
+  { name: 'Kh√≥a ƒëi·ªán t·ª≠', url: 'https://cdn-icons-png.flaticon.com/512/6195/6195699.png' },
+  { name: 'Chu√¥ng c·ª≠a', url: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png' },
+  { name: 'B√¨nh c·ª©u h·ªèa', url: 'https://cdn-icons-png.flaticon.com/512/785/785116.png' },
+  { name: 'B√°o kh√≥i', url: 'https://cdn-icons-png.flaticon.com/512/4149/4149705.png' },
 
   // Services
-  { name: 'PhÚng gym', url: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png' },
-  { name: 'D?n phÚng', url: 'https://cdn-icons-png.flaticon.com/512/3050/3050150.png' },
-  { name: 'Th˙ cung', url: 'https://cdn-icons-png.flaticon.com/512/2138/2138440.png' },
-  { name: '–Ûn ti?n s‚n bay', url: 'https://cdn-icons-png.flaticon.com/128/995/995334.png' },
-  { name: 'Cho thuÍ xe', url: 'https://cdn-icons-png.flaticon.com/128/14023/14023024.png' },
+  { name: 'Ph√≤ng gym', url: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png' },
+  { name: 'D·ªçn ph√≤ng', url: 'https://cdn-icons-png.flaticon.com/512/3050/3050150.png' },
+  { name: 'ThÔøΩ cung', url: 'https://cdn-icons-png.flaticon.com/512/2138/2138440.png' },
+  { name: 'ƒê√≥n ti·ªÖn s√¢n bay', url: 'https://cdn-icons-png.flaticon.com/128/995/995334.png' },
+  { name: 'Cho thuÔøΩ xe', url: 'https://cdn-icons-png.flaticon.com/128/14023/14023024.png' },
 
   // Others
-  { name: 'View bi?n', url: 'https://cdn-icons-png.flaticon.com/128/17813/17813814.png' },
-  { name: 'View n˙i', url: 'https://cdn-icons-png.flaticon.com/128/7811/7811712.png' },
-  { name: 'Cho tr? em', url: 'https://cdn-icons-png.flaticon.com/512/3050/3050156.png' },
-  { name: 'Ph˘ h?p gia dÏnh', url: 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png' },
+  { name: 'View bi·ªÉn', url: 'https://cdn-icons-png.flaticon.com/128/17813/17813814.png' },
+  { name: 'View n√∫i', url: 'https://cdn-icons-png.flaticon.com/128/7811/7811712.png' },
+  { name: 'Cho tr·∫ª em', url: 'https://cdn-icons-png.flaticon.com/512/3050/3050156.png' },
+  { name: 'PhÔøΩ h?p gia dÔøΩnh', url: 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png' },
   { name: 'Laptop-friendly', url: 'https://cdn-icons-png.flaticon.com/512/3143/3143636.png' },
 ];
 
@@ -143,7 +143,7 @@ export default function AmenityManagement() {
       setAmenities(amenitiesData);
     } catch (error) {
       console.error('Error loading amenities:', error);
-      toast.error('KhÙng th? t?i d? li?u ti?n Ìch');
+      toast.error('KhÔøΩng th? t?i d? li?u ti?n ÔøΩch');
     } finally {
       setLoading(false);
     }
@@ -151,23 +151,23 @@ export default function AmenityManagement() {
 
   const handleCreate = async () => {
     if (!formData.name.trim()) {
-      toast.error('Vui lÚng di?n tÍn ti?n Ìch');
+      toast.error('Vui lÔøΩng di?n tÔøΩn ti?n ÔøΩch');
       return;
     }
 
     try {
       const result = await adminAmenityService.createAmenity(formData);
       if (result?.success) {
-        toast.success('ThÍm ti?n Ìch th‡nh cÙng');
+        toast.success('ThÔøΩm ti?n ÔøΩch thÔøΩnh cÔøΩng');
         setShowModal(false);
         resetForm();
         loadData();
       } else {
-        toast.error(result?.message || 'KhÙng th? thÍm ti?n Ìch');
+        toast.error(result?.message || 'KhÔøΩng th? thÔøΩm ti?n ÔøΩch');
       }
     } catch (error) {
       console.error('Error creating amenity:', error);
-      toast.error('KhÙng th? thÍm ti?n Ìch. Vui lÚng ki?m tra d? li?u nh?p.');
+      toast.error('KhÔøΩng th? thÔøΩm ti?n ÔøΩch. Vui lÔøΩng ki?m tra d? li?u nh?p.');
     }
   };
 
@@ -175,7 +175,7 @@ export default function AmenityManagement() {
     if (!editingAmenity) return;
 
     if (!formData.name.trim()) {
-      toast.error('Vui lÚng di?n tÍn ti?n Ìch');
+      toast.error('Vui lÔøΩng di?n tÔøΩn ti?n ÔøΩch');
       return;
     }
 
@@ -185,34 +185,34 @@ export default function AmenityManagement() {
         iconFile,
       });
       if (result?.success) {
-        toast.success('C?p nh?t ti?n Ìch th‡nh cÙng');
+        toast.success('C?p nh?t ti?n ÔøΩch thÔøΩnh cÔøΩng');
         setShowModal(false);
         setEditingAmenity(null);
         resetForm();
         loadData();
       } else {
-        toast.error(result?.message || 'KhÙng th? c?p nh?t ti?n Ìch');
+        toast.error(result?.message || 'KhÔøΩng th? c?p nh?t ti?n ÔøΩch');
       }
     } catch (error) {
       console.error('Error updating amenity:', error);
-      toast.error('KhÙng th? c?p nh?t ti?n Ìch');
+      toast.error('KhÔøΩng th? c?p nh?t ti?n ÔøΩch');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('B?n cÛ ch?c mu?n xÛa ti?n Ìch n‡y?')) return;
+    if (!confirm('B?n cÔøΩ ch?c mu?n xÔøΩa ti?n ÔøΩch nÔøΩy?')) return;
 
     try {
       const result = await adminAmenityService.deleteAmenity(id);
       if (result?.success) {
-        toast.success('XÛa ti?n Ìch th‡nh cÙng');
+        toast.success('XÔøΩa ti?n ÔøΩch thÔøΩnh cÔøΩng');
         loadData();
       } else {
-        toast.error(result?.message || 'KhÙng th? xÛa ti?n Ìch');
+        toast.error(result?.message || 'KhÔøΩng th? xÔøΩa ti?n ÔøΩch');
       }
     } catch (error) {
       console.error('Error deleting amenity:', error);
-      toast.error('KhÙng th? xÛa ti?n Ìch');
+      toast.error('KhÔøΩng th? xÔøΩa ti?n ÔøΩch');
     }
   };
 
@@ -226,14 +226,14 @@ export default function AmenityManagement() {
       };
       const result = await adminAmenityService.updateAmenity(amenity.id, updateData);
       if (result?.success) {
-        toast.success('C?p nh?t tr?ng th·i th‡nh cÙng');
+        toast.success('C?p nh?t tr?ng thÔøΩi thÔøΩnh cÔøΩng');
         loadData();
       } else {
-        toast.error(result?.message || 'KhÙng th? c?p nh?t tr?ng th·i');
+        toast.error(result?.message || 'KhÔøΩng th? c?p nh?t tr?ng thÔøΩi');
       }
     } catch (error) {
       console.error('Error toggling status:', error);
-      toast.error('KhÙng th? c?p nh?t tr?ng th·i');
+      toast.error('KhÔøΩng th? c?p nh?t tr?ng thÔøΩi');
     }
   };
 
@@ -283,7 +283,7 @@ export default function AmenityManagement() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">–ang t?i d? li?u...</p>
+          <p className="text-gray-600">ƒêang t·∫£i d·ªØ li·ªáu</p>
         </div>
       </div>
     );
@@ -333,7 +333,7 @@ export default function AmenityManagement() {
             className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            <span>–ang xu?t</span>
+            <span>ƒêƒÉng xu·∫•t</span>
           </button>
         </div>
       </aside>
@@ -351,8 +351,8 @@ export default function AmenityManagement() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Qu?n l˝ Ti?n Ìch</h2>
-                <p className="text-sm text-gray-500">Qu?n l˝ c·c ti?n Ìch v‡ d?ch v? c?a homestay</p>
+                <h2 className="text-xl font-bold text-gray-900">Qu·∫£n l√Ω ti·ªán √≠ch</h2>
+                <p className="text-sm text-gray-500">Qu·∫£n l√Ω c√°c ti·ªán √≠ch v√† d·ªãch v·ª• c·ªßa homestay</p>
               </div>
             </div>
           </div>
@@ -365,7 +365,7 @@ export default function AmenityManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm">T?ng ti?n Ìch</p>
+                  <p className="text-gray-500 text-sm">T·ªïng ti·ªán √≠ch</p>
                   <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</h3>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -377,7 +377,7 @@ export default function AmenityManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm">–ang ho?t d?ng</p>
+                  <p className="text-gray-500 text-sm">ƒêang ho·∫°t ƒë·ªông</p>
                   <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.active}</h3>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -389,7 +389,7 @@ export default function AmenityManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm">Ng?ng ho?t d?ng</p>
+                  <p className="text-gray-500 text-sm">Ng·ª´ng ho·∫°t ƒë·ªông</p>
                   <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.inactive}</h3>
                 </div>
                 <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -401,7 +401,7 @@ export default function AmenityManagement() {
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-amber-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm">Ti?n Ìch cao c?p</p>
+                  <p className="text-gray-500 text-sm">Ti·ªán √≠ch cao c·∫•p</p>
                   <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.premium}</h3>
                 </div>
                 <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
@@ -419,7 +419,7 @@ export default function AmenityManagement() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="TÏm ki?m ti?n Ìch..."
+                  placeholder="T√¨m ki·∫øm ti·ªán √≠ch..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -434,7 +434,7 @@ export default function AmenityManagement() {
                   onChange={(e) => setFilterCategory(e.target.value as AmenityCategory | 'all')}
                   className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
                 >
-                  <option value="all">T?t c? danh m?c</option>
+                  <option value="all">T·∫•t c·∫£ danh m·ª•c</option>
                   {Object.entries(categoryLabels).map(([key, value]) => (
                     <option key={key} value={key}>{value.vi}</option>
                   ))}
@@ -447,9 +447,9 @@ export default function AmenityManagement() {
                 onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">T?t c? tr?ng th·i</option>
-                <option value="active">–ang ho?t d?ng</option>
-                <option value="inactive">Ng?ng ho?t d?ng</option>
+                <option value="all">T·∫•t c·∫£ tr·∫°ng th√°i</option>
+                <option value="active">ƒêang ho·∫°t ƒë·ªông</option>
+                <option value="inactive">Ng·ª´ng ho·∫°t ƒë·ªông</option>
               </select>
 
               {/* View Mode Toggle */}
@@ -483,7 +483,7 @@ export default function AmenityManagement() {
                 className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all flex items-center gap-2 whitespace-nowrap"
               >
                 <Plus className="w-5 h-5" />
-                ThÍm ti?n Ìch
+                Th√™m ti·ªán √≠ch
               </button>
             </div>
           </div>
@@ -543,7 +543,7 @@ export default function AmenityManagement() {
                               : 'bg-green-50 text-green-600 hover:bg-green-100'
                             }`}
                         >
-                          {amenity.isActive ? 'T?t' : 'B?t'}
+                          {amenity.isActive ? 'T·∫Øt' : 'B·∫≠t'}
                         </button>
                         <button
                           onClick={() => openEditModal(amenity)}
@@ -568,12 +568,12 @@ export default function AmenityManagement() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ti?n Ìch</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Danh m?c</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">MÙ t?</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ti·ªán √≠ch</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Danh m·ª•c</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">M√¥ t·∫£</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Premium</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tr?ng th·i</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao t·c</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tr·∫°ng th√°i</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao t√°c</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -659,8 +659,8 @@ export default function AmenityManagement() {
           {filteredAmenities.length === 0 && (
             <div className="text-center py-12">
               <Sparkles className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">KhÙng tÏm th?y ti?n Ìch</h3>
-              <p className="text-gray-500">Th? thay d?i b? l?c ho?c thÍm ti?n Ìch m?i</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Kh√¥ng t√¨m th·∫•y ti·ªán √≠ch</h3>
+              <p className="text-gray-500">TThay ƒë·ªïi b·ªô l·ªçc ho·∫∑c th√™m ti·ªán √≠ch m·ªõi</p>
             </div>
           )}
 
@@ -670,7 +670,7 @@ export default function AmenityManagement() {
               <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-gray-200">
                   <h2 className="text-xl font-bold text-gray-900">
-                    {editingAmenity ? 'Ch?nh s?a ti?n Ìch' : 'ThÍm ti?n Ìch m?i'}
+                    {editingAmenity ? 'Ch·ªânh s·ª≠a ti·ªán √≠ch' : 'Th√™m ti·ªán √≠ch m·ªõi'}
                   </h2>
                 </div>
 
@@ -678,21 +678,21 @@ export default function AmenityManagement() {
                   {/* Name (Vietnamese) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      TÍn ti?n Ìch <span className="text-red-500">*</span>
+                      T√™n ti·ªán √≠ch <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VD: WiFi t?c d? cao"
+                      placeholder="VD: WiFi t·ªëc ƒë·ªô cao"
                     />
                   </div>
 
                   {/* Category */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Danh m?c <span className="text-red-500">*</span>
+                      Danh m·ª•c <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={formData.category}
@@ -708,9 +708,9 @@ export default function AmenityManagement() {
                   {/* Icon Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ch?n Icon <span className="text-red-500">*</span>
+                      Ch·ªçn Icon <span className="text-red-500">*</span>
                       <span className="text-xs text-gray-500 font-normal ml-2">
-                        ({availableIcons.length} icons cÛ s?n)
+                        ({availableIcons.length} icons c√≥ s·∫µn)
                       </span>
                     </label>
 
@@ -749,12 +749,12 @@ export default function AmenityManagement() {
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Click v‡o icon d? ch?n
+                      Click v√†o icon ƒë·ªÉ ch·ªçn 
                     </p>
 
                     <div className="mt-3">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Ho?c t?i file icon m?i
+                        Ho·∫∑c t·∫£i file icon t√πy ch·ªânh
                       </label>
                       <input
                         type="file"
@@ -766,14 +766,14 @@ export default function AmenityManagement() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                       />
                       {iconFile && (
-                        <p className="text-xs text-green-600 mt-1">–„ ch?n file: {iconFile.name}</p>
+                        <p className="text-xs text-green-600 mt-1">ƒê√£ ch·ªçn file: {iconFile.name}</p>
                       )}
                     </div>
 
                     {/* Icon Preview */}
                     {formData.iconUrl && (
                       <div className="mt-3 p-3 bg-white rounded-lg border border-gray-300">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Icon d„ ch?n:</p>
+                        <p className="text-xs font-medium text-gray-700 mb-2">Icon ƒë√£ ch·ªçn:</p>
                         <div className="flex items-center gap-3">
                           <img
                             src={formData.iconUrl}
@@ -784,7 +784,7 @@ export default function AmenityManagement() {
                             }}
                           />
                           <span className="text-sm text-gray-600">
-                            {availableIcons.find(i => i.url === formData.iconUrl)?.name || 'Icon t˘y ch?nh'}
+                            {availableIcons.find(i => i.url === formData.iconUrl)?.name || 'Icon tu·ª≥ ch·ªânh'}
                           </span>
                         </div>
                       </div>
@@ -801,13 +801,13 @@ export default function AmenityManagement() {
                     }}
                     className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    H?y
+                    H·ªßy
                   </button>
                   <button
                     onClick={editingAmenity ? handleUpdate : handleCreate}
                     className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all"
                   >
-                    {editingAmenity ? 'C?p nh?t' : 'ThÍm m?i'}
+                    {editingAmenity ? 'C·∫≠p nh·∫≠t' : 'Th√™m m·ªõi'}
                   </button>
                 </div>
               </div>
