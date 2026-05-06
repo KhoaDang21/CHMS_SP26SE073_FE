@@ -18,7 +18,7 @@ export function CheckInCallModal({
   onClose,
   onSubmit,
 }: CheckInCallModalProps) {
-  const [status, setStatus] = useState<CheckInCallStatus>('CONFIRMED');
+  const [status, setStatus] = useState<CheckInCallStatus>('CUSTOMER_COMING');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,9 +27,11 @@ export function CheckInCallModal({
     setSubmitting(true);
     try {
       await onSubmit(status, note.trim() || undefined);
+      // Chỉ đóng modal khi thành công
       onClose();
     } catch (error) {
       console.error('Error submitting check-in call:', error);
+      // Không đóng modal — để user thấy lỗi từ toast
     } finally {
       setSubmitting(false);
     }
@@ -66,10 +68,9 @@ export function CheckInCallModal({
               className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             >
-              <option value="CONFIRMED">✅ Xác nhận sẽ đến</option>
-              <option value="CANCELLED">❌ Khách hủy booking</option>
-              <option value="NO_ANSWER">📞 Không nghe máy</option>
-              <option value="RESCHEDULED">📅 Đổi lịch</option>
+              <option value="CUSTOMER_COMING">✅ Khách xác nhận sẽ đến</option>
+              <option value="NO_ANSWER">🔇 Không nghe máy</option>
+              <option value="CANCELLED">🚫 Khách xác nhận hủy</option>
             </select>
           </div>
 
@@ -93,7 +94,14 @@ export function CheckInCallModal({
           {status === 'CANCELLED' && (
             <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3">
               <p className="text-sm text-yellow-800">
-                ⚠️ Nếu khách xác nhận hủy, booking sẽ được chuyển sang trạng thái CANCELLED.
+                ⚠️ Nếu khách xác nhận hủy, booking sẽ được chuyển sang trạng thái CANCELLED và xử lý hoàn tiền theo chính sách.
+              </p>
+            </div>
+          )}
+          {status === 'NO_ANSWER' && (
+            <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+              <p className="text-sm text-blue-800">
+                📋 Booking vẫn giữ nguyên trạng thái CONFIRMED. Có thể gọi lại sau.
               </p>
             </div>
           )}

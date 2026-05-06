@@ -19,8 +19,9 @@ import { staffBookingService } from '../../services/staffBookingService';
 import { extraChargeService, type ExtraCharge } from '../../services/extraChargeService';
 import { invoiceService, type Invoice } from '../../services/invoiceService';
 import { Pagination } from '../../components/common/Pagination';
-import type { Booking } from '../../types/booking.types';
+import type { Booking, CheckInCallStatus } from '../../types/booking.types';
 import StaffSidebar from '../../components/staff/StaffSidebar';
+import { CheckInCallModal } from '../../components/staff/CheckInCallModal';
 import { toast } from 'sonner';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/src/style.css';
@@ -82,6 +83,7 @@ export default function StaffBookings() {
   const [extendSubmitting, setExtendSubmitting] = useState(false);
   const [extendNotice, setExtendNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [checkInCallBooking, setCheckInCallBooking] = useState<Booking | null>(null);
 
   const loadBookings = async () => {
     try {
@@ -171,6 +173,38 @@ export default function StaffBookings() {
     } catch (error) {
       console.error('Check-in booking error:', error);
       toast.error('Không thể nhận phòng booking');
+    }
+  };
+
+  const handleMarkCheckInCall = async (status: CheckInCallStatus, note?: string) => {
+    if (!checkInCallBooking) return;
+    const result = await staffBookingService.markCheckInCall(checkInCallBooking.id, { status, note });
+    if (result.success) {
+      const messages: Record<string, string> = {
+        CUSTOMER_COMING: 'Đã ghi nhận: Khách xác nhận sẽ đến',
+        CALLED: 'Đã ghi nhận cuộc gọi',
+        NO_ANSWER: 'Đã ghi nhận: Không nghe máy',
+        WRONG_NUMBER: 'Đã ghi nhận: Sai số điện thoại',
+        CANCELLED: 'Đã ghi nhận: Khách hủy booking',
+      };
+      toast.success(messages[status] ?? result.message ?? 'Đã ghi nhận cuộc gọi');
+
+      // Nếu khách xác nhận hủy → tự động cancel booking để giải phóng ngày
+      if (status === 'CANCELLED') {
+        const cancelReason = note?.trim() || 'Khách xác nhận hủy qua điện thoại';
+        const cancelRes = await staffBookingService.cancel(checkInCallBooking.id, cancelReason);
+        if (cancelRes?.success ?? true) {
+          toast.success('Booking đã được hủy, ngày đã được giải phóng');
+        } else {
+          toast.error('Ghi nhận thành công nhưng không thể hủy booking tự động. Vui lòng hủy thủ công.');
+        }
+      }
+
+      setCheckInCallBooking(null);
+      await loadBookings();
+    } else {
+      toast.error(result.message || 'Không thể ghi nhận cuộc gọi');
+      throw new Error(result.message); // Giữ modal mở khi lỗi
     }
   };
 
@@ -701,6 +735,31 @@ export default function StaffBookings() {
                             {booking.paymentStatus === 'deposit_paid' ? 'Xác nhận tiền mặt & nhận phòng' : 'Nhận phòng'}
                           </button>
                         )}
+                        {booking.status === 'confirmed' && booking.paymentStatus === 'deposit_paid' && (
+                          <>
+                            {booking.checkInCallStatus && (booking.checkInCallStatus as string) !== 'PENDING' && (
+                              <div className={`px-3 py-1.5 rounded-lg text-xs font-medium text-center ${
+                                booking.checkInCallStatus === 'CUSTOMER_COMING'
+                                  ? 'bg-green-50 text-green-700 border border-green-200'
+                                  : booking.checkInCallStatus === 'NO_ANSWER'
+                                    ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                                    : 'bg-gray-50 text-gray-600 border border-gray-200'
+                              }`}>
+                                {booking.checkInCallStatus === 'CUSTOMER_COMING' && '✅ Đã xác nhận sẽ đến'}
+                                {booking.checkInCallStatus === 'NO_ANSWER' && '🔇 Chưa nghe máy'}
+                                {booking.checkInCallStatus === 'CALLED' && '📞 Đã gọi'}
+                              </div>
+                            )}
+                            <button
+                              onClick={() => setCheckInCallBooking(booking)}
+                              type="button"
+                              className="px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                            >
+                              <Phone className="w-4 h-4" />
+                              {booking.checkInCallStatus === 'NO_ANSWER' ? 'Gọi lại' : 'Gọi xác nhận'}
+                            </button>
+                          </>
+                        )}
                         {canCheckOut(booking) && (
                           <button
                             onClick={() => handleCheckOut(booking)}
@@ -1059,6 +1118,17 @@ export default function StaffBookings() {
             </div>
           </div>
         </div>
+      )}
+
+      {checkInCallBooking && (
+        <CheckInCallModal
+          bookingId={checkInCallBooking.id}
+          bookingCode={checkInCallBooking.bookingCode || checkInCallBooking.id.slice(0, 8)}
+          customerName={checkInCallBooking.customerName}
+          customerPhone={checkInCallBooking.customerPhone || ''}
+          onClose={() => setCheckInCallBooking(null)}
+          onSubmit={handleMarkCheckInCall}
+        />
       )}
     </div>
   );

@@ -7,9 +7,11 @@ import {
   Menu,
   MessageSquare,
   Loader2,
+  Paperclip,
   Search,
   Send,
   UserCheck,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import StaffSidebar from '../../components/staff/StaffSidebar';
@@ -125,7 +127,9 @@ export default function StaffTickets() {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<StaffTicketDetail | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
-  const [nextStatus, setNextStatus] = useState<StaffTicketStatus>('OPEN');
+  const [replyImageFile, setReplyImageFile] = useState<File | null>(null);
+  const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);  const [nextStatus, setNextStatus] = useState<StaffTicketStatus>('OPEN');
   const [assignedHomestayCount, setAssignedHomestayCount] = useState(0);
   const realtimeRefreshTimerRef = useRef<number | null>(null);
   const showList = !selectedTicketId;
@@ -281,6 +285,8 @@ export default function StaffTickets() {
     if (!selectedTicketId) {
       setSelectedTicket(null);
       setReplyMessage('');
+      setReplyImageFile(null);
+      setReplyImagePreview(null);
       return;
     }
 
@@ -397,14 +403,14 @@ export default function StaffTickets() {
   };
 
   const handleReply = async () => {
-    if (!selectedTicketId || !replyMessage.trim()) {
-      toast.error('Vui lòng nhập nội dung phản hồi');
+    if (!selectedTicketId || (!replyMessage.trim() && !replyImageFile)) {
+      toast.error('Vui lòng nhập nội dung hoặc chọn ảnh để phản hồi');
       return;
     }
 
     try {
       setSaving(true);
-      const result = await staffTicketService.reply(selectedTicketId, replyMessage.trim());
+      const result = await staffTicketService.reply(selectedTicketId, replyMessage.trim(), replyImageFile);
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -412,6 +418,8 @@ export default function StaffTickets() {
 
       toast.success(result.message);
       setReplyMessage('');
+      setReplyImageFile(null);
+      setReplyImagePreview(null);
       await loadTickets();
       await loadDetail(selectedTicketId);
     } finally {
@@ -750,29 +758,72 @@ export default function StaffTickets() {
                           {isClosed ? (
                             <p className="text-center text-sm text-gray-400 py-1">Ticket này đã đóng.</p>
                           ) : (
-                            <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-gray-200 px-3 py-2 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-100 transition-all">
-                              <textarea
-                                rows={1}
-                                value={replyMessage}
-                                onChange={(e) => setReplyMessage(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    void handleReply();
-                                  }
-                                }}
-                                placeholder="Nhập phản hồi..."
-                                className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none outline-none max-h-24 leading-relaxed"
-                                style={{ minHeight: 24 }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => void handleReply()}
-                                disabled={!replyMessage.trim() || saving}
-                                className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                              >
-                                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                              </button>
+                            <div className="space-y-2">
+                              {replyImagePreview && (
+                                <div className="relative inline-block">
+                                  <img
+                                    src={replyImagePreview}
+                                    alt="Ảnh đính kèm"
+                                    className="h-20 w-20 rounded-lg object-cover border border-gray-200"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => { setReplyImageFile(null); setReplyImagePreview(null); }}
+                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-700 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+                              <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-gray-200 px-3 py-2 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-100 transition-all">
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] ?? null;
+                                    setReplyImageFile(file);
+                                    if (file) {
+                                      const url = URL.createObjectURL(file);
+                                      setReplyImagePreview(url);
+                                    } else {
+                                      setReplyImagePreview(null);
+                                    }
+                                    e.target.value = '';
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="w-8 h-8 rounded-lg text-gray-400 hover:text-cyan-500 hover:bg-cyan-50 flex items-center justify-center flex-shrink-0 transition-colors"
+                                  title="Đính kèm ảnh"
+                                >
+                                  <Paperclip className="w-4 h-4" />
+                                </button>
+                                <textarea
+                                  rows={1}
+                                  value={replyMessage}
+                                  onChange={(e) => setReplyMessage(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      void handleReply();
+                                    }
+                                  }}
+                                  placeholder="Nhập phản hồi..."
+                                  className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none outline-none max-h-24 leading-relaxed"
+                                  style={{ minHeight: 24 }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => void handleReply()}
+                                  disabled={(!replyMessage.trim() && !replyImageFile) || saving}
+                                  className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                                >
+                                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>

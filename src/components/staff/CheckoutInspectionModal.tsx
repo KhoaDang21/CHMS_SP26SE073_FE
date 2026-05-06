@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Banknote, ClipboardCheck, CreditCard, DollarSign, House, X } from 'lucide-react';
+import { AlertCircle, Banknote, ClipboardCheck, DollarSign, House, X } from 'lucide-react';
 import type { Booking } from '../../types/booking.types';
 
 interface CheckoutInspectionPayload {
@@ -27,13 +27,11 @@ export function CheckoutInspectionModal({
 }: CheckoutInspectionModalProps) {
   const [note, setNote] = useState(defaultNote);
   const [extraChargeAmount, setExtraChargeAmount] = useState('0');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH');
 
   useEffect(() => {
     if (!open) return;
     setNote(defaultNote);
     setExtraChargeAmount('0');
-    setPaymentMethod('CASH');
   }, [open, booking?.id]);
 
   const amountValue = useMemo(() => {
@@ -61,7 +59,7 @@ export function CheckoutInspectionModal({
     void onConfirm({
       note: trimmedNote,
       extraChargeAmount: amountValue,
-      paymentMethod,
+      paymentMethod: 'CASH',
     });
   };
 
@@ -151,49 +149,7 @@ export function CheckoutInspectionModal({
             </div>
           </div>
 
-          {/* Payment Method Selection */}
-          {hasUnpaidAmount && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Khách đã thanh toán bằng <span className="text-red-500">*</span>
-              </label>
-              <p className="text-xs text-gray-600 mb-3">
-                Chọn phương thức khách vừa thanh toán cho bạn (để ghi nhận vào hệ thống)
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('CASH')}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                    paymentMethod === 'CASH'
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                >
-                  <Banknote className="w-5 h-5" />
-                  <div className="text-left">
-                    <div className="font-semibold">Tiền mặt</div>
-                    <div className="text-xs opacity-75">Khách trả cash</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('BANK_TRANSFER')}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                    paymentMethod === 'BANK_TRANSFER'
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                >
-                  <CreditCard className="w-5 h-5" />
-                  <div className="text-left">
-                    <div className="font-semibold">Chuyển khoản</div>
-                    <div className="text-xs opacity-75">Khách chuyển khoản</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-          )}
+
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú kiểm phòng</label>
