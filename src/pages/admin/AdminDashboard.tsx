@@ -196,7 +196,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4">
+<nav className="p-4 pb-32">
           <AdminSidebar isAdminMode={true} />
         </nav>
 

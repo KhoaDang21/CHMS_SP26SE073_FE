@@ -298,7 +298,7 @@ export default function CustomerManagement() {
           </button>
         </div>
 
-        <nav className="p-4">
+<nav className="p-4 pb-32">
           <AdminSidebar isAdminMode={true} />
         </nav>
 

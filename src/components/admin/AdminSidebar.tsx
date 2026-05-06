@@ -43,7 +43,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-180px)]"
+        className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-280px)]"
       >
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -78,7 +78,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="flex flex-col gap-6 overflow-y-auto max-h-[calc(100vh-180px)]"
+      className="flex flex-col gap-6 overflow-y-auto max-h-[calc(100vh-280px)]"
     >
       {sectionsToDisplay.map((section) => (
         <div key={section.section} className="flex flex-col gap-2">
