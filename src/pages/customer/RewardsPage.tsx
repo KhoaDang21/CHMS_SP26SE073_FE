@@ -10,7 +10,6 @@ import { authService } from '../../services/authService';
 import {
     customerRewardsService,
     type RewardsBalance,
-    type RewardHistoryItem,
     type RewardCatalogItem,
     type RedemptionItem,
     type CustomerCoupon,
