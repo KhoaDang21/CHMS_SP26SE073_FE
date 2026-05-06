@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Menu, X, LogOut, Building2, Search, Loader2, QrCode,
-    CheckCircle2, Clock, DollarSign, Copy, ExternalLink, AlertCircle,
+    CheckCircle2, Clock, DollarSign, Copy, ExternalLink, AlertCircle, Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
@@ -20,6 +20,10 @@ export default function AdminRefundsPage() {
     const [confirmTarget, setConfirmTarget] = useState<string | null>(null); // id đang chờ xác nhận
     const [selectedRefund, setSelectedRefund] = useState<PendingRefund | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
+    const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+    const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
+    const [refundNote, setRefundNote] = useState('');
+    const evidenceInputRef = useRef<HTMLInputElement>(null);
 
     const user = authService.getCurrentUser();
 
@@ -52,13 +56,20 @@ export default function AdminRefundsPage() {
     });
 
     const handleConfirm = async (id: string) => {
+        if (!evidenceFile) {
+            toast.error('Vui lòng đính kèm ảnh bằng chứng chuyển khoản');
+            return;
+        }
         setConfirmingId(id);
         setConfirmTarget(null);
         try {
-            const success = await refundService.confirmRefund(id);
+            const success = await refundService.confirmRefund(id, evidenceFile, refundNote || undefined);
             if (success) {
                 toast.success('Đã xác nhận hoàn tiền thành công');
                 setSelectedRefund(null);
+                setEvidenceFile(null);
+                setEvidencePreview(null);
+                setRefundNote('');
                 await load();
             } else {
                 toast.error('Không thể xác nhận hoàn tiền');
@@ -351,7 +362,7 @@ export default function AdminRefundsPage() {
                     onClick={() => setSelectedRefund(null)}
                 >
                     <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
@@ -374,7 +385,7 @@ export default function AdminRefundsPage() {
                                 <p className="text-gray-600">Đang tải...</p>
                             </div>
                         ) : (
-                            <div className="p-6 space-y-6">
+                            <div className="overflow-y-auto flex-1 p-6 space-y-6">
                                 {/* Bank info */}
                                 <div className="rounded-xl bg-gray-50 border border-gray-200 p-5 space-y-3">
                                     <div>
@@ -484,24 +495,76 @@ export default function AdminRefundsPage() {
             {/* Confirm modal — thay window.confirm */}
             {confirmTarget && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmTarget(null)} />
+                    <div className="absolute inset-0 bg-black/40" onClick={() => { setConfirmTarget(null); setEvidenceFile(null); setEvidencePreview(null); setRefundNote(''); }} />
                     <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden">
                         <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-4 flex items-center gap-3 text-white">
                             <CheckCircle2 className="w-5 h-5 shrink-0" />
                             <h3 className="font-bold text-lg">Xác nhận đã hoàn tiền</h3>
                         </div>
-                        <div className="px-5 py-5">
+                        <div className="px-5 py-5 space-y-4">
                             <p className="text-sm text-gray-700">
                                 Bạn xác nhận đã chuyển tiền hoàn lại cho khách thành công?
                             </p>
-                            <p className="text-xs text-gray-500 mt-2">
+                            <p className="text-xs text-gray-500">
                                 Hành động này không thể hoàn tác. Trạng thái sẽ chuyển sang <strong>Đã hoàn</strong>.
                             </p>
+
+                            {/* Upload ảnh bằng chứng */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                    Ảnh bằng chứng chuyển khoản <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    ref={evidenceInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0] ?? null;
+                                        setEvidenceFile(file);
+                                        setEvidencePreview(file ? URL.createObjectURL(file) : null);
+                                        e.target.value = '';
+                                    }}
+                                />
+                                {evidencePreview ? (
+                                    <div className="relative inline-block">
+                                        <img src={evidencePreview} alt="Bằng chứng" className="h-28 w-full object-cover rounded-lg border border-gray-200" />
+                                        <button
+                                            type="button"
+                                            onClick={() => { setEvidenceFile(null); setEvidencePreview(null); }}
+                                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-700 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => evidenceInputRef.current?.click()}
+                                        className="w-full flex flex-col items-center justify-center gap-2 py-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors text-gray-500 hover:text-green-600"
+                                    >
+                                        <Upload className="w-5 h-5" />
+                                        <span className="text-xs font-medium">Chọn ảnh bằng chứng</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Ghi chú */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Ghi chú (tuỳ chọn)</label>
+                                <input
+                                    type="text"
+                                    value={refundNote}
+                                    onChange={(e) => setRefundNote(e.target.value)}
+                                    placeholder="VD: Đã chuyển khoản lúc 14:30..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                />
+                            </div>
                         </div>
                         <div className="flex gap-3 px-5 pb-5">
                             <button
                                 type="button"
-                                onClick={() => setConfirmTarget(null)}
+                                onClick={() => { setConfirmTarget(null); setEvidenceFile(null); setEvidencePreview(null); setRefundNote(''); }}
                                 className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-sm transition-colors"
                             >
                                 Hủy
@@ -509,7 +572,7 @@ export default function AdminRefundsPage() {
                             <button
                                 type="button"
                                 onClick={() => handleConfirm(confirmTarget)}
-                                disabled={confirmingId === confirmTarget}
+                                disabled={confirmingId === confirmTarget || !evidenceFile}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold text-sm transition-colors disabled:opacity-50"
                             >
                                 {confirmingId === confirmTarget

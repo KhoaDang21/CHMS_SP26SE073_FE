@@ -42,6 +42,7 @@ export default function ManagerBookings() {
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
   const [dateFilter, setDateFilter] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
@@ -534,7 +535,48 @@ export default function ManagerBookings() {
                             <p className="text-sm text-gray-600 font-medium">Mã đơn: {booking.bookingCode}</p>
                           </div>
                           <button
-                            onClick={() => setSelectedBooking(booking)}
+                            onClick={async () => {
+                              setSelectedBooking(booking);
+                              setDetailLoading(true);
+                              try {
+                                const res = await adminBookingService.detail(booking.id);
+                                const raw = res?.data ?? res?.result ?? res;
+                                if (raw) {
+                                  const toISO = (v: any) => v ? new Date(v).toISOString() : new Date().toISOString();
+                                  const enriched: Booking = {
+                                    ...booking,
+                                    bookedExperiences: Array.isArray(raw?.bookedExperiences)
+                                      ? raw.bookedExperiences.map((be: any) => ({
+                                          id: String(be?.id ?? ''),
+                                          experienceName: String(be?.experienceName ?? be?.localExperienceName ?? ''),
+                                          imageUrl: be?.imageUrl,
+                                          serviceDate: toISO(be?.serviceDate),
+                                          startTime: be?.startTime,
+                                          quantity: Number(be?.quantity ?? 1),
+                                          unitPrice: Number(be?.unitPrice ?? be?.price ?? 0),
+                                          totalPrice: Number(be?.totalPrice ?? 0),
+                                          status: be?.status ?? 'pending',
+                                          note: be?.note,
+                                        }))
+                                      : [],
+                                    extraCharges: Array.isArray(raw?.extraCharges)
+                                      ? raw.extraCharges.map((ec: any) => ({
+                                          id: String(ec?.id ?? ''),
+                                          bookingId: String(ec?.bookingId ?? ''),
+                                          amount: Number(ec?.amount ?? 0),
+                                          description: ec?.description ?? ec?.note,
+                                          createdAt: ec?.createdAt,
+                                        }))
+                                      : booking.extraCharges,
+                                  };
+                                  setSelectedBooking(enriched);
+                                }
+                              } catch {
+                                // keep the list-level data
+                              } finally {
+                                setDetailLoading(false);
+                              }
+                            }}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                           >
                             <Eye className="w-4 h-4" />
@@ -666,9 +708,14 @@ export default function ManagerBookings() {
                   <p className="text-blue-200 text-xs mt-0.5">Mã đơn: {selectedBooking.bookingCode}</p>
                 )}
               </div>
-              <button onClick={() => setSelectedBooking(null)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors mt-0.5">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {detailLoading && (
+                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                )}
+                <button onClick={() => setSelectedBooking(null)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors mt-0.5">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-5 overflow-y-auto flex-1">
@@ -749,6 +796,22 @@ export default function ManagerBookings() {
                     <span className="text-gray-500">Giá phòng ({selectedBooking.numberOfNights} đêm)</span>
                     <span className="font-medium">{(selectedBooking.pricePerNight * selectedBooking.numberOfNights).toLocaleString('vi-VN')} ₫</span>
                   </div>
+                  {selectedBooking.bookedExperiences && selectedBooking.bookedExperiences.length > 0 && (
+                    <>
+                      <div className="pt-1 pb-0.5">
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dịch vụ địa phương</span>
+                      </div>
+                      {selectedBooking.bookedExperiences.map((exp) => (
+                        <div key={exp.id} className="flex justify-between pl-3 border-l-2 border-cyan-200">
+                          <span className="text-gray-600 flex-1 pr-2">
+                            {exp.experienceName}
+                            <span className="text-gray-400 ml-1">×{exp.quantity}</span>
+                          </span>
+                          <span className="font-medium text-cyan-700 whitespace-nowrap">{exp.totalPrice.toLocaleString('vi-VN')} ₫</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
                   {selectedBooking.discountAmount !== undefined && selectedBooking.discountAmount > 0 && (
                     <div className="flex justify-between">
                       <span className="text-green-600">Giảm giá</span>
