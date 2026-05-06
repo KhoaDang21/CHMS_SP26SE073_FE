@@ -59,7 +59,7 @@ export interface UpdatePromotionDTO {
 
 export interface CouponValidationRequest {
   code: string;
-  bookingTotal: number;
+  subTotal: number;
   homestayId?: string;
 }
 

@@ -52,6 +52,9 @@ export default function HomestayDetail() {
     const [availablePromotions, setAvailablePromotions] = useState<Promotion[]>([])
     const [promotionsLoading, setPromotionsLoading] = useState(false)
     const [selectedPromotionId, setSelectedPromotionId] = useState<string | null>(null)
+    const [couponCode, setCouponCode] = useState('')
+    const [couponValidating, setCouponValidating] = useState(false)
+    const [validatedCoupon, setValidatedCoupon] = useState<{ code: string; discountAmount: number; message?: string } | null>(null)
     const [experiences, setExperiences] = useState<LocalExperience[]>([])
     const [experiencesLoading, setExperiencesLoading] = useState(false)
     const [selectedExperienceQty, setSelectedExperienceQty] = useState<Record<string, number>>({})
@@ -617,6 +620,35 @@ export default function HomestayDetail() {
     const seasonalDisplayPrice = seasonalPricingToShow?.price
     const hasSeasonalPricing = typeof seasonalDisplayPrice === 'number' && seasonalDisplayPrice > 0 && seasonalDisplayPrice !== homestay?.pricePerNight
 
+    const handleValidateCoupon = async () => {
+        const code = couponCode.trim().toUpperCase()
+        if (!code) return
+        setCouponValidating(true)
+        try {
+            const res = await promotionService.validateCoupon({
+                code,
+                subTotal: baseBookingTotal ?? 0,
+            })
+            const data = res as any
+            if (data?.valid || data?.success) {
+                setValidatedCoupon({
+                    code,
+                    discountAmount: data?.discountAmount ?? 0,
+                    message: data?.message,
+                })
+                toast.success(`Áp dụng coupon thành công! Giảm ${(data?.discountAmount ?? 0).toLocaleString('vi-VN')}đ`)
+            } else {
+                setValidatedCoupon(null)
+                toast.error(data?.message ?? 'Mã coupon không hợp lệ hoặc đã hết hạn')
+            }
+        } catch (e: any) {
+            setValidatedCoupon(null)
+            toast.error(e?.message ?? 'Không thể kiểm tra mã coupon')
+        } finally {
+            setCouponValidating(false)
+        }
+    }
+
     const handleBookingClick = async () => {
         if (!authService.isAuthenticated()) {
             navigate('/auth/login')
@@ -661,21 +693,16 @@ export default function HomestayDetail() {
             }
         }
 
-        const missingScheduleExperience = selectedExperienceItems.find(
-            (entry) => !selectedExperienceScheduleIds[entry.item.id],
-        )
-        if (missingScheduleExperience) {
-            toast.error(`Vui lòng chọn lịch trình cho dịch vụ: ${missingScheduleExperience.item.name}`)
-            return
-        }
-
         setIsBooking(true)
         try {
-            // Build experiences payload for separate API (not embedded in specialRequests)
+            // Build experiences payload — localExperienceScheduleId là optional
+            // (dịch vụ không có lịch trình vẫn được đặt bình thường)
             const experiencesPayload = selectedExperienceItems.map((entry) => ({
                 experienceId: entry.item.id,
                 quantity: entry.qty,
-                localExperienceScheduleId: selectedExperienceScheduleIds[entry.item.id],
+                ...(selectedExperienceScheduleIds[entry.item.id]
+                    ? { localExperienceScheduleId: selectedExperienceScheduleIds[entry.item.id] }
+                    : {}),
             }))
 
             const payload = {
@@ -686,6 +713,7 @@ export default function HomestayDetail() {
                 contactPhone: contactPhone.trim(),
                 ...(specialRequests ? { specialRequests: specialRequests.trim() } : {}),
                 ...(selectedPromotionId ? { promotionId: selectedPromotionId } : {}),
+                ...(validatedCoupon ? { couponCode: validatedCoupon.code } : {}),
                 ...(experiencesPayload.length > 0 ? { experiences: experiencesPayload } : {}),
             } as any
 
@@ -768,16 +796,16 @@ export default function HomestayDetail() {
 
     return (
         <>
-        <MainLayout>
-            <div className="max-w-[1600px] mx-auto px-4 py-8">
-                {/* Back Button */}
-                <button
-                    onClick={() => navigate(-1)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm mb-6"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="font-medium">Quay về</span>
-                </button>
+            <MainLayout>
+                <div className="max-w-[1600px] mx-auto px-4 py-8">
+                    {/* Back Button */}
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm mb-6"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="font-medium">Quay về</span>
+                    </button>
                     <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Left / Main: images + details (span 2 columns on lg) */}
                         <div className="lg:col-span-2">
@@ -826,22 +854,22 @@ export default function HomestayDetail() {
                                             </div>
                                         )}
                                         {authService.isAuthenticated() && (
-                                        <button
-                                            onClick={async () => {
-                                                if (!homestay) return;
-                                                const isFav = favorites.has(homestay.id);
-                                                try {
-                                                    await toggle(homestay.id);
-                                                    toast.success(isFav ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
-                                                } catch {
-                                                    toast.error('Không thể thay đổi trạng thái yêu thích');
-                                                }
-                                            }}
-                                            className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
-                                            title={homestay && favorites.has(homestay.id) ? 'Bỏ thích' : 'Lưu yêu thích'}
-                                        >
-                                            <Heart className={`w-5 h-5 transition-colors ${homestay && favorites.has(homestay.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-                                        </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!homestay) return;
+                                                    const isFav = favorites.has(homestay.id);
+                                                    try {
+                                                        await toggle(homestay.id);
+                                                        toast.success(isFav ? 'Đã bỏ thích' : 'Đã lưu yêu thích');
+                                                    } catch {
+                                                        toast.error('Không thể thay đổi trạng thái yêu thích');
+                                                    }
+                                                }}
+                                                className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
+                                                title={homestay && favorites.has(homestay.id) ? 'Bỏ thích' : 'Lưu yêu thích'}
+                                            >
+                                                <Heart className={`w-5 h-5 transition-colors ${homestay && favorites.has(homestay.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -997,7 +1025,7 @@ export default function HomestayDetail() {
                                     )}
                                 </div>
 
-                {/* Sub-category averages — chỉ hiện khi có data */}
+                                {/* Sub-category averages — chỉ hiện khi có data */}
                                 {reviews.length > 0 && (() => {
                                     const hasSubRatings = reviews.some(r =>
                                         r.cleanlinessRating > 0 || r.locationRating > 0 ||
@@ -1301,6 +1329,48 @@ export default function HomestayDetail() {
                                     />
                                 </div>
 
+                                {/* Step 4b: Coupon code */}
+                                <div className="mt-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Mã coupon
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={couponCode}
+                                            onChange={(e) => {
+                                                setCouponCode(e.target.value.toUpperCase())
+                                                if (validatedCoupon) setValidatedCoupon(null)
+                                            }}
+                                            placeholder="Nhập mã coupon (VD: REWARD123)"
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleValidateCoupon}
+                                            disabled={!couponCode.trim() || couponValidating}
+                                            className="px-4 py-2 bg-cyan-600 text-white text-sm font-semibold rounded-lg hover:bg-cyan-700 disabled:opacity-50 whitespace-nowrap"
+                                        >
+                                            {couponValidating ? 'Đang kiểm tra...' : 'Áp dụng'}
+                                        </button>
+                                    </div>
+                                    {validatedCoupon && (
+                                        <div className="mt-2 flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-3 py-2">
+                                            <div className="flex items-center gap-2 text-sm text-green-700">
+                                                <span>✓</span>
+                                                <span>Coupon <strong>{validatedCoupon.code}</strong> — Giảm {validatedCoupon.discountAmount.toLocaleString('vi-VN')}đ</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setValidatedCoupon(null); setCouponCode('') }}
+                                                className="text-green-600 hover:text-green-800 text-xs font-medium ml-2"
+                                            >
+                                                Xóa
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Step 5: Dịch vụ địa phương */}
                                 <div className="mt-4">
                                     <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
@@ -1400,70 +1470,70 @@ export default function HomestayDetail() {
                                                                         +
                                                                     </button>
                                                                 </div>
-                                                        </div>
-                                                        {selectedExperienceQty[item.id] > 0 && (
-                                                            <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/60 p-3">
-                                                                <div className="flex items-center justify-between gap-2 mb-2">
-                                                                    <div className="text-xs font-semibold text-cyan-900">
-                                                                        Lịch trình phù hợp với ngày booking
+                                                            </div>
+                                                            {selectedExperienceQty[item.id] > 0 && (
+                                                                <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/60 p-3">
+                                                                    <div className="flex items-center justify-between gap-2 mb-2">
+                                                                        <div className="text-xs font-semibold text-cyan-900">
+                                                                            Lịch trình phù hợp với ngày booking
+                                                                        </div>
+                                                                        {experienceSchedulesLoading && (
+                                                                            <div className="text-[11px] text-cyan-700">Đang tải...</div>
+                                                                        )}
                                                                     </div>
-                                                                    {experienceSchedulesLoading && (
-                                                                        <div className="text-[11px] text-cyan-700">Đang tải...</div>
+                                                                    {!checkIn || !checkOut ? (
+                                                                        <div className="text-xs text-gray-600">
+                                                                            Vui lòng chọn ngày nhận và trả phòng trước để xem lịch trình.
+                                                                        </div>
+                                                                    ) : (experienceSchedules[item.id]?.length ?? 0) === 0 ? (
+                                                                        <div className="text-xs text-gray-600">
+                                                                            Hiện chưa có lịch trình nào trong khoảng ngày bạn đã chọn.
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="space-y-2">
+                                                                            {experienceSchedules[item.id].map((schedule) => {
+                                                                                const remainingSlots = typeof schedule.currentParticipants === 'number' && typeof schedule.maxParticipants === 'number'
+                                                                                    ? Math.max(schedule.maxParticipants - schedule.currentParticipants, 0)
+                                                                                    : typeof schedule.remainingSlots === 'number'
+                                                                                        ? schedule.remainingSlots
+                                                                                        : schedule.maxParticipants ?? 0
+                                                                                const scheduleDateRaw = schedule.date ?? schedule.availableDate ?? schedule.serviceDate
+                                                                                const isSelected = selectedExperienceScheduleIds[item.id] === schedule.id
+
+                                                                                return (
+                                                                                    <label
+                                                                                        key={schedule.id}
+                                                                                        className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${isSelected ? 'border-cyan-300 bg-white' : 'border-cyan-100 bg-white/80 hover:bg-white'}`}
+                                                                                    >
+                                                                                        <input
+                                                                                            type="radio"
+                                                                                            name={`schedule-${item.id}`}
+                                                                                            checked={isSelected}
+                                                                                            onChange={() => setSelectedExperienceScheduleIds((prev) => ({ ...prev, [item.id]: schedule.id }))}
+                                                                                            className="mt-1"
+                                                                                        />
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            <div className="text-sm font-medium text-gray-900">
+                                                                                                {formatDateVi(scheduleDateRaw)}
+                                                                                            </div>
+                                                                                            <div className="text-xs text-gray-600 mt-1">
+                                                                                                {schedule.startTime ?? '—'} - {schedule.endTime ?? '—'}
+                                                                                                {typeof schedule.price === 'number' && schedule.price > 0 ? ` • ${schedule.price.toLocaleString('vi-VN')}đ` : ''}
+                                                                                            </div>
+                                                                                            <div className="text-[11px] text-gray-500 mt-1">
+                                                                                                Còn {remainingSlots} chỗ
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </label>
+                                                                                )
+                                                                            })}
+
+                                                                            {null}
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                                {!checkIn || !checkOut ? (
-                                                                    <div className="text-xs text-gray-600">
-                                                                        Vui lòng chọn ngày nhận và trả phòng trước để xem lịch trình.
-                                                                    </div>
-                                                                ) : (experienceSchedules[item.id]?.length ?? 0) === 0 ? (
-                                                                    <div className="text-xs text-gray-600">
-                                                                        Hiện chưa có lịch trình nào trong khoảng ngày bạn đã chọn.
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="space-y-2">
-                                                                        {experienceSchedules[item.id].map((schedule) => {
-                                                                            const remainingSlots = typeof schedule.currentParticipants === 'number' && typeof schedule.maxParticipants === 'number'
-                                                                                ? Math.max(schedule.maxParticipants - schedule.currentParticipants, 0)
-                                                                                : typeof schedule.remainingSlots === 'number'
-                                                                                    ? schedule.remainingSlots
-                                                                                    : schedule.maxParticipants ?? 0
-                                                                            const scheduleDateRaw = schedule.date ?? schedule.availableDate ?? schedule.serviceDate
-                                                                            const isSelected = selectedExperienceScheduleIds[item.id] === schedule.id
-
-                                                                            return (
-                                                                                <label
-                                                                                    key={schedule.id}
-                                                                                    className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${isSelected ? 'border-cyan-300 bg-white' : 'border-cyan-100 bg-white/80 hover:bg-white'}`}
-                                                                                >
-                                                                                    <input
-                                                                                        type="radio"
-                                                                                        name={`schedule-${item.id}`}
-                                                                                        checked={isSelected}
-                                                                                        onChange={() => setSelectedExperienceScheduleIds((prev) => ({ ...prev, [item.id]: schedule.id }))}
-                                                                                        className="mt-1"
-                                                                                    />
-                                                                                    <div className="flex-1 min-w-0">
-                                                                                        <div className="text-sm font-medium text-gray-900">
-                                                                                            {formatDateVi(scheduleDateRaw)}
-                                                                                        </div>
-                                                                                        <div className="text-xs text-gray-600 mt-1">
-                                                                                            {schedule.startTime ?? '—'} - {schedule.endTime ?? '—'}
-                                                                                            {typeof schedule.price === 'number' && schedule.price > 0 ? ` • ${schedule.price.toLocaleString('vi-VN')}đ` : ''}
-                                                                                        </div>
-                                                                                        <div className="text-[11px] text-gray-500 mt-1">
-                                                                                            Còn {remainingSlots} chỗ
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </label>
-                                                                            )
-                                                                        })}
-
-                                                                        {null}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                            )}
+                                                        </div>
                                                     )
                                                 })}
                                             </div>
@@ -1565,88 +1635,88 @@ export default function HomestayDetail() {
                             </div>
                         </div>
                     </div>
-                {previewExperience && (
-                    <div
-                        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-                        onClick={() => setPreviewExperience(null)}
-                    >
+                    {previewExperience && (
                         <div
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
+                            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+                            onClick={() => setPreviewExperience(null)}
                         >
-                            {previewExperience.imageUrl && (
-                                <div className="h-48 overflow-hidden">
-                                    <img
-                                        src={previewExperience.imageUrl}
-                                        alt={previewExperience.name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                            )}
-                            <div className="p-5">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-900">{previewExperience.name}</h3>
-                                        {previewExperience.categoryName && (
-                                            <span className="inline-block mt-1 text-xs bg-cyan-50 text-cyan-700 border border-cyan-100 rounded-full px-2.5 py-0.5 font-medium">
-                                                {previewExperience.categoryName}
-                                            </span>
-                                        )}
+                            <div
+                                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {previewExperience.imageUrl && (
+                                    <div className="h-48 overflow-hidden">
+                                        <img
+                                            src={previewExperience.imageUrl}
+                                            alt={previewExperience.name}
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
-                                    <button
-                                        onClick={() => setPreviewExperience(null)}
-                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
-                                    >
-                                        <X className="w-5 h-5 text-gray-500" />
-                                    </button>
-                                </div>
-                                {previewExperience.description && (
-                                    <p className="mt-3 text-sm text-gray-600 leading-relaxed">{previewExperience.description}</p>
                                 )}
-                                <div className="mt-4 flex items-center justify-between">
-                                    <div>
-                                        <span className="text-xl font-bold text-gray-900">
-                                            {typeof previewExperience.price === 'number'
-                                                ? `${previewExperience.price.toLocaleString('vi-VN')}đ`
-                                                : 'Liên hệ'}
-                                        </span>
-                                        {previewExperience.unit && (
-                                            <span className="text-sm text-gray-500 ml-1">/ {previewExperience.unit}</span>
-                                        )}
+                                <div className="p-5">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900">{previewExperience.name}</h3>
+                                            {previewExperience.categoryName && (
+                                                <span className="inline-block mt-1 text-xs bg-cyan-50 text-cyan-700 border border-cyan-100 rounded-full px-2.5 py-0.5 font-medium">
+                                                    {previewExperience.categoryName}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => setPreviewExperience(null)}
+                                            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+                                        >
+                                            <X className="w-5 h-5 text-gray-500" />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            setSelectedExperienceQty((prev) => ({
-                                                ...prev,
-                                                [previewExperience.id]: Math.max(1, prev[previewExperience.id] ?? 1),
-                                            }))
-                                            setPreviewExperience(null)
-                                        }}
-                                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg text-sm font-medium hover:from-blue-600 hover:to-cyan-600 transition-all"
-                                    >
-                                        Thêm vào đơn
-                                    </button>
+                                    {previewExperience.description && (
+                                        <p className="mt-3 text-sm text-gray-600 leading-relaxed">{previewExperience.description}</p>
+                                    )}
+                                    <div className="mt-4 flex items-center justify-between">
+                                        <div>
+                                            <span className="text-xl font-bold text-gray-900">
+                                                {typeof previewExperience.price === 'number'
+                                                    ? `${previewExperience.price.toLocaleString('vi-VN')}đ`
+                                                    : 'Liên hệ'}
+                                            </span>
+                                            {previewExperience.unit && (
+                                                <span className="text-sm text-gray-500 ml-1">/ {previewExperience.unit}</span>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedExperienceQty((prev) => ({
+                                                    ...prev,
+                                                    [previewExperience.id]: Math.max(1, prev[previewExperience.id] ?? 1),
+                                                }))
+                                                setPreviewExperience(null)
+                                            }}
+                                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg text-sm font-medium hover:from-blue-600 hover:to-cyan-600 transition-all"
+                                        >
+                                            Thêm vào đơn
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {lightboxSrc && (
-                    <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxSrc(null)}>
-                        <img src={lightboxSrc} alt="Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
-                        <button className="absolute top-6 right-6 text-white text-2xl" onClick={() => setLightboxSrc(null)}>×</button>
-                    </div>
-                )}
-            </div>
-        </MainLayout>
-        {pendingBooking && (
-            <PaymentModal
-                booking={pendingBooking}
-                onClose={() => { setPendingBooking(null); navigate('/customer/bookings'); }}
-                onBack={() => setPendingBooking(null)}
-            />
-        )}
+                    {lightboxSrc && (
+                        <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightboxSrc(null)}>
+                            <img src={lightboxSrc} alt="Preview" className="max-w-full max-h-[90vh] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
+                            <button className="absolute top-6 right-6 text-white text-2xl" onClick={() => setLightboxSrc(null)}>×</button>
+                        </div>
+                    )}
+                </div>
+            </MainLayout>
+            {pendingBooking && (
+                <PaymentModal
+                    booking={pendingBooking}
+                    onClose={() => { setPendingBooking(null); navigate('/customer/bookings'); }}
+                    onBack={() => setPendingBooking(null)}
+                />
+            )}
         </>
     )
 }
