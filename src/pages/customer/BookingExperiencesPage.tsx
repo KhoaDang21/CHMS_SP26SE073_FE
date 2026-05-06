@@ -255,21 +255,26 @@ export default function BookingExperiencesPage() {
 
     setSaving(true);
     try {
-      // Build experiences payload (separate API, not in specialRequests)
-      const experiencesPayload = selectedItems.map((x) => ({
-        experienceId: x.item.id,
-        quantity: x.qty,
-      }));
-
-      if (experiencesPayload.length === 0) {
+      if (selectedItems.length === 0) {
         toast('Vui lòng chọn ít nhất một dịch vụ');
         setSaving(false);
         return;
       }
 
-      const res = await bookingService.addExperiencesViaModify(bookingId, experiencesPayload);
-      if (!res || !res.success) {
-        toast.error(res?.message || 'Không thể lưu dịch vụ thêm');
+      // Use POST /api/bookings/{id}/experiences per selected item
+      const ops = selectedItems.map(async (x) => {
+        // Use endpoint that accepts experienceId (no schedule required)
+        const payload: any = {
+          experienceId: x.item.id,
+          quantity: x.qty,
+        };
+        return bookingService.addExperienceByExperienceId(bookingId, payload);
+      });
+
+      const results = await Promise.all(ops);
+      const failed = results.some((r) => !r || (typeof r.success !== 'undefined' && !r.success));
+      if (failed) {
+        toast.error('Có lỗi khi lưu một hoặc vài dịch vụ. Vui lòng thử lại.');
         setSaving(false);
         return;
       }
