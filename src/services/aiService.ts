@@ -2,6 +2,28 @@ import { apiService } from "./apiService";
 import { apiConfig } from "../config/apiConfig";
 
 /**
+ * Coastal weather data structure from backend
+ */
+export interface CoastalWeatherData {
+  type: string;
+  homestayId: string;
+  homestayName: string;
+  locationLabel?: string;
+  isRepresentativeLocation: boolean;
+  localDate: string;
+  activityType: string;
+  replyMessage: string;
+  overallScore: number;
+  riskLevel: string;
+  shouldGo: boolean;
+  bestTimeLabel?: string;
+  shortWarnings: string[];
+  maxWindKmh?: number;
+  maxWaveHeightM?: number;
+  maxRainMm?: number;
+}
+
+/**
  * Chat message structure from backend
  */
 export interface ChatMessage {
@@ -10,6 +32,8 @@ export interface ChatMessage {
   timestamp: string;
   isRecommendation?: boolean;
   recommendedHomestays?: any[];
+  responseType?: string; // "COASTAL_WEATHER" | null
+  payload?: any; // CoastalWeatherData when responseType = "COASTAL_WEATHER"
 }
 
 /**
@@ -32,6 +56,8 @@ export interface ChatWrapperResponse {
   replyMessage: string;
   isRecommendation: boolean;
   recommendedHomestays?: any[];
+  responseType?: string; // "COASTAL_WEATHER" | null
+  payload?: any; // CoastalWeatherData when responseType = "COASTAL_WEATHER"
 }
 
 /**
@@ -151,6 +177,8 @@ export const aiService = {
         data?.isRecommendation ?? data?.IsRecommendation ?? false,
       ),
       recommendedHomestays: Array.isArray(homestays) ? homestays : undefined,
+      responseType: data?.responseType ?? data?.ResponseType ?? null,
+      payload: data?.payload ?? data?.Payload ?? null,
     };
 
     return result;
@@ -179,6 +207,8 @@ export const aiService = {
         recommendedHomestays: Array.isArray(r.recommendedHomestays ?? r.RecommendedHomestays)
           ? (r.recommendedHomestays ?? r.RecommendedHomestays)
           : undefined,
+        responseType: r.responseType ?? r.ResponseType ?? null,
+        payload: r.payload ?? r.Payload ?? null,
       }),
     );
   },
