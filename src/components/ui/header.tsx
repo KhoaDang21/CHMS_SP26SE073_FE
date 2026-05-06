@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Bell, Compass, Heart, User, LogOut, MessageCircle,
-  BellRing, Waves, Menu, X, Trash2, CheckCheck, Star, BookOpen,
+  BellRing, Waves, Menu, X, Trash2, CheckCheck, Star, BookOpen, Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
@@ -498,6 +498,13 @@ export default function Header({ showMenuButton = false, onMenuClick }: HeaderPr
                       >
                         <Star className="w-4 h-4" />
                         Đánh Giá Của Tôi
+                      </button>
+                      <button
+                        onClick={() => { navigate('/customer/rewards'); setIsUserMenuOpen(false); }}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-gray-700"
+                      >
+                        <Sparkles className="w-4 h-4 text-yellow-500" />
+                        Điểm Thưởng
                       </button>
                       <button
                         onClick={() => { navigate('/customer/profile?tab=preferences'); setIsUserMenuOpen(false); }}
