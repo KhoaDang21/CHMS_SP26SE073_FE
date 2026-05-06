@@ -226,7 +226,7 @@ export default function BookingManagement() {
             <X className="w-6 h-6" />
           </button>
         </div>
-        <nav className="p-4">
+        <nav className="p-4 pb-32">
           <AdminSidebar isAdminMode={true} />
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
