@@ -298,7 +298,7 @@ export default function CustomerManagement() {
           </button>
         </div>
 
-        <nav className="p-4">
+<nav className="p-4 pb-32">
           <AdminSidebar isAdminMode={true} />
         </nav>
 
@@ -580,67 +580,68 @@ export default function CustomerManagement() {
       {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 overflow-hidden">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-4 max-h-[calc(100vh-2rem)] flex flex-col">
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex items-center justify-between text-white rounded-t-2xl">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-5 flex items-center justify-between text-white flex-shrink-0">
               <div className="flex items-center gap-4">
                 {selectedCustomer.avatar ? (
                   <img
                     src={selectedCustomer.avatar}
                     alt={selectedCustomer.name}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-white"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-white/60"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                  <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold border-2 border-white/30">
                     {selectedCustomer.name.charAt(0)}
                   </div>
                 )}
                 <div>
-                  <h2 className="text-2xl font-bold">{selectedCustomer.name}</h2>
+                  <h2 className="text-xl font-bold leading-tight">{selectedCustomer.name}</h2>
+                  <p className="text-blue-100 text-sm mt-0.5">{selectedCustomer.email}</p>
                 </div>
               </div>
               <button onClick={() => setSelectedCustomer(null)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-6 overflow-y-auto">
-              <div className="flex items-center gap-4">
+            <div className="p-6 space-y-6 overflow-y-auto bg-gray-50">
+              <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
                 {getStatusBadge(selectedCustomer.status)}
                 {getTypeBadge(selectedCustomer.type)}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-blue-50 rounded-lg p-4 text-center">
-                  <Calendar className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                  <p className="text-xs text-gray-600">Tổng đặt phòng</p>
-                  <p className="font-bold text-blue-600 text-xl">{selectedCustomer.totalBookings}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-blue-100">
+                  <Calendar className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
+                  <p className="text-xs text-gray-500 mb-0.5">Tổng đặt phòng</p>
+                  <p className="font-bold text-blue-600 text-2xl">{selectedCustomer.totalBookings}</p>
                 </div>
-                <div className="bg-green-50 rounded-lg p-4 text-center">
-                  <CreditCard className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                  <p className="text-xs text-gray-600">Tổng chi tiêu</p>
-                  <p className="font-bold text-green-600 text-xl">{(selectedCustomer.totalSpent / 1000000).toFixed(1)}M</p>
+                <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-green-100">
+                  <CreditCard className="w-5 h-5 text-green-500 mx-auto mb-1.5" />
+                  <p className="text-xs text-gray-500 mb-0.5">Tổng chi tiêu</p>
+                  <p className="font-bold text-green-600 text-2xl">{(selectedCustomer.totalSpent / 1000000).toFixed(1)}M</p>
                 </div>
-                <div className="bg-purple-50 rounded-lg p-4 text-center">
-                  <Gift className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-                  <p className="text-xs text-gray-600">Điểm tích lũy</p>
-                  <p className="font-bold text-purple-600 text-xl">{selectedCustomer.loyaltyPoints}</p>
+                <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-purple-100">
+                  <Gift className="w-5 h-5 text-purple-500 mx-auto mb-1.5" />
+                  <p className="text-xs text-gray-500 mb-0.5">Điểm tích lũy</p>
+                  <p className="font-bold text-purple-600 text-2xl">{selectedCustomer.loyaltyPoints}</p>
                 </div>
-                <div className="bg-orange-50 rounded-lg p-4 text-center">
-                  <Award className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-                  <p className="text-xs text-gray-600">Chi tiêu TB</p>
-                  <p className="font-bold text-orange-600 text-xl">
+                <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-orange-100">
+                  <Award className="w-5 h-5 text-orange-500 mx-auto mb-1.5" />
+                  <p className="text-xs text-gray-500 mb-0.5">Chi tiêu TB</p>
+                  <p className="font-bold text-orange-600 text-2xl">
                     {selectedCustomer.totalBookings > 0
                       ? (selectedCustomer.totalSpent / selectedCustomer.totalBookings / 1000000).toFixed(1)
-                      : 0}
-                    M
+                      : 0}M
                   </p>
                 </div>
               </div>
 
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-500" />
                   Thông tin cá nhân
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -690,12 +691,12 @@ export default function CustomerManagement() {
               </div>
 
               {selectedCustomer.preferences && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Star className="w-5 h-5 text-blue-600" />
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-blue-500" />
                     Sở thích
                   </h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="space-y-2">
                     {selectedCustomer.preferences.roomType && (
                       <p className="text-sm text-gray-700">
                         <span className="font-medium">Loại phòng ưa thích:</span> {selectedCustomer.preferences.roomType}
@@ -718,18 +719,18 @@ export default function CustomerManagement() {
               )}
 
               {selectedCustomer.notes && (
-                <div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                   <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                    <FileText className="w-4 h-4 text-blue-500" />
                     Ghi chú
                   </h3>
-                  <p className="text-gray-700 bg-gray-50 rounded-lg p-4">{selectedCustomer.notes}</p>
+                  <p className="text-gray-700 bg-gray-50 rounded-lg p-3 text-sm">{selectedCustomer.notes}</p>
                 </div>
               )}
 
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <History className="w-5 h-5 text-blue-600" />
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <History className="w-4 h-4 text-blue-500" />
                   Lịch sử đặt phòng
                 </h3>
                 {bookingHistory.length === 0 ? (
@@ -774,8 +775,8 @@ export default function CustomerManagement() {
                 )}
               </div>
 
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">Cập nhật trạng thái</h3>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <h3 className="font-semibold text-gray-900 mb-4">Cập nhật trạng thái</h3>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => void handleUpdateStatus(selectedCustomer.id, 'active')}

@@ -122,19 +122,25 @@ export default function InvoiceManagement() {
 
   const getStatusBadge = (status?: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
-      paid: { label: 'Đã thanh toán', color: 'bg-green-100 text-green-700' },
-      pending: { label: 'Chưa thanh toán', color: 'bg-orange-100 text-orange-700' },
-      cancelled: { label: 'Đã hủy', color: 'bg-red-100 text-red-700' },
-      refunded: { label: 'Đã hoàn tiền', color: 'bg-blue-100 text-blue-700' },
+      // API values
+      unpaid:       { label: 'Chưa thanh toán', color: 'bg-red-100 text-red-700' },
+      fully_paid:   { label: 'Đã thanh toán', color: 'bg-green-100 text-green-700' },
+      deposit_paid: { label: 'Đặt cọc', color: 'bg-blue-100 text-blue-700' },
+      partially_paid: { label: 'Thanh toán một phần', color: 'bg-yellow-100 text-yellow-700' },
+      cancelled:    { label: 'Đã hủy', color: 'bg-gray-100 text-gray-500' },
+      refunded:     { label: 'Đã hoàn tiền', color: 'bg-purple-100 text-purple-700' },
+      // legacy fallbacks
+      paid:         { label: 'Đã thanh toán', color: 'bg-green-100 text-green-700' },
+      pending:      { label: 'Chưa thanh toán', color: 'bg-red-100 text-red-700' },
     };
 
-    const s = statusMap[status?.toLowerCase() || 'pending'];
+    const s = statusMap[status?.toLowerCase() || 'unpaid'];
     return s ? (
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${s.color}`}>
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${s.color}`}>
         {s.label}
       </span>
     ) : (
-      <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
+      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
         {status || 'N/A'}
       </span>
     );
@@ -164,7 +170,7 @@ export default function InvoiceManagement() {
           </button>
         </div>
 
-        <nav className="p-4">
+        <nav className="p-4 pb-32">
           <AdminSidebar groupedItems={adminNavItemsGrouped} />
         </nav>
 
