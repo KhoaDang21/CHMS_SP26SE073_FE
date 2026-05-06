@@ -490,5 +490,14 @@ export const apiConfig = {
       start: (scheduleId: string) => `/api/staff/local-experience-schedules/${scheduleId}/start`,
       complete: (scheduleId: string) => `/api/staff/local-experience-schedules/${scheduleId}/complete`,
     },
+    customerRewards: {
+      balance: '/api/customer/rewards/balance',
+      history: '/api/customer/rewards/history',
+      pointsHistory: '/api/customer/rewards/points/history',
+      catalog: '/api/customer/rewards/catalog',
+      redeem: (rewardId: string) => `/api/customer/rewards/${rewardId}/redeem`,
+      redemptions: '/api/customer/rewards/redemptions',
+      coupons: '/api/customer/rewards/coupons',
+    },
   },
 };
