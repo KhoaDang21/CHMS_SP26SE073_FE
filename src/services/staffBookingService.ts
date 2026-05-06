@@ -217,6 +217,30 @@ export const staffBookingService = {
     }
   },
 
+  async markCheckInCall(
+    id: string,
+    payload: { status: string; note?: string },
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      const res = await apiService.post<any>(
+        apiConfig.endpoints.staffBookings.markCheckInCall(id),
+        payload,
+      );
+      return {
+        success: res?.success ?? true,
+        message: res?.message || 'Đã ghi nhận trạng thái cuộc gọi nhắc check-in',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Không thể ghi nhận trạng thái cuộc gọi',
+      };
+    }
+  },
+
   async getAllBookings(params?: Record<string, any>): Promise<Booking[]> {
     const raw = await this.list<any>(params);
     return raw

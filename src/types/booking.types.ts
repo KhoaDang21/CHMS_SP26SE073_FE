@@ -32,6 +32,12 @@ export interface BookedExperience {
   note?: string;
 }
 
+export type CheckInCallStatus = 
+  | "CONFIRMED" 
+  | "CANCELLED" 
+  | "NO_ANSWER" 
+  | "RESCHEDULED";
+
 export interface Booking {
   id: string;
   bookingCode: string;
@@ -66,6 +72,13 @@ export interface Booking {
   checkedOutAt?: string;
   extraCharges?: ExtraCharge[];
   bookedExperiences?: BookedExperience[];
+  // Check-in call reminder fields
+  checkInCallStatus?: CheckInCallStatus;
+  checkInCallAttemptCount?: number;
+  checkInCallLastNotifiedAtUtc?: string;
+  checkInCallLastCalledAtUtc?: string;
+  checkInCallLastCalledBy?: string;
+  checkInCallNote?: string;
 }
 
 export interface BookingStats {
@@ -82,4 +95,9 @@ export interface BookingStats {
 export interface UpdateBookingDTO {
   status: BookingStatus;
   cancellationReason?: string;
+}
+
+export interface MarkCheckInCallRequest {
+  status: CheckInCallStatus;
+  note?: string;
 }
