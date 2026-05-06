@@ -432,6 +432,28 @@ export const bookingService = {
     );
   },
 
+  /**
+   * Add experience to booking by experienceId (no schedule required).
+   * Backend accepts { experienceId, quantity, note } at the same endpoint.
+   */
+  async addExperienceByExperienceId(
+    bookingId: string,
+    body: {
+      experienceId: string;
+      quantity?: number;
+      note?: string;
+    },
+  ): Promise<any> {
+    return apiService.post<any>(
+      apiConfig.endpoints.bookings.addExperiences(bookingId),
+      {
+        experienceId: body.experienceId,
+        quantity: body.quantity ?? 1,
+        note: body.note,
+      },
+    );
+  },
+
   async cancelMyExperienceBooking(experienceBookingId: string): Promise<any> {
     return apiService.put<any>(
       apiConfig.endpoints.bookings.cancelMyExperience(experienceBookingId),
