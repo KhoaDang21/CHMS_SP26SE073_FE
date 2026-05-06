@@ -74,9 +74,13 @@ export const refundService = {
     }
   },
 
-  async confirmRefund(id: string): Promise<boolean> {
+  async confirmRefund(id: string, imageFile: File, refundNote?: string): Promise<boolean> {
     try {
-      const res = await apiService.put<any>(`/api/admin/cancellation-policies/confirm-refund/${id}`, {});
+      const formData = new FormData();
+      formData.append('CancellationId', id);
+      formData.append('ImageFile', imageFile);
+      if (refundNote) formData.append('RefundNote', refundNote);
+      const res = await apiService.postForm<any>(`/api/admin/cancellation-policies/confirm-refund`, formData);
       return res?.success ?? true;
     } catch (error) {
       console.error("Confirm refund error:", error);

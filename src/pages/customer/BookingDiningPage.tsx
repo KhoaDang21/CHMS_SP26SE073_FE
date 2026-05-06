@@ -9,10 +9,19 @@ import { diningService } from "../../services/diningService";
 import type { AvailableDiningTimeSlot, DiningCombo, DiningServeLocation } from "../../types/dining.types";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
-const dateISO = (d: Date) => d.toISOString().slice(0, 10);
+// Dùng local date để tránh lệch timezone UTC
+const dateISO = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 const timeLabel = (startTime: string) => String(startTime || "").slice(0, 5);
 
-const toDateOnly = (iso: string) => new Date(`${String(iso).slice(0, 10)}T00:00:00`);
+const toDateOnly = (iso: string) => {
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 const addDaysISO = (iso: string, delta: number) => {
   const d = toDateOnly(iso);
   d.setDate(d.getDate() + delta);
@@ -51,8 +60,9 @@ export default function BookingDiningPage() {
     const checkOut = String((booking as any)?.checkOut ?? (booking as any)?.CheckOut ?? "");
 
     // Allowed dining dates: [checkIn, checkOut) (exclude checkout day)
+    // Customer can pre-order from today for any date within the stay period
     const maxStayDate = checkOut ? addDaysISO(checkOut, -1) : "";
-    const minAllowed = checkIn ? (today > checkIn ? today : checkIn) : today;
+    const minAllowed = today; // can order from today regardless of checkIn
     const maxAllowed = maxStayDate || today;
 
     const expired = !!maxStayDate && today > maxStayDate;
@@ -85,10 +95,9 @@ export default function BookingDiningPage() {
 
       // Clamp selected date to valid range once booking loaded
       const today = dateISO(new Date());
-      const checkIn = String((detail as any)?.checkIn ?? (detail as any)?.CheckIn ?? "");
       const checkOut = String((detail as any)?.checkOut ?? (detail as any)?.CheckOut ?? "");
       const maxStayDate = checkOut ? addDaysISO(checkOut, -1) : "";
-      const minAllowed = checkIn ? (today > checkIn ? today : checkIn) : today;
+      const minAllowed = today;
       const maxAllowed = maxStayDate || today;
       setDate((prev) => clampDateISO(prev || minAllowed, minAllowed, maxAllowed));
     } catch (e: any) {
@@ -144,8 +153,8 @@ export default function BookingDiningPage() {
       toast.error("Booking đã quá hạn lưu trú, không thể đặt món.");
       return;
     }
-    if (date < dateBounds.minAllowed || date > dateBounds.maxAllowed) {
-      toast.error("Ngày phục vụ không hợp lệ (đã qua hạn hoặc ngoài thời gian lưu trú).");
+    if (date < dateBounds.checkIn || date > dateBounds.maxAllowed) {
+      toast.error("Ngày phục vụ phải nằm trong khoảng thời gian lưu trú.");
       return;
     }
     if (!selectedComboId) {

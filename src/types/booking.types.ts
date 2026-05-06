@@ -33,10 +33,11 @@ export interface BookedExperience {
 }
 
 export type CheckInCallStatus = 
-  | "CONFIRMED" 
-  | "CANCELLED" 
-  | "NO_ANSWER" 
-  | "RESCHEDULED";
+  | "CALLED"
+  | "NO_ANSWER"
+  | "WRONG_NUMBER"
+  | "CUSTOMER_COMING"
+  | "CANCELLED";
 
 export interface Booking {
   id: string;

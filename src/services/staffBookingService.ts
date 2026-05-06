@@ -76,6 +76,9 @@ const toBooking = (item: any): Booking => {
     createdAt: toISO(item?.createdAt),
     confirmedAt: item?.confirmedAt ? toISO(item.confirmedAt) : undefined,
     cancelledAt: item?.cancelledAt ? toISO(item.cancelledAt) : undefined,
+    checkInCallStatus: item?.checkInCallStatus ?? item?.CheckInCallStatus ?? undefined,
+    checkInCallAttemptCount: Number(item?.checkInCallAttemptCount ?? item?.CheckInCallAttemptCount ?? 0),
+    checkInCallNote: item?.checkInCallNote ?? item?.CheckInCallNote ?? undefined,
   };
 };
 
@@ -123,8 +126,13 @@ export const staffBookingService = {
     return apiService.post<any>(apiConfig.endpoints.staffBookings.confirm(id));
   },
 
-  async cancel(id: string) {
-    return apiService.post<any>(apiConfig.endpoints.staffBookings.cancel(id));
+  async cancel(id: string, reason?: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const res = await apiService.post<any>(apiConfig.endpoints.staffBookings.cancel(id), reason || 'Khách hủy qua điện thoại');
+      return { success: res?.success ?? true, message: res?.message };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Không thể hủy booking' };
+    }
   },
 
   async confirmCash(id: string): Promise<{ success: boolean; message?: string }> {
