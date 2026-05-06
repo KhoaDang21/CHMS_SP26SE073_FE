@@ -12,6 +12,9 @@ export interface Ticket {
   attachmentUrl?: string;
   customerName: string;
   staffName?: string;
+  homestayId?: string;
+  homestayName?: string;
+  bookingId?: string;
   createdAt: string;
 }
 
@@ -53,6 +56,9 @@ const mapTicket = (raw: any): Ticket => ({
   attachmentUrl: raw.attachmentUrl ? String(raw.attachmentUrl) : undefined,
   customerName: raw.customerName ?? '',
   staffName: raw.staffName ?? undefined,
+  homestayId: raw.homestayId ?? undefined,
+  homestayName: raw.homestayName ?? undefined,
+  bookingId: raw.bookingId ?? undefined,
   createdAt: raw.createdAt ?? '',
 });
 
@@ -62,13 +68,13 @@ const mapTicketDetail = (raw: any): TicketDetail => ({
   bookingId: raw.bookingId ?? undefined,
   replies: Array.isArray(raw.replies)
     ? raw.replies.map((r: any): TicketReply => ({
-        id: String(r.id ?? ''),
-        senderId: String(r.senderId ?? ''),
-        senderName: r.senderName ?? '',
-        message: r.message ?? '',
-        attachmentUrl: r.attachmentUrl ? String(r.attachmentUrl) : undefined,
-        createdAt: r.createdAt ?? '',
-      }))
+      id: String(r.id ?? ''),
+      senderId: String(r.senderId ?? ''),
+      senderName: r.senderName ?? '',
+      message: r.message ?? '',
+      attachmentUrl: r.attachmentUrl ? String(r.attachmentUrl) : undefined,
+      createdAt: r.createdAt ?? '',
+    }))
     : [],
 });
 
@@ -110,7 +116,7 @@ export const supportTicketService = {
       // BE: ApiResponse<object>.SuccessResult(result) → { success, data: [...] }
       const list: any[] = Array.isArray(res?.data) ? res.data
         : Array.isArray(res) ? res
-        : [];
+          : [];
       return list.map(mapTicket);
     } catch (e) {
       console.error('getMyTickets error:', e);
