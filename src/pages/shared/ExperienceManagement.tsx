@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2,
@@ -45,13 +45,13 @@ import type { Homestay } from '../../types/homestay.types';
 import { employeeService } from '../../services/employeeService';
 
 const DAYS_OF_WEEK = [
-  { value: 0, label: 'Chủ nhật' },
-  { value: 1, label: 'Thứ 2' },
-  { value: 2, label: 'Thứ 3' },
-  { value: 3, label: 'Thứ 4' },
-  { value: 4, label: 'Thứ 5' },
-  { value: 5, label: 'Thứ 6' },
-  { value: 6, label: 'Thứ 7' },
+  { value: 0, label: 'Ch? nh?t' },
+  { value: 1, label: 'Th? 2' },
+  { value: 2, label: 'Th? 3' },
+  { value: 3, label: 'Th? 4' },
+  { value: 4, label: 'Th? 5' },
+  { value: 5, label: 'Th? 6' },
+  { value: 6, label: 'Th? 7' },
 ];
 
 const initialServiceForm: ExperiencePayload = {
@@ -182,7 +182,7 @@ export default function ExperienceManagement() {
   const [expandedStepEditorScheduleId, setExpandedStepEditorScheduleId] = useState('');
   const [creatingScheduleStep, setCreatingScheduleStep] = useState(false);
 
-  // ── Tab Điểm đến ──────────────────────────────────────────────────────────
+  // -- Tab �i?m d?n ----------------------------------------------------------
   const [gemTabExperienceId, setGemTabExperienceId] = useState('');
   const [gemTabSchedules, setGemTabSchedules] = useState<ExperienceSchedule[]>([]);
   const [gemTabSchedulesLoading, setGemTabSchedulesLoading] = useState(false);
@@ -190,7 +190,7 @@ export default function ExperienceManagement() {
   const [gemTabGems, setGemTabGems] = useState<ScheduleHiddenGem[]>([]);
   const [gemTabGemsLoading, setGemTabGemsLoading] = useState(false);
   const [gemTabTotal, setGemTabTotal] = useState(0);
-  // ──────────────────────────────────────────────────────────────────────────
+  // --------------------------------------------------------------------------
 
   const [scheduleStepForm, setScheduleStepForm] = useState({
     stepOrder: 1,
@@ -239,11 +239,11 @@ export default function ExperienceManagement() {
       setHomestays(allowedHomestays);
 
       if (!isAdmin && !province.id && !province.name) {
-        toast.warning('Bạn chưa được phân công tỉnh quản lý, danh sách dịch vụ sẽ trống.');
+        toast.warning('B?n chua du?c ph�n c�ng t?nh qu?n l�, danh s�ch d?ch v? s? tr?ng.');
       }
     } catch (error) {
       console.error('Load experience management data error:', error);
-      toast.error('Không thể tải dữ liệu');
+      toast.error('Kh�ng th? t?i d? li?u');
     } finally {
       setLoading(false);
     }
@@ -329,27 +329,27 @@ export default function ExperienceManagement() {
 
   const handleSaveService = async () => {
     if (!serviceForm.homestayId) {
-      toast.error('Vui lòng chọn homestay');
+      toast.error('Vui l�ng ch?n homestay');
       return;
     }
     if (!serviceForm.categoryId) {
-      toast.error('Vui lòng chọn danh mục');
+      toast.error('Vui l�ng ch?n danh m?c');
       return;
     }
     if (!serviceForm.name?.trim()) {
-      toast.error('Vui lòng nhập tên dịch vụ');
+      toast.error('Vui l�ng nh?p t�n d?ch v?');
       return;
     }
     if (!isAdmin && !homestays.some((item) => item.id === serviceForm.homestayId)) {
-      toast.error('Homestay không thuộc tỉnh bạn được phân công');
+      toast.error('Homestay kh�ng thu?c t?nh b?n du?c ph�n c�ng');
       return;
     }
     if (serviceForm.imageUrl?.trim() && serviceForm.imageUrl.trim().startsWith('data:')) {
-      toast.error('Image URL phải là đường dẫn ảnh hợp lệ, không dùng base64/data URI');
+      toast.error('Image URL ph?i l� du?ng d?n ?nh h?p l?, kh�ng d�ng base64/data URI');
       return;
     }
     if (!isValidHttpUrl(serviceForm.imageUrl || '')) {
-      toast.error('Image URL không hợp lệ');
+      toast.error('Image URL kh�ng h?p l?');
       return;
     }
 
@@ -370,11 +370,11 @@ export default function ExperienceManagement() {
         : await experienceService.create(payload);
 
       if (!result.success) {
-        toast.error(result.message || 'Không thể lưu dịch vụ');
+        toast.error(result.message || 'Kh�ng th? luu d?ch v?');
         return;
       }
 
-      toast.success(editingService ? 'Cập nhật dịch vụ thành công' : 'Tạo dịch vụ thành công');
+      toast.success(editingService ? 'C?p nh?t d?ch v? th�nh c�ng' : 'T?o d?ch v? th�nh c�ng');
       setShowServiceModal(false);
       await loadData();
     } finally {
@@ -384,7 +384,7 @@ export default function ExperienceManagement() {
 
   const handleSaveCategory = async () => {
     if (!categoryForm.name?.trim()) {
-      toast.error('Vui lòng nhập tên danh mục');
+      toast.error('Vui l�ng nh?p t�n danh m?c');
       return;
     }
 
@@ -403,11 +403,11 @@ export default function ExperienceManagement() {
         : await serviceCategoryService.create(payload);
 
       if (!result.success) {
-        toast.error(result.message || 'Không thể lưu danh mục');
+        toast.error(result.message || 'Kh�ng th? luu danh m?c');
         return;
       }
 
-      toast.success(editingCategory ? 'Cập nhật danh mục thành công' : 'Tạo danh mục thành công');
+      toast.success(editingCategory ? 'C?p nh?t danh m?c th�nh c�ng' : 'T?o danh m?c th�nh c�ng');
       setShowCategoryModal(false);
       await loadData();
     } finally {
@@ -416,38 +416,38 @@ export default function ExperienceManagement() {
   };
 
   const handleDeleteService = async (item: LocalExperience) => {
-    if (!confirm(`Bạn có chắc muốn xóa dịch vụ "${item.name}"?`)) return;
+    if (!confirm(`B?n c� ch?c mu?n x�a d?ch v? "${item.name}"?`)) return;
 
     const result = await experienceService.remove(item.id);
     if (!result.success) {
-      toast.error(result.message || 'Không thể xóa dịch vụ');
+      toast.error(result.message || 'Kh�ng th? x�a d?ch v?');
       return;
     }
-    toast.success('Xóa dịch vụ thành công');
+    toast.success('X�a d?ch v? th�nh c�ng');
     await loadData();
   };
 
   const handleDeleteCategory = async (item: ExperienceCategory) => {
     const used = categoryUsage[item.id] || 0;
     if (used > 0) {
-      toast.error(`Danh mục đang được dùng bởi ${used} dịch vụ, không thể xóa`);
+      toast.error(`Danh m?c dang du?c d�ng b?i ${used} d?ch v?, kh�ng th? x�a`);
       return;
     }
-    if (!confirm(`Bạn có chắc muốn xóa danh mục "${item.name}"?`)) return;
+    if (!confirm(`B?n c� ch?c mu?n x�a danh m?c "${item.name}"?`)) return;
 
     const result = await serviceCategoryService.remove(item.id);
     if (!result.success) {
-      toast.error(result.message || 'Không thể xóa danh mục');
+      toast.error(result.message || 'Kh�ng th? x�a danh m?c');
       return;
     }
-    toast.success('Xóa danh mục thành công');
+    toast.success('X�a danh m?c th�nh c�ng');
     await loadData();
   };
 
   const handleToggleServiceStatus = async (item: LocalExperience) => {
     const result = await experienceService.updateStatus(item.id, !item.isActive);
     if (!result.success) {
-      toast.error(result.message || 'Không thể cập nhật trạng thái');
+      toast.error(result.message || 'Kh�ng th? c?p nh?t tr?ng th�i');
       return;
     }
     await loadData();
@@ -456,7 +456,7 @@ export default function ExperienceManagement() {
   const handleLookupParticipants = async () => {
     const scheduleId = lookupScheduleId.trim();
     if (!scheduleId) {
-      toast.error('Vui lòng nhập schedule ID');
+      toast.error('Vui l�ng nh?p schedule ID');
       return;
     }
 
@@ -465,13 +465,13 @@ export default function ExperienceManagement() {
       const list = await experienceSchedulesService.getScheduleParticipants(scheduleId);
       setParticipants(list);
       if (list.length === 0) {
-        toast.info('Không có người tham gia hoặc schedule chưa có dữ liệu');
+        toast.info('Kh�ng c� ngu?i tham gia ho?c schedule chua c� d? li?u');
       } else {
-        toast.success(`Đã tải ${list.length} người tham gia`);
+        toast.success(`�� t?i ${list.length} ngu?i tham gia`);
       }
     } catch (error) {
       console.error('Lookup participants error:', error);
-      toast.error('Không thể tải danh sách người tham gia');
+      toast.error('Kh�ng th? t?i danh s�ch ngu?i tham gia');
     } finally {
       setParticipantsLoading(false);
     }
@@ -480,7 +480,7 @@ export default function ExperienceManagement() {
   const handleViewSchedulesByExperience = async () => {
     const experienceId = viewExperienceId.trim();
     if (!experienceId) {
-      toast.error('Vui lòng chọn dịch vụ');
+      toast.error('Vui l�ng ch?n d?ch v?');
       return;
     }
 
@@ -489,13 +489,13 @@ export default function ExperienceManagement() {
       const list = await experienceSchedulesService.getSchedulesByExperienceId(experienceId);
       setViewingSchedules(list);
       if (list.length === 0) {
-        toast.info('Chưa có lịch trình cho dịch vụ này');
+        toast.info('Chua c� l?ch tr�nh cho d?ch v? n�y');
       } else {
-        toast.success(`Đã tải ${list.length} lịch trình`);
+        toast.success(`�� t?i ${list.length} l?ch tr�nh`);
       }
     } catch (error) {
       console.error('View schedules error:', error);
-      toast.error('Không thể tải lịch trình của dịch vụ');
+      toast.error('Kh�ng th? t?i l?ch tr�nh c?a d?ch v?');
     } finally {
       setViewingSchedulesLoading(false);
     }
@@ -504,15 +504,15 @@ export default function ExperienceManagement() {
   const handleCreateScheduleStep = async () => {
     const scheduleId = selectedScheduleId.trim();
     if (!scheduleId) {
-      toast.error('Vui lòng chọn lịch trình');
+      toast.error('Vui l�ng ch?n l?ch tr�nh');
       return;
     }
     if (!scheduleStepForm.name.trim()) {
-      toast.error('Vui lòng nhập tên điểm đến');
+      toast.error('Vui l�ng nh?p t�n di?m d?n');
       return;
     }
     if (!scheduleStepForm.latitude.trim() || !scheduleStepForm.longitude.trim()) {
-      toast.error('Vui lòng nhập tọa độ (latitude, longitude)');
+      toast.error('Vui l�ng nh?p t?a d? (latitude, longitude)');
       return;
     }
 
@@ -533,11 +533,11 @@ export default function ExperienceManagement() {
     try {
       const result = await experienceSchedulesService.createHiddenGemStep(scheduleId, payload);
       if (!result.success) {
-        toast.error(result.message || 'Không thể tạo hidden gem step');
+        toast.error(result.message || 'Kh�ng th? t?o hidden gem step');
         return;
       }
 
-      toast.success(result.message || 'Tạo điểm đến và step thành công!');
+      toast.success(result.message || 'T?o di?m d?n v� step th�nh c�ng!');
       setScheduleStepForm((p) => ({
         ...p,
         stepOrder: p.stepOrder + 1,
@@ -553,7 +553,7 @@ export default function ExperienceManagement() {
       }));
     } catch (error) {
       console.error('Create hidden gem step error:', error);
-      toast.error('Không thể tạo hidden gem step');
+      toast.error('Kh�ng th? t?o hidden gem step');
     } finally {
       setCreatingScheduleStep(false);
     }
@@ -565,7 +565,7 @@ export default function ExperienceManagement() {
     setExpandedStepEditorScheduleId(nextExpandedScheduleId);
   };
 
-  // ── Tab Điểm đến: load schedules theo experience ──────────────────────────
+  // -- Tab �i?m d?n: load schedules theo experience --------------------------
   const loadGemTabSchedules = useCallback(async (experienceId: string) => {
     setGemTabExperienceId(experienceId);
     setGemTabScheduleId('');
@@ -580,14 +580,14 @@ export default function ExperienceManagement() {
       const list = await experienceSchedulesService.getSchedulesByExperienceId(experienceId);
       setGemTabSchedules(list);
     } catch {
-      toast.error('Không thể tải lịch trình');
+      toast.error('Kh�ng th? t?i l?ch tr�nh');
       setGemTabSchedules([]);
     } finally {
       setGemTabSchedulesLoading(false);
     }
   }, []);
 
-  // ── Tab Điểm đến: load hidden gems theo schedule ──────────────────────────
+  // -- Tab �i?m d?n: load hidden gems theo schedule --------------------------
   const loadGemTabGems = useCallback(async (scheduleId: string) => {
     setGemTabScheduleId(scheduleId);
     if (!scheduleId.trim()) {
@@ -602,19 +602,19 @@ export default function ExperienceManagement() {
         setGemTabGems(result.hiddenGems);
         setGemTabTotal(result.total);
       } else {
-        toast.error(result.message || 'Không thể tải điểm đến');
+        toast.error(result.message || 'Kh�ng th? t?i di?m d?n');
         setGemTabGems([]);
         setGemTabTotal(0);
       }
     } catch {
-      toast.error('Không thể tải điểm đến');
+      toast.error('Kh�ng th? t?i di?m d?n');
       setGemTabGems([]);
       setGemTabTotal(0);
     } finally {
       setGemTabGemsLoading(false);
     }
   }, []);
-  // ──────────────────────────────────────────────────────────────────────────
+  // --------------------------------------------------------------------------
 
   const handleLogout = () => {
     authService.logout();
@@ -631,7 +631,7 @@ export default function ExperienceManagement() {
             <Building2 className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="font-bold text-gray-900">{isAdmin ? 'CHMS Admin' : 'CHMS Manager'}</h1>
-              <p className="text-xs text-gray-500">Quản lý dịch vụ địa phương</p>
+              <p className="text-xs text-gray-500">Qu?n l� d?ch v? d?a phuong</p>
             </div>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-500 hover:text-gray-700">
@@ -639,7 +639,7 @@ export default function ExperienceManagement() {
           </button>
         </div>
 
-        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+        <nav className="p-4">
           <AdminSidebar groupedItems={groupedNavItems} />
         </nav>
 
@@ -655,7 +655,7 @@ export default function ExperienceManagement() {
           </div>
           <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
             <LogOut className="w-5 h-5" />
-            <span>Đăng xuất</span>
+            <span>�ang xu?t</span>
           </button>
         </div>
       </aside>
@@ -668,8 +668,8 @@ export default function ExperienceManagement() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Quản lý dịch vụ địa phương</h2>
-                <p className="text-sm text-gray-500">Quản lý danh mục và dịch vụ đi kèm cho local experiences</p>
+                <h2 className="text-xl font-bold text-gray-900">Qu?n l� d?ch v? d?a phuong</h2>
+                <p className="text-sm text-gray-500">Qu?n l� danh m?c v� d?ch v? di k�m cho local experiences</p>
               </div>
             </div>
             <button
@@ -677,7 +677,7 @@ export default function ExperienceManagement() {
               className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              {activeTab === 'services' ? 'Tạo dịch vụ' : 'Tạo danh mục'}
+              {activeTab === 'services' ? 'T?o d?ch v?' : 'T?o danh m?c'}
             </button>
           </div>
         </header>
@@ -688,25 +688,25 @@ export default function ExperienceManagement() {
               onClick={() => setActiveTab('categories')}
               className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'categories' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
-              Danh mục dịch vụ
+              Danh m?c d?ch v?
             </button>
             <button
               onClick={() => setActiveTab('services')}
               className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'services' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
-              Dịch vụ
+              D?ch v?
             </button>
             <button
               onClick={() => setActiveTab('schedules')}
               className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'schedules' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
-              Lịch trình
+              L?ch tr�nh
             </button>
             <button
               onClick={() => setActiveTab('hidden-gems')}
               className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'hidden-gems' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
-              Điểm đến
+              �i?m d?n
             </button>
           </div>
 
@@ -714,7 +714,7 @@ export default function ExperienceManagement() {
             <div className="space-y-4">
               {!isAdmin && (
                 <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
-                  Phạm vi hiển thị theo tỉnh quản lý: {managerProvince.name || 'Chưa phân công'}
+                  Ph?m vi hi?n th? theo t?nh qu?n l�: {managerProvince.name || 'Chua ph�n c�ng'}
                 </div>
               )}
               <div className="bg-white rounded-xl shadow-md p-4">
@@ -725,7 +725,7 @@ export default function ExperienceManagement() {
                       type="text"
                       value={serviceSearch}
                       onChange={(e) => setServiceSearch(e.target.value)}
-                      placeholder="Tìm theo tên, mô tả, homestay..."
+                      placeholder="T�m theo t�n, m� t?, homestay..."
                       className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                     />
                   </div>
@@ -736,7 +736,7 @@ export default function ExperienceManagement() {
                       onChange={(e) => setServiceCategoryFilter(e.target.value)}
                       className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg bg-white"
                     >
-                      <option value="all">Tất cả danh mục</option>
+                      <option value="all">T?t c? danh m?c</option>
                       {categories.map((c) => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
@@ -746,7 +746,7 @@ export default function ExperienceManagement() {
               </div>
 
               {loading ? (
-                <div className="text-center py-10 text-gray-500">Đang tải...</div>
+                <div className="text-center py-10 text-gray-500">�ang t?i...</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {filteredServices.map((item) => (
@@ -766,7 +766,7 @@ export default function ExperienceManagement() {
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="min-w-0">
                           <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                          <p className="text-xs text-gray-500 mt-0.5">{item.categoryName || 'Không phân loại'}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{item.categoryName || 'Kh�ng ph�n lo?i'}</p>
                         </div>
                         <button
                           onClick={() => handleToggleServiceStatus(item)}
@@ -783,15 +783,15 @@ export default function ExperienceManagement() {
                       <div className="space-y-1.5 text-sm text-gray-600 mb-4">
                         <div className="flex items-center gap-2">
                           <Tag className="w-4 h-4" />
-                          <span>{typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}đ` : 'Giá liên hệ'}</span>
+                          <span>{typeof item.price === 'number' ? `${item.price.toLocaleString('vi-VN')}d` : 'Gi� li�n h?'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
-                          <span>{item.unit || 'Đơn vị chưa cập nhật'}</span>
+                          <span>{item.unit || '�on v? chua c?p nh?t'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4" />
-                          <span className="truncate">{item.homestayName || 'Không rõ homestay'}</span>
+                          <span className="truncate">{item.homestayName || 'Kh�ng r� homestay'}</span>
                         </div>
                       </div>
 
@@ -801,7 +801,7 @@ export default function ExperienceManagement() {
                           className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 flex items-center justify-center gap-2"
                         >
                           <Pencil className="w-4 h-4" />
-                          Sửa
+                          S?a
                         </button>
                         <button
                           onClick={() => handleDeleteService(item)}
@@ -821,14 +821,14 @@ export default function ExperienceManagement() {
             <div className="space-y-4">
               {!isAdmin && (
                 <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
-                  Lịch trình cho tỉnh quản lý: {managerProvince.name || 'Chưa phân công'}
+                  L?ch tr�nh cho t?nh qu?n l�: {managerProvince.name || 'Chua ph�n c�ng'}
                 </div>
               )}
 
               {showScheduleForm && (
                 <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Tạo Lịch Trình Mới</h3>
+                    <h3 className="text-lg font-semibold">T?o L?ch Tr�nh M?i</h3>
                     <button
                       onClick={() => setShowScheduleForm(false)}
                       className="p-1 hover:bg-gray-100 rounded"
@@ -840,7 +840,7 @@ export default function ExperienceManagement() {
                   <form onSubmit={async (e) => {
                     e.preventDefault();
                     if (!scheduleFormData.experienceId || !scheduleFormData.startDate || !scheduleFormData.endDate || scheduleFormData.daysOfWeek.length === 0) {
-                      toast.error('Vui lòng điền đầy đủ thông tin');
+                      toast.error('Vui l�ng di?n d?y d? th�ng tin');
                       return;
                     }
                     setCreatingSchedules(true);
@@ -862,19 +862,19 @@ export default function ExperienceManagement() {
                         toast.error(result.message);
                       }
                     } catch (error) {
-                      toast.error('Lỗi khi tạo lịch trình');
+                      toast.error('L?i khi t?o l?ch tr�nh');
                     } finally {
                       setCreatingSchedules(false);
                     }
                   }} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Dịch vụ <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">D?ch v? <span className="text-red-500">*</span></label>
                       <select
                         value={scheduleFormData.experienceId}
                         onChange={(e) => setScheduleFormData(p => ({ ...p, experienceId: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                       >
-                        <option value="">-- Chọn dịch vụ --</option>
+                        <option value="">-- Ch?n d?ch v? --</option>
                         {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                       </select>
                     </div>
@@ -883,7 +883,7 @@ export default function ExperienceManagement() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
-                          Ngày bắt đầu <span className="text-red-500">*</span>
+                          Ng�y b?t d?u <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="date"
@@ -895,7 +895,7 @@ export default function ExperienceManagement() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
-                          Ngày kết thúc <span className="text-red-500">*</span>
+                          Ng�y k?t th�c <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="date"
@@ -907,7 +907,7 @@ export default function ExperienceManagement() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Ngày trong tuần <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Ng�y trong tu?n <span className="text-red-500">*</span></label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {DAYS_OF_WEEK.map(day => (
                           <label key={day.value} className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
@@ -932,7 +932,7 @@ export default function ExperienceManagement() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                           <Clock className="w-4 h-4" />
-                          Giờ bắt đầu <span className="text-red-500">*</span>
+                          Gi? b?t d?u <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="time"
@@ -944,7 +944,7 @@ export default function ExperienceManagement() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                           <Clock className="w-4 h-4" />
-                          Giờ kết thúc <span className="text-red-500">*</span>
+                          Gi? k?t th�c <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="time"
@@ -958,7 +958,7 @@ export default function ExperienceManagement() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                         <Users className="w-4 h-4" />
-                        Số lượng tối đa <span className="text-red-500">*</span>
+                        S? lu?ng t?i da <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -971,10 +971,10 @@ export default function ExperienceManagement() {
 
                     <div className="flex gap-3 justify-end pt-4 border-t">
                       <button type="button" onClick={() => setShowScheduleForm(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-                        Hủy
+                        H?y
                       </button>
                       <button type="submit" disabled={creatingSchedules} className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50">
-                        {creatingSchedules ? 'Đang tạo...' : 'Tạo Lịch Trình'}
+                        {creatingSchedules ? '�ang t?o...' : 'T?o L?ch Tr�nh'}
                       </button>
                     </div>
                   </form>
@@ -988,20 +988,20 @@ export default function ExperienceManagement() {
                     className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
                   >
                     <Plus className="w-5 h-5" />
-                    Tạo Lịch Trình Mới
+                    T?o L?ch Tr�nh M?i
                   </button>
 
                   <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200">
-                    <h4 className="font-semibold text-gray-900 mb-3">Tra cứu lịch trình theo Schedule ID</h4>
+                    <h4 className="font-semibold text-gray-900 mb-3">Tra c?u l?ch tr�nh theo Schedule ID</h4>
                     <p className="text-sm text-gray-500 mb-4">
-                      Dùng API participants để xem danh sách người tham gia của một lịch trình.
+                      D�ng API participants d? xem danh s�ch ngu?i tham gia c?a m?t l?ch tr�nh.
                     </p>
 
                     <div className="flex flex-col md:flex-row gap-3">
                       <input
                         value={lookupScheduleId}
                         onChange={(e) => setLookupScheduleId(e.target.value)}
-                        placeholder="Nhập schedule ID (GUID)"
+                        placeholder="Nh?p schedule ID (GUID)"
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                       />
                       <button
@@ -1010,25 +1010,25 @@ export default function ExperienceManagement() {
                         disabled={participantsLoading}
                         className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-50"
                       >
-                        {participantsLoading ? 'Đang tải...' : 'Xem người tham gia'}
+                        {participantsLoading ? '�ang t?i...' : 'Xem ngu?i tham gia'}
                       </button>
                     </div>
 
                     <div className="mt-4">
                       {participantsLoading ? (
-                        <div className="text-sm text-gray-500">Đang tải danh sách...</div>
+                        <div className="text-sm text-gray-500">�ang t?i danh s�ch...</div>
                       ) : participants.length === 0 ? (
-                        <div className="text-sm text-gray-500">Chưa có dữ liệu hiển thị.</div>
+                        <div className="text-sm text-gray-500">Chua c� d? li?u hi?n th?.</div>
                       ) : (
                         <div className="overflow-x-auto rounded-lg border border-gray-200">
                           <table className="w-full min-w-[680px]">
                             <thead className="bg-gray-50 border-b border-gray-200">
                               <tr>
-                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Tên</th>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">T�n</th>
                                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
-                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">SĐT</th>
-                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Trạng thái</th>
-                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Tham gia lúc</th>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">S�T</th>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Tr?ng th�i</th>
+                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Tham gia l�c</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -1052,10 +1052,10 @@ export default function ExperienceManagement() {
                     <div className="mt-6 rounded-xl border border-cyan-200 bg-cyan-50 p-4 space-y-4">
                       <div className="flex items-center gap-2">
                         <CalendarDays className="w-5 h-5 text-cyan-700" />
-                        <h4 className="font-semibold text-cyan-900">Xem lịch trình theo dịch vụ</h4>
+                        <h4 className="font-semibold text-cyan-900">Xem l?ch tr�nh theo d?ch v?</h4>
                       </div>
                       {/* <p className="text-sm text-cyan-800">
-                        Chọn một dịch vụ địa phương để xem các lịch trình hiện có từ API <span className="font-medium">/api/localexperienceschedule/experience/{`{experienceId}`}</span>.
+                        Ch?n m?t d?ch v? d?a phuong d? xem c�c l?ch tr�nh hi?n c� t? API <span className="font-medium">/api/localexperienceschedule/experience/{`{experienceId}`}</span>.
                       </p> */}
 
                       <div className="flex flex-col lg:flex-row gap-3">
@@ -1064,10 +1064,10 @@ export default function ExperienceManagement() {
                           onChange={(e) => setViewExperienceId(e.target.value)}
                           className="flex-1 px-3 py-2 border border-cyan-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         >
-                          <option value="">-- Chọn dịch vụ --</option>
+                          <option value="">-- Ch?n d?ch v? --</option>
                           {services.map((service) => (
                             <option key={service.id} value={service.id}>
-                              {service.name} {service.homestayName ? `• ${service.homestayName}` : ''}
+                              {service.name} {service.homestayName ? `� ${service.homestayName}` : ''}
                             </option>
                           ))}
                         </select>
@@ -1077,15 +1077,15 @@ export default function ExperienceManagement() {
                           disabled={viewingSchedulesLoading}
                           className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50"
                         >
-                          {viewingSchedulesLoading ? 'Đang tải...' : 'Xem lịch trình'}
+                          {viewingSchedulesLoading ? '�ang t?i...' : 'Xem l?ch tr�nh'}
                         </button>
                       </div>
 
                       <div className="space-y-3">
                         {viewingSchedulesLoading ? (
-                          <div className="text-sm text-cyan-800">Đang tải lịch trình...</div>
+                          <div className="text-sm text-cyan-800">�ang t?i l?ch tr�nh...</div>
                         ) : viewingSchedules.length === 0 ? (
-                          <div className="text-sm text-cyan-800">Chưa có lịch trình để hiển thị.</div>
+                          <div className="text-sm text-cyan-800">Chua c� l?ch tr�nh d? hi?n th?.</div>
                         ) : (
                           viewingSchedules.map((schedule) => {
                             const scheduleDate = schedule.date || schedule.availableDate || schedule.serviceDate || '';
@@ -1104,15 +1104,15 @@ export default function ExperienceManagement() {
                                 >
                                   <div>
                                     <div className="font-medium text-gray-900">
-                                      {scheduleDate ? new Date(scheduleDate).toLocaleDateString('vi-VN') : '—'}
+                                      {scheduleDate ? new Date(scheduleDate).toLocaleDateString('vi-VN') : '�'}
                                     </div>
                                     <div className="text-sm text-gray-600 mt-1">
-                                      {schedule.startTime ?? '—'} - {schedule.endTime ?? '—'}
-                                      {typeof schedule.price === 'number' && schedule.price > 0 ? ` • ${schedule.price.toLocaleString('vi-VN')}đ` : ''}
+                                      {schedule.startTime ?? '�'} - {schedule.endTime ?? '�'}
+                                      {typeof schedule.price === 'number' && schedule.price > 0 ? ` � ${schedule.price.toLocaleString('vi-VN')}d` : ''}
                                     </div>
                                   </div>
                                   <div className="text-sm text-gray-500 md:text-right">
-                                    <div>Còn: {schedule.remainingSlots ?? schedule.maxParticipants ?? '-'}</div>
+                                    <div>C�n: {schedule.remainingSlots ?? schedule.maxParticipants ?? '-'}</div>
                                     <div className="text-xs">ID: {schedule.id}</div>
                                   </div>
                                 </button>
@@ -1123,29 +1123,29 @@ export default function ExperienceManagement() {
                                     onClick={() => handleToggleScheduleStepEditor(schedule.id)}
                                     className="px-3 py-1.5 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 text-sm"
                                   >
-                                    {isExpanded ? 'Ẩn tạo step' : 'Tạo step'}
+                                    {isExpanded ? '?n t?o step' : 'T?o step'}
                                   </button>
                                 </div>
 
                                 {isExpanded && (
                                   <div className="mt-4 rounded-xl border border-cyan-100 bg-white p-4 space-y-4">
                                     <div>
-                                      <h5 className="font-semibold text-gray-900">Tạo điểm đến (Hidden Gem) cho lịch trình</h5>
+                                      <h5 className="font-semibold text-gray-900">T?o di?m d?n (Hidden Gem) cho l?ch tr�nh</h5>
                                       <p className="text-sm text-gray-500 mt-0.5">
-                                        Tạo hidden gem mới và gắn vào lịch trình này trong một lần gọi.
+                                        T?o hidden gem m?i v� g?n v�o l?ch tr�nh n�y trong m?t l?n g?i.
                                       </p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                          Tên điểm đến <span className="text-red-500">*</span>
+                                          T�n di?m d?n <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                           value={scheduleStepForm.name}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, name: e.target.value }))}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                          placeholder="Ví dụ: Đền Tháp Mộ"
+                                          placeholder="V� d?: �?n Th�p M?"
                                         />
                                       </div>
 
@@ -1157,7 +1157,7 @@ export default function ExperienceManagement() {
                                           value={scheduleStepForm.latitude}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, latitude: e.target.value }))}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                          placeholder="Ví dụ: 13.6610"
+                                          placeholder="V� d?: 13.6610"
                                         />
                                       </div>
                                       <div>
@@ -1168,12 +1168,12 @@ export default function ExperienceManagement() {
                                           value={scheduleStepForm.longitude}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, longitude: e.target.value }))}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                          placeholder="Ví dụ: 109.2297"
+                                          placeholder="V� d?: 109.2297"
                                         />
                                       </div>
 
                                       <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Bán kính check-in (m)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">B�n k�nh check-in (m)</label>
                                         <input
                                           type="number"
                                           min="0"
@@ -1194,7 +1194,7 @@ export default function ExperienceManagement() {
                                       </div>
 
                                       <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Thứ tự step</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Th? t? step</label>
                                         <input
                                           type="number"
                                           min="1"
@@ -1204,24 +1204,24 @@ export default function ExperienceManagement() {
                                         />
                                       </div>
                                       <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Local Route ID (tùy chọn)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Local Route ID (t�y ch?n)</label>
                                         <input
                                           value={scheduleStepForm.localRouteId}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, localRouteId: e.target.value }))}
                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                          placeholder="UUID của local route"
+                                          placeholder="UUID c?a local route"
                                         />
                                       </div>
                                     </div>
 
                                     <div>
-                                      <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                                      <label className="block text-sm font-medium text-gray-700 mb-1">M� t?</label>
                                       <textarea
                                         value={scheduleStepForm.description}
                                         onChange={(e) => setScheduleStepForm((p) => ({ ...p, description: e.target.value }))}
                                         rows={2}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        placeholder="Mô tả chi tiết về điểm đến"
+                                        placeholder="M� t? chi ti?t v? di?m d?n"
                                       />
                                     </div>
 
@@ -1232,7 +1232,7 @@ export default function ExperienceManagement() {
                                           checked={scheduleStepForm.createStep}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, createStep: e.target.checked }))}
                                         />
-                                        Tạo HIDDEN_GEM step ngay
+                                        T?o HIDDEN_GEM step ngay
                                       </label>
                                       <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                                         <input
@@ -1240,7 +1240,7 @@ export default function ExperienceManagement() {
                                           checked={scheduleStepForm.isRequired}
                                           onChange={(e) => setScheduleStepForm((p) => ({ ...p, isRequired: e.target.checked }))}
                                         />
-                                        Bắt buộc check-in
+                                        B?t bu?c check-in
                                       </label>
                                     </div>
 
@@ -1261,7 +1261,7 @@ export default function ExperienceManagement() {
                                         })}
                                         className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                                       >
-                                        Làm mới
+                                        L�m m?i
                                       </button>
                                       <button
                                         type="button"
@@ -1269,7 +1269,7 @@ export default function ExperienceManagement() {
                                         disabled={creatingScheduleStep}
                                         className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50"
                                       >
-                                        {creatingScheduleStep ? 'Đang tạo...' : 'Tạo điểm đến'}
+                                        {creatingScheduleStep ? '�ang t?o...' : 'T?o di?m d?n'}
                                       </button>
                                     </div>
                                   </div>
@@ -1285,7 +1285,7 @@ export default function ExperienceManagement() {
               )}
 
               <div className="text-center py-4 text-gray-500">
-                Tạo lịch trình mới, nhập schedule ID để xem người tham gia, hoặc chọn dịch vụ để xem lịch trình
+                T?o l?ch tr�nh m?i, nh?p schedule ID d? xem ngu?i tham gia, ho?c ch?n d?ch v? d? xem l?ch tr�nh
               </div>
             </div>
           )}
@@ -1295,31 +1295,31 @@ export default function ExperienceManagement() {
               {/* Info banner */}
               {!isAdmin && (
                 <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
-                  Xem điểm check-in (hidden gems) theo lịch trình của tỉnh: <span className="font-semibold">{managerProvince.name || 'Chưa phân công'}</span>
+                  Xem di?m check-in (hidden gems) theo l?ch tr�nh c?a t?nh: <span className="font-semibold">{managerProvince.name || 'Chua ph�n c�ng'}</span>
                 </div>
               )}
 
-              {/* Bộ lọc: chọn Experience → Schedule */}
+              {/* B? l?c: ch?n Experience ? Schedule */}
               <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200 space-y-4">
                 <h4 className="font-semibold text-gray-900 flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-cyan-600" />
-                  Chọn tour và lịch trình
+                  Ch?n tour v� l?ch tr�nh
                 </h4>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Dropdown Experience */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tour (dịch vụ)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tour (d?ch v?)</label>
                     <div className="relative">
                       <select
                         value={gemTabExperienceId}
                         onChange={(e) => void loadGemTabSchedules(e.target.value)}
                         className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none"
                       >
-                        <option value="">-- Chọn tour --</option>
+                        <option value="">-- Ch?n tour --</option>
                         {services.map((s) => (
                           <option key={s.id} value={s.id}>
-                            {s.name}{s.homestayName ? ` • ${s.homestayName}` : ''}
+                            {s.name}{s.homestayName ? ` � ${s.homestayName}` : ''}
                           </option>
                         ))}
                       </select>
@@ -1329,7 +1329,7 @@ export default function ExperienceManagement() {
 
                   {/* Dropdown Schedule */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lịch trình</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">L?ch tr�nh</label>
                     <div className="relative">
                       <select
                         value={gemTabScheduleId}
@@ -1338,15 +1338,15 @@ export default function ExperienceManagement() {
                         className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500 appearance-none disabled:bg-gray-100 disabled:text-gray-400"
                       >
                         <option value="">
-                          {gemTabSchedulesLoading ? 'Đang tải...' : '-- Chọn lịch trình --'}
+                          {gemTabSchedulesLoading ? '�ang t?i...' : '-- Ch?n l?ch tr�nh --'}
                         </option>
                         {gemTabSchedules.map((sch) => {
                           const d = sch.date || sch.availableDate || sch.serviceDate || '';
-                          const dateLabel = d ? new Date(d).toLocaleDateString('vi-VN') : '—';
+                          const dateLabel = d ? new Date(d).toLocaleDateString('vi-VN') : '�';
                           const shortId = sch.id.slice(0, 8);
                           return (
                             <option key={sch.id} value={sch.id}>
-                              {dateLabel} • {sch.startTime ?? '—'} - {sch.endTime ?? '—'} • {shortId}
+                              {dateLabel} � {sch.startTime ?? '�'} - {sch.endTime ?? '�'} � {shortId}
                             </option>
                           );
                         })}
@@ -1360,17 +1360,17 @@ export default function ExperienceManagement() {
                 </div>
               </div>
 
-              {/* Danh sách hidden gems */}
+              {/* Danh s�ch hidden gems */}
               {gemTabScheduleId && (
                 <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
                   {/* Header */}
                   <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-cyan-600" />
-                      <h4 className="font-semibold text-gray-900">Điểm check-in</h4>
+                      <h4 className="font-semibold text-gray-900">�i?m check-in</h4>
                       {!gemTabGemsLoading && (
                         <span className="ml-1 rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-semibold text-cyan-700">
-                          {gemTabTotal} điểm
+                          {gemTabTotal} di?m
                         </span>
                       )}
                     </div>
@@ -1379,7 +1379,7 @@ export default function ExperienceManagement() {
                       disabled={gemTabGemsLoading}
                       className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
                     >
-                      {gemTabGemsLoading ? 'Đang tải...' : 'Làm mới'}
+                      {gemTabGemsLoading ? '�ang t?i...' : 'L�m m?i'}
                     </button>
                   </div>
 
@@ -1388,13 +1388,13 @@ export default function ExperienceManagement() {
                     <div className="flex items-center justify-center py-16 text-gray-400">
                       <div className="text-center space-y-2">
                         <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto" />
-                        <p className="text-sm">Đang tải điểm đến...</p>
+                        <p className="text-sm">�ang t?i di?m d?n...</p>
                       </div>
                     </div>
                   ) : gemTabGems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
                       <MapPin className="w-10 h-10 opacity-30" />
-                      <p className="text-sm">Chưa có điểm check-in nào cho lịch trình này</p>
+                      <p className="text-sm">Chua c� di?m check-in n�o cho l?ch tr�nh n�y</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-100">
@@ -1417,7 +1417,7 @@ export default function ExperienceManagement() {
                               <div className="flex items-center gap-1.5 flex-shrink-0">
                                 {gem.isRequired && (
                                   <span className="rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-xs text-red-600 font-medium">
-                                    Bắt buộc
+                                    B?t bu?c
                                   </span>
                                 )}
                                 <CheckCircle2 className="w-4 h-4 text-cyan-500" />
@@ -1432,12 +1432,12 @@ export default function ExperienceManagement() {
                               {gem.checkInRadiusMeters !== undefined && (
                                 <span className="flex items-center gap-1">
                                   <Tag className="w-3 h-3" />
-                                  Bán kính: {gem.checkInRadiusMeters}m
+                                  B�n k�nh: {gem.checkInRadiusMeters}m
                                 </span>
                               )}
                               {gem.rewardPoints !== undefined && (
                                 <span className="font-semibold text-cyan-600">
-                                  {gem.rewardPoints} điểm
+                                  {gem.rewardPoints} di?m
                                 </span>
                               )}
                               {gem.localRouteName && (
@@ -1446,8 +1446,8 @@ export default function ExperienceManagement() {
                             </div>
 
                             <div className="mt-1.5 flex gap-3 text-xs text-gray-400">
-                              <span>Step ID: {gem.stepId.slice(0, 8)}…</span>
-                              <span>Gem ID: {gem.hiddenGemId.slice(0, 8)}…</span>
+                              <span>Step ID: {gem.stepId.slice(0, 8)}�</span>
+                              <span>Gem ID: {gem.hiddenGemId.slice(0, 8)}�</span>
                             </div>
                           </div>
                         </div>
@@ -1457,15 +1457,15 @@ export default function ExperienceManagement() {
                 </div>
               )}
 
-              {/* Placeholder khi chưa chọn schedule */}
+              {/* Placeholder khi chua ch?n schedule */}
               {!gemTabScheduleId && gemTabExperienceId && !gemTabSchedulesLoading && gemTabSchedules.length === 0 && (
                 <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-400">
-                  Tour này chưa có lịch trình nào.
+                  Tour n�y chua c� l?ch tr�nh n�o.
                 </div>
               )}
               {!gemTabExperienceId && (
                 <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-400">
-                  Chọn tour và lịch trình để xem danh sách điểm check-in.
+                  Ch?n tour v� l?ch tr�nh d? xem danh s�ch di?m check-in.
                 </div>
               )}
             </div>
@@ -1480,7 +1480,7 @@ export default function ExperienceManagement() {
                     type="text"
                     value={categorySearch}
                     onChange={(e) => setCategorySearch(e.target.value)}
-                    placeholder="Tìm danh mục..."
+                    placeholder="T�m danh m?c..."
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
@@ -1490,12 +1490,12 @@ export default function ExperienceManagement() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Danh mục</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Loại</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Mô tả</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Số dịch vụ</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Trạng thái</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Thao tác</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Danh m?c</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Lo?i</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">M� t?</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">S? d?ch v?</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Tr?ng th�i</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Thao t�c</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -1533,13 +1533,13 @@ export default function ExperienceManagement() {
                                 onClick={() => openEditCategory(cat)}
                                 className="px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-sm"
                               >
-                                Sửa
+                                S?a
                               </button>
                               <button
                                 onClick={() => handleDeleteCategory(cat)}
                                 className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-sm text-red-600"
                               >
-                                Xóa
+                                X�a
                               </button>
                             </div>
                           </td>
@@ -1564,7 +1564,7 @@ export default function ExperienceManagement() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-gray-200 px-6 py-4 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">{editingService ? 'Chỉnh sửa dịch vụ' : 'Tạo dịch vụ mới'}</h3>
+              <h3 className="text-lg font-bold text-gray-900">{editingService ? 'Ch?nh s?a d?ch v?' : 'T?o d?ch v? m?i'}</h3>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -1576,7 +1576,7 @@ export default function ExperienceManagement() {
                     onChange={(e) => setServiceForm((prev) => ({ ...prev, homestayId: e.target.value }))}
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
                   >
-                    <option value="">Chọn homestay</option>
+                    <option value="">Ch?n homestay</option>
                     {homestays.map((h) => (
                       <option key={h.id} value={h.id}>{h.name}</option>
                     ))}
@@ -1584,13 +1584,13 @@ export default function ExperienceManagement() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Danh mục *</label>
+                  <label className="text-sm font-medium text-gray-700">Danh m?c *</label>
                   <select
                     value={serviceForm.categoryId}
                     onChange={(e) => setServiceForm((prev) => ({ ...prev, categoryId: e.target.value }))}
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
                   >
-                    <option value="">Chọn danh mục</option>
+                    <option value="">Ch?n danh m?c</option>
                     {activeCategories.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -1598,7 +1598,7 @@ export default function ExperienceManagement() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-gray-700">Tên dịch vụ *</label>
+                  <label className="text-sm font-medium text-gray-700">T�n d?ch v? *</label>
                   <input
                     value={serviceForm.name || ''}
                     onChange={(e) => setServiceForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -1607,7 +1607,7 @@ export default function ExperienceManagement() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Giá (VND)</label>
+                  <label className="text-sm font-medium text-gray-700">Gi� (VND)</label>
                   <input
                     type="number"
                     min={0}
@@ -1618,7 +1618,7 @@ export default function ExperienceManagement() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Đơn vị</label>
+                  <label className="text-sm font-medium text-gray-700">�on v?</label>
                   <input
                     value={serviceForm.unit ?? ''}
                     onChange={(e) => setServiceForm((prev) => ({ ...prev, unit: e.target.value }))}
@@ -1634,11 +1634,11 @@ export default function ExperienceManagement() {
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
                     placeholder="https://..."
                   />
-                  <p className="mt-1 text-xs text-gray-500">Chỉ nên nhập URL ảnh công khai. Không dán chuỗi base64/data URI.</p>
+                  <p className="mt-1 text-xs text-gray-500">Ch? n�n nh?p URL ?nh c�ng khai. Kh�ng d�n chu?i base64/data URI.</p>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-gray-700">Mô tả</label>
+                  <label className="text-sm font-medium text-gray-700">M� t?</label>
                   <textarea
                     rows={3}
                     value={serviceForm.description || ''}
@@ -1654,14 +1654,14 @@ export default function ExperienceManagement() {
                 onClick={() => setShowServiceModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
-                Hủy
+                H?y
               </button>
               <button
                 onClick={handleSaveService}
                 disabled={savingService}
                 className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg disabled:opacity-60"
               >
-                {savingService ? 'Đang lưu...' : editingService ? 'Cập nhật' : 'Tạo mới'}
+                {savingService ? '�ang luu...' : editingService ? 'C?p nh?t' : 'T?o m?i'}
               </button>
             </div>
           </div>
@@ -1678,12 +1678,12 @@ export default function ExperienceManagement() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-gray-200 px-6 py-4 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">{editingCategory ? 'Chỉnh sửa danh mục' : 'Tạo danh mục mới'}</h3>
+              <h3 className="text-lg font-bold text-gray-900">{editingCategory ? 'Ch?nh s?a danh m?c' : 'T?o danh m?c m?i'}</h3>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-700">Tên danh mục *</label>
+                <label className="text-sm font-medium text-gray-700">T�n danh m?c *</label>
                 <input
                   value={categoryForm.name || ''}
                   onChange={(e) => setCategoryForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -1691,16 +1691,16 @@ export default function ExperienceManagement() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Loại (type)</label>
+                <label className="text-sm font-medium text-gray-700">Lo?i (type)</label>
                 <input
                   value={categoryForm.type || ''}
                   onChange={(e) => setCategoryForm((prev) => ({ ...prev, type: e.target.value }))}
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Ví dụ: outdoor, activity, food"
+                  placeholder="V� d?: outdoor, activity, food"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Mô tả</label>
+                <label className="text-sm font-medium text-gray-700">M� t?</label>
                 <textarea
                   rows={3}
                   value={categoryForm.description || ''}
@@ -1723,7 +1723,7 @@ export default function ExperienceManagement() {
                   checked={categoryForm.isActive ?? true}
                   onChange={(e) => setCategoryForm((prev) => ({ ...prev, isActive: e.target.checked }))}
                 />
-                Kích hoạt danh mục
+                K�ch ho?t danh m?c
               </label>
             </div>
 
@@ -1732,14 +1732,14 @@ export default function ExperienceManagement() {
                 onClick={() => setShowCategoryModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
-                Hủy
+                H?y
               </button>
               <button
                 onClick={handleSaveCategory}
                 disabled={savingCategory}
                 className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg disabled:opacity-60"
               >
-                {savingCategory ? 'Đang lưu...' : editingCategory ? 'Cập nhật' : 'Tạo mới'}
+                {savingCategory ? '�ang luu...' : editingCategory ? 'C?p nh?t' : 'T?o m?i'}
               </button>
             </div>
           </div>

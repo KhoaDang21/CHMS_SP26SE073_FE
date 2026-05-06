@@ -260,7 +260,7 @@ export default function HomestayManagement() {
           </button>
         </div>
 
-        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] pb-32">
+        <nav className="p-4">
           <AdminSidebar isAdminMode={true} />
         </nav>
 

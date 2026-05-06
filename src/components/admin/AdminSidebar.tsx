@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { adminNavItemsGrouped } from "../../config/adminNavItemsGrouped";
 import type { AdminNavItem, AdminNavSection } from "../../config/adminNavItemsGrouped";
+
+const SCROLL_KEY = "adminSidebarScrollTop";
 
 interface AdminSidebarProps {
   isAdminMode?: boolean;
@@ -9,26 +11,43 @@ interface AdminSidebarProps {
   groupedItems?: readonly AdminNavSection[];
 }
 
-const AdminSidebar: React.FC<AdminSidebarProps> = ({ 
-  isAdminMode = true, 
+const AdminSidebar: React.FC<AdminSidebarProps> = ({
+  isAdminMode = true,
   navItems,
   groupedItems,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Determine which structure to use
+  // Restore scroll position on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved && scrollRef.current) {
+      scrollRef.current.scrollTop = parseInt(saved, 10);
+    }
+  }, []);
+
+  // Save scroll position on scroll
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      sessionStorage.setItem(SCROLL_KEY, String(scrollRef.current.scrollTop));
+    }
+  };
+
   const useGrouped = groupedItems && groupedItems.length > 0;
   const itemsToDisplay = useGrouped ? groupedItems : undefined;
 
-  // If navItems is provided (flat list), render without grouping
   if (!useGrouped && navItems && navItems.length > 0) {
     return (
-      <div className="flex flex-col gap-2">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-180px)]"
+      >
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
-
           return (
             <button
               key={item.id}
@@ -41,9 +60,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
               title={item.label}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="min-w-0 flex-1 text-left truncate">
-                {item.label}
-              </span>
+              <span className="min-w-0 flex-1 text-left truncate">{item.label}</span>
             </button>
           );
         })}
@@ -51,29 +68,27 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
     );
   }
 
-  // Check if should show anything at all
   if (!useGrouped && !isAdminMode) {
     return null;
   }
 
-  // Use groupedItems or default to adminNavItemsGrouped
   const sectionsToDisplay = itemsToDisplay || adminNavItemsGrouped;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      className="flex flex-col gap-6 overflow-y-auto max-h-[calc(100vh-180px)]"
+    >
       {sectionsToDisplay.map((section) => (
         <div key={section.section} className="flex flex-col gap-2">
-          {/* Section Header */}
           <h3 className="px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
             {section.section}
           </h3>
-
-          {/* Section Items */}
           <div className="flex flex-col gap-2">
             {section.items.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
-
               return (
                 <button
                   key={item.id}
@@ -86,9 +101,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   title={item.label}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="min-w-0 flex-1 text-left truncate">
-                    {item.label}
-                  </span>
+                  <span className="min-w-0 flex-1 text-left truncate">{item.label}</span>
                 </button>
               );
             })}
