@@ -130,7 +130,7 @@ export default function RevenueReport() {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4">
+<nav className="p-4 pb-32">
           <AdminSidebar isAdminMode={true} />
         </nav>
 
