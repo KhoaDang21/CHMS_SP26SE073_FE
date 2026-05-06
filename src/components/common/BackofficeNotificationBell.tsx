@@ -169,16 +169,30 @@ export default function BackofficeNotificationBell({
     }
   };
 
-  const getDateFromNotification = (content?: string) => {
-    const text = String(content || '');
+  const getDateFromNotification = (notif: Notification) => {
+    // Try to parse date from content first (format: dd/MM)
+    const text = String(notif.content || '');
     const m = text.match(/(\d{2})\/(\d{2})/);
-    if (!m) return '';
-    const day = Number(m[1]);
-    const month = Number(m[2]);
-    const year = new Date().getFullYear();
-    const d = new Date(year, month - 1, day);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toISOString().slice(0, 10);
+    if (m) {
+      const day = Number(m[1]);
+      const month = Number(m[2]);
+      const year = new Date().getFullYear();
+      const d = new Date(year, month - 1, day);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toISOString().slice(0, 10);
+      }
+    }
+
+    // Fallback: use notification createdAt date
+    if (notif.createdAt) {
+      const d = new Date(notif.createdAt);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toISOString().slice(0, 10);
+      }
+    }
+
+    // Last fallback: today
+    return new Date().toISOString().slice(0, 10);
   };
 
   const handleNotificationClick = (notif: Notification) => {
@@ -187,10 +201,10 @@ export default function BackofficeNotificationBell({
     }
     const role = authService.getUser()?.role;
     const text = `${notif.title ?? ''} ${notif.content ?? ''}`.toLowerCase();
-    const isDining = text.includes('dining') || text.includes('đơn');
+    const isDining = text.includes('dining') || text.includes('đơn') || text.includes('món');
     if (role === 'staff' && isDining) {
-      const date = getDateFromNotification(notif.content);
-      navigate(date ? `/staff/dining/orders?date=${date}` : '/staff/dining/orders');
+      const date = getDateFromNotification(notif);
+      navigate(`/staff/dining/orders?date=${date}`);
       setIsOpen(false);
     }
   };
