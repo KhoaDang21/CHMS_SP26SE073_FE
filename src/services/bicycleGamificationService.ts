@@ -56,6 +56,7 @@ const unwrapArray = (response: any): any[] => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.items)) return payload.items;
   if (Array.isArray(payload?.Items)) return payload.Items;
+  if (Array.isArray(payload?.rentals)) return payload.rentals;
   if (Array.isArray(payload?.availableBicycles)) return payload.availableBicycles;
   if (Array.isArray(payload?.AvailableBicycles)) return payload.AvailableBicycles;
   if (Array.isArray(payload?.bicycles)) return payload.bicycles;
@@ -63,6 +64,7 @@ const unwrapArray = (response: any): any[] => {
   if (Array.isArray(payload?.result)) return payload.result;
   if (Array.isArray(payload?.data?.items)) return payload.data.items;
   if (Array.isArray(payload?.data?.Items)) return payload.data.Items;
+  if (Array.isArray(payload?.data?.rentals)) return payload.data.rentals;
   if (Array.isArray(payload?.data?.availableBicycles)) return payload.data.availableBicycles;
   if (Array.isArray(payload?.data?.AvailableBicycles)) return payload.data.AvailableBicycles;
   if (Array.isArray(payload?.data?.bicycles)) return payload.data.bicycles;
@@ -93,6 +95,20 @@ export const bicycleGamificationService = {
       return toServiceResult(response, 'Thu hồi xe thành công');
     } catch (error) {
       return { success: false, message: toMessage(error) };
+    }
+  },
+
+  async listRentals(params: { homestayId?: string; status?: string; bookingId?: string } = {}): Promise<any[]> {
+    try {
+      const query = new URLSearchParams();
+      if (params.homestayId) query.set('homestayId', params.homestayId);
+      if (params.status) query.set('status', params.status);
+      if (params.bookingId) query.set('bookingId', params.bookingId);
+      const url = `${apiConfig.endpoints.gamificationBicycles.rentals}${query.toString() ? `?${query.toString()}` : ''}`;
+      const response = await apiService.get<any>(url);
+      return unwrapArray(response);
+    } catch {
+      return [];
     }
   },
 
