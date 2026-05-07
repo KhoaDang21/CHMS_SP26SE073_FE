@@ -351,6 +351,7 @@ export const apiConfig = {
     gamificationBicycles: {
       rent: "/api/gamification-bicycles/rent",
       return: "/api/gamification-bicycles/return",
+      rentals: "/api/staff/bicycles/rentals",
       availableByHomestay: (homestayId: string) => `/api/gamification-bicycles/homestays/${homestayId}/available`,
       availableByBooking: (bookingId: string) => `/api/gamification-bicycles/bookings/${bookingId}/available`,
       routes: (homestayId: string) => `/api/gamification-bicycles/routes/${homestayId}`,

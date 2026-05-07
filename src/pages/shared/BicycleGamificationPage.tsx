@@ -115,6 +115,7 @@ export default function BicycleGamificationPage() {
   const [rentBicycleId, setRentBicycleId] = useState('');
   const [returnRentalId, setReturnRentalId] = useState('');
   const [selectedDamageIds, setSelectedDamageIds] = useState<string[]>([]);
+  const [activeRentals, setActiveRentals] = useState<any[]>([]);
 
   const [bicycleCode, setBicycleCode] = useState('');
   const [bicycleType, setBicycleType] = useState('CITY');
@@ -232,6 +233,7 @@ export default function BicycleGamificationPage() {
   const refreshOperationData = async () => {
     if (!selectedHomestayId) {
       setStaffBookings([]);
+      setActiveRentals([]);
       return;
     }
 
@@ -253,6 +255,17 @@ export default function BicycleGamificationPage() {
         return hId === selectedHomestayId && status === 'checked_in';
       });
       setStaffBookings(filtered);
+
+      // Load xe đang mượn (không filter status, lấy tất cả rồi filter client-side)
+      const rentals = await bicycleGamificationService.listRentals({
+        homestayId: selectedHomestayId,
+      });
+      // Chỉ hiện rental đang active: status ACTIVE hoặc IN_USE, loại bỏ COMPLETED/CANCELLED
+      const activeOnly = rentals.filter((r: any) => {
+        const s = String(r?.status || '').toUpperCase();
+        return s === 'ACTIVE' || s === 'IN_USE' || s === 'RENTED' || s === 'ONGOING';
+      });
+      setActiveRentals(activeOnly.length > 0 ? activeOnly : rentals);
     } catch (error) {
       console.error('Refresh bicycle operation data error:', error);
       toast.error('Không thể tải danh sách booking cho thao tác xe đạp');
@@ -606,12 +619,39 @@ export default function BicycleGamificationPage() {
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h2 className="text-lg font-bold text-gray-900">Thu hồi xe & phạt hư hỏng</h2>
                     <div className="mt-4 space-y-3">
-                      <input
-                        value={returnRentalId}
-                        onChange={(e) => setReturnRentalId(e.target.value)}
-                        placeholder="Nhập rentalId (bắt buộc)"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      />
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-700">Chọn xe đang mượn</label>
+                        {loadingOperationData ? (
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                            </svg>
+                            Đang tải...
+                          </div>
+                        ) : activeRentals.length === 0 ? (
+                          <p className="text-xs text-gray-500">Hiện không có xe nào đang được mượn.</p>
+                        ) : (
+                          <select
+                            value={returnRentalId}
+                            onChange={(e) => setReturnRentalId(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          >
+                            <option value="">-- Chọn rental --</option>
+                            {activeRentals.map((rental: any) => {
+                              const rentalId = String(rental?.id || rental?.rentalId || '');
+                              const code = String(rental?.bicycleCode || rental?.bicycle?.bicycleCode || 'Xe');
+                              const customer = String(rental?.customer?.fullName || rental?.customerName || rental?.guestName || '');
+                              const bookingCode = String(rental?.booking?.id || rental?.bookingId || '').slice(0, 8);
+                              return (
+                                <option key={rentalId} value={rentalId}>
+                                  {code}{customer ? ` — ${customer}` : ''}{bookingCode ? ` (${bookingCode})` : ''}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
+                      </div>
                       <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                         <p className="mb-2 text-sm font-medium text-gray-700">Chọn lỗi hư hỏng (nếu có)</p>
                         {damageCatalogs.length === 0 ? (
@@ -948,8 +988,8 @@ export default function BicycleGamificationPage() {
                       setActiveTab(tab.key);
                     }}
                     className={`rounded-xl border px-4 py-3 text-left transition-colors ${active
-                        ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'
+                      ? 'border-cyan-300 bg-cyan-50 text-cyan-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:text-cyan-700'
                       }`}
                   >
                     <p className="flex items-center gap-2 text-sm font-semibold">

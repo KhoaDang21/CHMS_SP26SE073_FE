@@ -68,7 +68,7 @@ const formatCurrencyVnd = (value: unknown): string => {
 const getStatusLabel = (status: unknown): string => {
   const value = String(status ?? "").toUpperCase();
   if (value === "AVAILABLE") return "Sẵn sàng";
-  if (value === "IN_USE" || value === "RENTED") return "Đang sử dụng";
+  if (value === "IN_USE" || value === "RENTED" || value === "ACTIVE") return "Đang sử dụng";
   if (value === "MAINTENANCE") return "Bảo trì";
   if (value === "INACTIVE") return "Ngừng hoạt động";
   return value || "Không rõ";
@@ -78,7 +78,7 @@ const getStatusClassName = (status: unknown): string => {
   const value = String(status ?? "").toUpperCase();
   if (value === "AVAILABLE")
     return "bg-emerald-100 text-emerald-700 border-emerald-200";
-  if (value === "IN_USE" || value === "RENTED")
+  if (value === "IN_USE" || value === "RENTED" || value === "ACTIVE")
     return "bg-amber-100 text-amber-700 border-amber-200";
   if (value === "MAINTENANCE")
     return "bg-orange-100 text-orange-700 border-orange-200";
@@ -321,9 +321,7 @@ export default function ManagerBicycleGamificationPage() {
   const [selectedHomestayId, setSelectedHomestayId] = useState("");
 
   const [activeTab, setActiveTab] = useState<TabKey>("bicycles");
-  const visibleTabs = isAdmin
-    ? tabs
-    : tabs.filter((tab) => tab.key !== "operation");
+  const visibleTabs = tabs;
 
   const [bicycles, setBicycles] = useState<any[]>([]);
   const [damageCatalogs, setDamageCatalogs] = useState<any[]>([]);
@@ -335,6 +333,7 @@ export default function ManagerBicycleGamificationPage() {
   const [returnDamageIds, setReturnDamageIds] = useState<string[]>([]);
   const [staffBookings, setStaffBookings] = useState<Booking[]>([]);
   const [loadingOperationData, setLoadingOperationData] = useState(false);
+  const [activeRentals, setActiveRentals] = useState<any[]>([]);
 
   useEffect(() => {
     if (!visibleTabs.some((tab) => tab.key === activeTab)) {
@@ -514,6 +513,7 @@ export default function ManagerBicycleGamificationPage() {
   const refreshOperationData = async () => {
     if (!selectedHomestayId) {
       setStaffBookings([]);
+      setActiveRentals([]);
       return;
     }
     setLoadingOperationData(true);
@@ -535,6 +535,16 @@ export default function ManagerBicycleGamificationPage() {
         );
       });
       setStaffBookings(filtered);
+
+      // Load xe đang mượn (không filter status, lấy tất cả rồi filter client-side)
+      const rentals = await bicycleGamificationService.listRentals({
+        homestayId: selectedHomestayId,
+      });
+      const activeOnly = rentals.filter((r: any) => {
+        const s = String(r?.status || '').toUpperCase();
+        return s === 'ACTIVE' || s === 'IN_USE' || s === 'RENTED' || s === 'ONGOING';
+      });
+      setActiveRentals(activeOnly.length > 0 ? activeOnly : rentals);
     } catch (error) {
       console.error("Refresh operation data error:", error);
     } finally {
@@ -1028,7 +1038,7 @@ export default function ManagerBicycleGamificationPage() {
             </div>
           ) : (
             <div className="mt-6 space-y-6">
-              {isAdmin && activeTab === "operation" && (
+              {(isAdmin || role === 'manager') && activeTab === "operation" && (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <div className="rounded-2xl border border-gray-200 p-5">
                     <h2 className="text-lg font-bold text-gray-900">
@@ -1125,14 +1135,35 @@ export default function ManagerBicycleGamificationPage() {
                     <div className="mt-4 space-y-3">
                       <div className="space-y-1">
                         <label className="text-sm font-medium text-gray-700">
-                          Rental ID (bắt buộc)
+                          Chọn xe đang mượn
                         </label>
-                        <input
-                          value={returnRentalId}
-                          onChange={(e) => setReturnRentalId(e.target.value)}
-                          placeholder="Nhập Rental ID (UUID)"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        />
+                        {loadingOperationData ? (
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Đang tải...
+                          </div>
+                        ) : activeRentals.length === 0 ? (
+                          <p className="text-xs text-gray-500">Hiện không có xe nào đang được mượn.</p>
+                        ) : (
+                          <select
+                            value={returnRentalId}
+                            onChange={(e) => setReturnRentalId(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          >
+                            <option value="">-- Chọn rental --</option>
+                            {activeRentals.map((rental: any) => {
+                              const rentalId = String(rental?.id || rental?.rentalId || '');
+                              const code = String(rental?.bicycleCode || rental?.bicycle?.bicycleCode || 'Xe');
+                              const customer = String(rental?.customer?.fullName || rental?.customerName || rental?.guestName || '');
+                              const bookingCode = String(rental?.booking?.id || rental?.bookingId || '').slice(0, 8);
+                              return (
+                                <option key={rentalId} value={rentalId}>
+                                  {code}{customer ? ` — ${customer}` : ''}{bookingCode ? ` (${bookingCode})` : ''}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
                       </div>
                       <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                         <p className="mb-2 text-sm font-medium text-gray-700">
